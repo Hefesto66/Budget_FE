@@ -29,22 +29,22 @@ export type SuggestRefinedPanelConfigInput = z.infer<
 const SuggestRefinedPanelConfigOutputSchema = z.object({
   refinedPanelQuantity: z
     .number()
-    .describe('The refined/suggested number of of solar panels.'),
+    .describe('O número refinado/sugerido de painéis solares.'),
   refinedPanelModel: z
     .string()
-    .describe('The refined/suggested model/power of the solar panels.'),
+    .describe('O modelo/potência refinado/sugerido dos painéis solares.'),
   refinedTotalCostEstimate: z
     .number()
-    .describe('The refined estimated total cost of the system.'),
+    .describe('O custo total estimado e refinado do sistema.'),
   refinedEstimatedSavings: z
     .number()
-    .describe('The refined estimated annual savings.'),
+    .describe('A economia anual estimada e refinada.'),
   refinedPaybackPeriod: z
     .number()
-    .describe('The refined payback period for the solar system investment.'),
+    .describe('O período de payback refinado para o investimento no sistema solar.'),
   reasoning: z
     .string()
-    .describe('The AI reasoning behind the suggested refined configuration.'),
+    .describe('A justificativa da IA para a configuração refinada sugerida.'),
 });
 export type SuggestRefinedPanelConfigOutput = z.infer<
   typeof SuggestRefinedPanelConfigOutputSchema
@@ -60,31 +60,33 @@ const prompt = ai.definePrompt({
   name: 'suggestRefinedPanelConfigPrompt',
   input: {schema: SuggestRefinedPanelConfigInputSchema},
   output: {schema: SuggestRefinedPanelConfigOutputSchema},
-  prompt: `You are an AI-powered solar energy system advisor. You are provided with the initial solar panel configuration and the parameters related to the system.
+  prompt: `Você é um consultor de sistemas de energia solar alimentado por IA. Você recebe uma configuração inicial de painéis solares e os parâmetros relacionados ao sistema.
 
-You need to analyze if the panel selection is optimal and provide alternative options if the tool assesses the initial calculations to be insufficient.
+Sua tarefa é analisar se a seleção de painéis é ótima e fornecer opções alternativas caso a ferramenta avalie que os cálculos iniciais são insuficientes.
 
-Consider the following factors to refine the panel configuration:
+**Responda sempre em Português do Brasil (PT-BR).**
 
-- Energy consumption: {{{consumption}}} kWh
-- Energy bill: R$ {{{bill}}}
-- Location: {{{location}}}
-- Initial panel quantity: {{{initialPanelQuantity}}}
-- Panel model: {{{panelModel}}}
-- Total cost estimate: R$ {{{totalCostEstimate}}}
-- Estimated annual savings: R$ {{{estimatedAnnualSavings}}}
-- Payback period: {{{paybackPeriod}}} years
+Considere os seguintes fatores para refinar a configuração dos painéis:
 
-Based on these parameters, suggest a refined panel configuration with the following properties:
+- Consumo de energia: {{{consumption}}} kWh
+- Conta de energia: R$ {{{bill}}}
+- Localização: {{{location}}}
+- Quantidade inicial de painéis: {{{initialPanelQuantity}}}
+- Modelo do painel: {{{panelModel}}}
+- Custo total estimado: R$ {{{totalCostEstimate}}}
+- Economia anual estimada: R$ {{{estimatedAnnualSavings}}}
+- Período de payback: {{{paybackPeriod}}} anos
 
-- refinedPanelQuantity: The refined/suggested number of solar panels.
-- refinedPanelModel: The refined/suggested model/power of the solar panels.
-- refinedTotalCostEstimate: The refined estimated total cost of the system.
-- refinedEstimatedSavings: The refined estimated annual savings.
-- refinedPaybackPeriod: The refined payback period for the solar system investment.
-- reasoning: Provide the AI reasoning behind the suggested refined configuration.
+Com base nesses parâmetros, sugira uma configuração de painel refinada com as seguintes propriedades:
 
-If the initial panel configuration is appropriate, then return the same panel configuration with a short message in the reasoning field that the configuration is appropriate.
+- refinedPanelQuantity: O número refinado/sugerido de painéis solares.
+- refinedPanelModel: O modelo/potência refinado/sugerido dos painéis solares.
+- refinedTotalCostEstimate: O custo total estimado e refinado do sistema.
+- refinedEstimatedSavings: A economia anual estimada e refinada.
+- refinedPaybackPeriod: O período de payback refinado para o investimento no sistema solar.
+- reasoning: Forneça a justificativa da IA para a configuração refinada sugerida, em português.
+
+Se a configuração inicial do painel for apropriada, retorne a mesma configuração do painel com uma mensagem curta no campo 'reasoning' informando que a configuração é apropriada.
 `,
 });
 
