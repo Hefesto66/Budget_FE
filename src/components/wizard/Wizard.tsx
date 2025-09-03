@@ -36,9 +36,18 @@ export function Wizard() {
       rede_fases: "mono",
       irradiacao_psh_kwh_m2_dia: 5.7,
       // Módulos
+      fabricante_modulo: "TongWei Bifacial",
       potencia_modulo_wp: 550,
       preco_modulo_reais: 750,
+      garantia_defeito_modulo_anos: 12,
+      garantia_geracao_modulo_anos: 30,
       // Inversor
+      modelo_inversor: "Inversor Central - SIW300H (Híbrido)",
+      fabricante_inversor: "WEG",
+      potencia_inversor_kw: 5,
+      tensao_inversor_v: 220,
+      quantidade_inversores: 1,
+      garantia_inversor_anos: 7,
       eficiencia_inversor_percent: 97,
       custo_inversor_reais: 4000,
       // Custos e Perdas
@@ -66,6 +75,7 @@ export function Wizard() {
         custo_fixo_instalacao_reais: Number(data.custo_fixo_instalacao_reais),
         custo_om_anual_reais: Number(data.custo_om_anual_reais),
         adicional_bandeira_reais_kwh: Number(data.adicional_bandeira_reais_kwh),
+        // Handle optional empty string from form input
         quantidade_modulos: data.quantidade_modulos ? Number(data.quantidade_modulos) : undefined,
     });
 
