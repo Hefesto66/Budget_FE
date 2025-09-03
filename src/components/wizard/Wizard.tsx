@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -29,20 +30,28 @@ export function Wizard() {
     defaultValues: {
       consumo_mensal_kwh: 500,
       valor_medio_fatura_reais: 450,
-      bandeira_tarifaria: "verde",
+      adicional_bandeira_reais_kwh: 0,
       cip_iluminacao_publica_reais: 25,
       concessionaria: "Equatorial GO",
       rede_fases: "mono",
       irradiacao_psh_kwh_m2_dia: 5.7,
+      // Módulos
       potencia_modulo_wp: 550,
-      fator_perdas_percent: 25,
+      preco_modulo_reais: 750,
+      // Inversor
+      eficiencia_inversor_percent: 97,
+      custo_inversor_reais: 4000,
+      // Custos e Perdas
+      fator_perdas_percent: 20,
+      custo_fixo_instalacao_reais: 2500,
+      custo_om_anual_reais: 150,
       meta_compensacao_percent: 100,
     },
   });
 
   const processForm = async (data: SolarCalculationInput) => {
     setIsLoading(true);
-    // Ensure numeric values are correctly formatted
+
     const parsedData = solarCalculationSchema.safeParse({
         ...data,
         consumo_mensal_kwh: Number(data.consumo_mensal_kwh),
@@ -50,10 +59,17 @@ export function Wizard() {
         cip_iluminacao_publica_reais: Number(data.cip_iluminacao_publica_reais),
         irradiacao_psh_kwh_m2_dia: Number(data.irradiacao_psh_kwh_m2_dia),
         potencia_modulo_wp: Number(data.potencia_modulo_wp),
+        preco_modulo_reais: Number(data.preco_modulo_reais),
+        eficiencia_inversor_percent: Number(data.eficiencia_inversor_percent),
+        custo_inversor_reais: Number(data.custo_inversor_reais),
+        fator_perdas_percent: Number(data.fator_perdas_percent),
+        custo_fixo_instalacao_reais: Number(data.custo_fixo_instalacao_reais),
+        custo_om_anual_reais: Number(data.custo_om_anual_reais),
+        adicional_bandeira_reais_kwh: Number(data.adicional_bandeira_reais_kwh),
+        quantidade_modulos: data.quantidade_modulos ? Number(data.quantidade_modulos) : undefined,
     });
 
     if (!parsedData.success) {
-        // Handle validation errors here, maybe show a toast
         const firstError = Object.values(parsedData.error.flatten().fieldErrors)[0]?.[0];
         toast({
             title: "Erro de Validação",

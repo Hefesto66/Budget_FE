@@ -1,3 +1,4 @@
+
 // src/ai/flows/suggest-refined-panel-config.ts
 'use server';
 
@@ -60,33 +61,29 @@ const prompt = ai.definePrompt({
   name: 'suggestRefinedPanelConfigPrompt',
   input: {schema: SuggestRefinedPanelConfigInputSchema},
   output: {schema: SuggestRefinedPanelConfigOutputSchema},
-  prompt: `Você é um consultor de sistemas de energia solar alimentado por IA. Você recebe uma configuração inicial de painéis solares e os parâmetros relacionados ao sistema.
-
-Sua tarefa é analisar se a seleção de painéis é ótima e fornecer opções alternativas caso a ferramenta avalie que os cálculos iniciais são insuficientes.
+  prompt: `Você é um consultor de sistemas de energia solar alimentado por IA. Sua tarefa é analisar se a configuração inicial de painéis é ótima e fornecer opções alternativas caso avalie que os cálculos iniciais são insuficientes.
 
 **Responda sempre em Português do Brasil (PT-BR).**
 
-Considere os seguintes fatores para refinar a configuração dos painéis:
-
+Parâmetros recebidos:
 - Consumo de energia: {{{consumption}}} kWh
-- Conta de energia: R$ {{{bill}}}
-- Localização: {{{location}}}
+- Conta de energia mensal: R$ {{{bill}}}
+- Localização (Concessionária): {{{location}}}
 - Quantidade inicial de painéis: {{{initialPanelQuantity}}}
 - Modelo do painel: {{{panelModel}}}
 - Custo total estimado: R$ {{{totalCostEstimate}}}
-- Economia anual estimada: R$ {{{estimatedAnnualSavings}}}
+- Economia ANUAL estimada: R$ {{{estimatedAnnualSavings}}}
 - Período de payback: {{{paybackPeriod}}} anos
 
-Com base nesses parâmetros, sugira uma configuração de painel refinada com as seguintes propriedades:
+Com base nesses parâmetros, sugira uma configuração de painel refinada. Se a configuração inicial for apropriada, retorne a mesma configuração com uma mensagem curta no campo 'reasoning' informando que a configuração é apropriada e o porquê (ex: "A configuração atual é ideal para sua meta de consumo e oferece um excelente tempo de retorno.").\nSe você sugerir uma mudança, a justificativa ('reasoning') deve explicar o motivo da alteração de forma clara e objetiva (ex: "Aumentar para X painéis garantirá a compensação total do seu consumo, resultando em maior economia a longo prazo com um impacto mínimo no payback.").
 
+Sua resposta DEVE estar no seguinte formato JSON:
 - refinedPanelQuantity: O número refinado/sugerido de painéis solares.
 - refinedPanelModel: O modelo/potência refinado/sugerido dos painéis solares.
 - refinedTotalCostEstimate: O custo total estimado e refinado do sistema.
 - refinedEstimatedSavings: A economia anual estimada e refinada.
 - refinedPaybackPeriod: O período de payback refinado para o investimento no sistema solar.
-- reasoning: Forneça a justificativa da IA para a configuração refinada sugerida, em português.
-
-Se a configuração inicial do painel for apropriada, retorne a mesma configuração do painel com uma mensagem curta no campo 'reasoning' informando que a configuração é apropriada.
+- reasoning: A justificativa da IA para a configuração refinada sugerida, em português.
 `,
 });
 

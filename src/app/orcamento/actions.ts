@@ -1,3 +1,4 @@
+
 "use server";
 
 import {
@@ -6,9 +7,9 @@ import {
 } from "@/ai/flows/suggest-refined-panel-config";
 import {
   calculateSolar,
-  type SolarCalculationInput,
 } from "@/ai/flows/calculate-solar";
 import { revalidatePath } from "next/cache";
+import type { SolarCalculationInput } from "@/types";
 
 export async function getRefinedSuggestions(
   input: SuggestRefinedPanelConfigInput

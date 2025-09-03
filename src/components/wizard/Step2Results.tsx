@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef } from "react";
@@ -20,7 +21,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { getRefinedSuggestions } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
-import { Zap, Calendar, DollarSign, BarChart, ArrowLeft, Sparkles, Download, Share2 } from "lucide-react";
+import { Zap, Calendar, DollarSign, BarChart, ArrowLeft, Sparkles, Download, Share2, Wallet, TrendingUp } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
 import { formatCurrency, formatNumber } from "@/lib/utils";
@@ -126,7 +127,7 @@ export function Step2Results({ results, onBack, formData }: Step2ResultsProps) {
       <div ref={reportRef} className="space-y-8 bg-background p-4 sm:p-0">
         <Card>
            <CardHeader>
-            <CardTitle className="font-headline text-2xl">Seu Orçamento Personalizado</CardTitle>
+            <CardTitle className="font-headline text-2xl">Sua Análise Financeira</CardTitle>
             <CardDescription>
              Esta é uma simulação com base nos dados fornecidos. Os valores são estimativas.
             </CardDescription>
@@ -134,10 +135,35 @@ export function Step2Results({ results, onBack, formData }: Step2ResultsProps) {
           <CardContent>
              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <ResultCard
+                  icon={<Wallet />}
+                  title="Fatura Mensal SEM Sistema"
+                  value={formatCurrency(results.conta_media_mensal_reais.antes)}
+                />
+                <ResultCard
+                  icon={<TrendingUp />}
+                  title="Fatura Mensal COM Sistema"
+                  value={formatCurrency(results.conta_media_mensal_reais.depois)}
+                  className="bg-accent/10 border-accent"
+                />
+                <ResultCard
                   icon={<DollarSign />}
-                  title="Economia Anual"
-                  value={formatCurrency(results.economia_anual_reais)}
-                  description={`~ ${formatCurrency(results.economia_mensal_reais)} / mês`}
+                  title="Economia Média Mensal"
+                  value={formatCurrency(results.economia_mensal_reais)}
+                />
+                 <ResultCard
+                  icon={<BarChart />}
+                  title="Economia no 1º Ano"
+                  value={formatCurrency(results.economia_primeiro_ano)}
+                  className="bg-accent/10 border-accent"
+                />
+              </div>
+              <Separator className="my-6" />
+               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <ResultCard
+                    icon={<Zap />}
+                    title="Sistema Sugerido"
+                    value={`${results.dimensionamento.quantidade_modulos} painéis`}
+                    description={`${formData.potencia_modulo_wp}Wp | ${formatNumber(results.geracao.media_mensal_kwh, 0)} kWh/mês`}
                 />
                 <ResultCard
                   icon={<Calendar />}
@@ -146,16 +172,10 @@ export function Step2Results({ results, onBack, formData }: Step2ResultsProps) {
                   description="Período para o sistema se pagar"
                 />
                 <ResultCard
-                  icon={<Zap />}
-                  title="Sistema Sugerido"
-                  value={`${results.dimensionamento.quantidade_modulos} painéis`}
-                  description={`${formData.potencia_modulo_wp}Wp | ${formatNumber(results.geracao.media_mensal_kwh, 0)} kWh/mês`}
-                />
-                <ResultCard
                   icon={<BarChart />}
-                  title="Custo Estimado"
+                  title="Custo Total Estimado"
                   value={formatCurrency(results.financeiro.custo_sistema_reais)}
-                  description="Valor total do sistema instalado"
+                  description="Valor do sistema + instalação"
                 />
               </div>
           </CardContent>
