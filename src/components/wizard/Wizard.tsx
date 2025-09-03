@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import type { z } from "zod";
 import { Step1DataInput } from "./Step1DataInput";
 import { Step2Results } from "./Step2Results";
 import { StepIndicator } from "./StepIndicator";
@@ -27,32 +27,44 @@ export function Wizard() {
   const methods = useForm<z.infer<typeof solarCalculationSchema>>({
     resolver: zodResolver(solarCalculationSchema),
     defaultValues: {
-      concessionaria: "Equatorial GO",
-      classe: "residencial",
-      rede_fases: "mono",
+      consumo_mensal_kwh: 500,
+      valor_medio_fatura_reais: 450,
       bandeira_tarifaria: "verde",
       cip_iluminacao_publica_reais: 25,
-      consumo_mensal_kwh: 500,
-      meta_compensacao_percent: 100,
-      cidade: "Goiânia",
-      uf: "GO",
-      // irradiacao_psh_kwh_m2_dia will be fetched or defaulted in the backend
+      concessionaria: "Equatorial GO",
+      rede_fases: "mono",
+      irradiacao_psh_kwh_m2_dia: 5.7,
       potencia_modulo_wp: 550,
-      // All other fields will use defaults defined in the schema on the backend
+      fator_perdas_percent: 25,
+      meta_compensacao_percent: 100,
     },
   });
 
   const processForm = async (data: SolarCalculationInput) => {
     setIsLoading(true);
     // Ensure numeric values are correctly formatted
-    const parsedData = {
+    const parsedData = solarCalculationSchema.safeParse({
         ...data,
         consumo_mensal_kwh: Number(data.consumo_mensal_kwh),
+        valor_medio_fatura_reais: Number(data.valor_medio_fatura_reais),
         cip_iluminacao_publica_reais: Number(data.cip_iluminacao_publica_reais),
+        irradiacao_psh_kwh_m2_dia: Number(data.irradiacao_psh_kwh_m2_dia),
         potencia_modulo_wp: Number(data.potencia_modulo_wp),
-    };
+    });
+
+    if (!parsedData.success) {
+        // Handle validation errors here, maybe show a toast
+        const firstError = Object.values(parsedData.error.flatten().fieldErrors)[0]?.[0];
+        toast({
+            title: "Erro de Validação",
+            description: firstError || "Por favor, verifique os campos do formulário.",
+            variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+    }
     
-    const result = await getCalculation(parsedData);
+    const result = await getCalculation(parsedData.data);
     setIsLoading(false);
 
     if (result.success && result.data) {

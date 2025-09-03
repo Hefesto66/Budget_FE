@@ -27,10 +27,15 @@ const phaseOptions = [
     { value: "tri", label: "Trifásico" },
 ];
 
+const concessionariaOptions = [
+    { value: "Equatorial GO", label: "Equatorial - GO" },
+    { value: "CHESP", label: "CHESP" },
+];
+
 const panelOptions = [
-  { value: "550", label: "550W | Alta Eficiência" },
-  { value: "670", label: "670W | Máxima Eficiência" },
-  { value: "450", label: "450W | Média Eficiência" },
+  { value: "550", label: "550W | Padrão" },
+  { value: "670", label: "670W | Alta Eficiência" },
+  { value: "450", label: "450W | Econômico" },
 ]
 
 export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
@@ -60,16 +65,16 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                 </FormItem>
               )}
             />
-            <FormField
+             <FormField
               control={form.control}
-              name="cip_iluminacao_publica_reais"
+              name="valor_medio_fatura_reais"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Taxa de Iluminação Pública (R$)</FormLabel>
+                  <FormLabel>Valor médio da fatura (R$)</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="ex: 25.50" {...field} onChange={e => field.onChange(parseFloat(e.target.value))}/>
+                    <Input type="number" placeholder="ex: 450.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value))}/>
                   </FormControl>
-                  <FormDescription>Valor da taxa CIP/COSIP na conta.</FormDescription>
+                  <FormDescription>O valor total, em reais.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -102,6 +107,36 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                 </FormItem>
             )}
             />
+            <FormField
+              control={form.control}
+              name="cip_iluminacao_publica_reais"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Taxa de Iluminação Pública (R$)</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="ex: 25.50" {...field} onChange={e => field.onChange(parseFloat(e.target.value))}/>
+                  </FormControl>
+                  <FormDescription>Valor da taxa CIP/COSIP na conta.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+        </div>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="irradiacao_psh_kwh_m2_dia"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Irradiação Solar Local (PSH)</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="ex: 5.7" {...field} onChange={e => field.onChange(parseFloat(e.target.value))}/>
+                  </FormControl>
+                   <FormDescription>Média de horas de sol pico.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
              <FormField
                 control={form.control}
                 name="potencia_modulo_wp"
@@ -122,39 +157,37 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                         ))}
                         </SelectContent>
                     </Select>
-                    <FormDescription>Define a potência e o custo.</FormDescription>
+                    <FormDescription>Potência de cada painel.</FormDescription>
                     <FormMessage />
                     </FormItem>
                 )}
             />
         </div>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+         <div className="grid grid-cols-1 gap-6">
             <FormField
-              control={form.control}
-              name="cidade"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cidade</FormLabel>
-                  <FormControl>
-                    <Input placeholder="ex: Goiânia" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="uf"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>UF</FormLabel>
-                  <FormControl>
-                    <Input placeholder="ex: GO" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                control={form.control}
+                name="concessionaria"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Concessionária de Energia</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Selecione a sua concessionária" />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                        {concessionariaOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                            </SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
         </div>
 
 

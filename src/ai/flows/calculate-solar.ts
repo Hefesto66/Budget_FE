@@ -1,7 +1,6 @@
 'use server';
 /**
- * @fileOverview A server-side solar calculation service.
- *
+ * @fileOverview A server-side solar calculation service based on detailed business rules.
  * - calculateSolar - A function that handles the solar calculation process.
  */
 
@@ -12,24 +11,15 @@ import { solarCalculationSchema, type SolarCalculationInput } from '@/types';
 const TARIFF_DATA: Record<string, any> = {
     'Equatorial GO': {
         residencial: {
-            tarifa_energia_reais_kwh: 0.63,
-            adicional_bandeira: {
-                verde: 0,
-                amarela: 0.01874,
-                vermelha1: 0.03971,
-                vermelha2: 0.09492,
-                escassez: 0.1420
-            }
+            // Placeholder: In a real app, this would be more detailed.
+            // For now, we derive it from user input.
+        }
+    },
+    'CHESP': {
+        residencial: {
+            // Placeholder
         }
     }
-};
-
-const IRRADIATION_DATA: Record<string, number> = {
-    'GO': 5.7,
-    'SP': 5.6,
-    'RJ': 5.6,
-    'MG': 5.6,
-    'BA': 5.9,
 };
 
 const DISPONIBILITY_COST_KWH: Record<string, number> = {
@@ -37,6 +27,9 @@ const DISPONIBILITY_COST_KWH: Record<string, number> = {
     bi: 50,
     tri: 100,
 };
+
+// Default inverter efficiency
+const RENDIMENTO_INVERSOR_PERCENT = 97;
 
 
 export async function calculateSolar(input: SolarCalculationInput) {
@@ -50,87 +43,82 @@ const calculateSolarFlow = ai.defineFlow(
     // Output schema is defined implicitly by the return type
   },
   async (data) => {
-    // 1. Get Tariff and Irradiation Data
-    const tariffInfo = TARIFF_DATA[data.concessionaria]?.[data.classe];
-    if (!tariffInfo) {
-      throw new Error(`Tarifas para ${data.concessionaria}/${data.classe} não encontradas.`);
-    }
-
-    const tarifa_energia_reais_kwh = data.tarifa_energia_reais_kwh ?? tariffInfo.tarifa_energia_reais_kwh;
-    const adicional_bandeira_reais_kwh = data.adicional_bandeira_reais_kwh ?? tariffInfo.adicional_bandeira[data.bandeira_tarifaria];
+    // 1. Calculate effective tariff from user input
+    const tarifa_energia_reais_kwh = data.valor_medio_fatura_reais / data.consumo_mensal_kwh;
+    
+    // In a real app, you would fetch and use this based on the tariff flag.
+    // For now, we'll assume the provided tariff includes any flag costs.
+    const adicional_bandeira_reais_kwh = 0; 
     const tarifa_final_reais_kwh = tarifa_energia_reais_kwh + adicional_bandeira_reais_kwh;
 
-    const irradiacao_psh_kwh_m2_dia = data.irradiacao_psh_kwh_m2_dia ?? IRRADIATION_DATA[data.uf.toUpperCase()];
-    if (!irradiacao_psh_kwh_m2_dia) {
-        throw new Error(`Irradiação para UF "${data.uf}" não encontrada.`);
-    }
-
     // 2. Calculate Costs Before Solar
-    const custo_disponibilidade_kwh = data.min_kwh_por_fase_override ?? DISPONIBILITY_COST_KWH[data.rede_fases];
-    const custo_disponibilidade_reais = custo_disponibilidade_kwh * tarifa_final_reais_kwh;
+    const conta_antes_reais = data.valor_medio_fatura_reais;
+
+    // 3. System Sizing & Efficiency
+    const consumo_anual_kwh = data.consumo_mensal_kwh * 12;
+    const eficiencia_efetiva_sistema = (RENDIMENTO_INVERSOR_PERCENT / 100) * (1 - (data.fator_perdas_percent / 100));
+
+    const energia_produzida_por_modulo_mes_kwh = (data.potencia_modulo_wp / 1000) * data.irradiacao_psh_kwh_m2_dia * 30 * eficiencia_efetiva_sistema;
     
-    const consumo_faturado_sem_gd_reais = data.consumo_mensal_kwh * tarifa_final_reais_kwh;
-    const conta_antes_reais = consumo_faturado_sem_gd_reais + data.cip_iluminacao_publica_reais;
-
-    // 3. System Sizing (Dimensionamento)
-    const energia_necessaria_mes_kwh = data.consumo_mensal_kwh * (data.meta_compensacao_percent / 100);
-    const energia_necessaria_dia_kwh = energia_necessaria_mes_kwh / 30;
-
-    const pr_final = data.fator_perdas_pr * (1 - data.sombrite_sombreamento_percent / 100);
-
-    const potencia_pico_necessaria_kwp = energia_necessaria_dia_kwh / (irradiacao_psh_kwh_m2_dia * pr_final);
-
-    let quantidade_modulos = data.quantidade_modulos ?? Math.ceil((potencia_pico_necessaria_kwp * 1000) / data.potencia_modulo_wp);
+    let quantidade_modulos = Math.ceil(data.consumo_mensal_kwh / energia_produzida_por_modulo_mes_kwh);
     if (quantidade_modulos < 1) quantidade_modulos = 1;
 
     const potencia_sistema_kwp = (quantidade_modulos * data.potencia_modulo_wp) / 1000;
-
+    
     // 4. Generation Calculation
-    const geracao_media_mensal_kwh = potencia_sistema_kwp * irradiacao_psh_kwh_m2_dia * 30 * pr_final;
+    const geracao_media_mensal_kwh = energia_produzida_por_modulo_mes_kwh * quantidade_modulos;
 
-    // 5. Calculate Costs After Solar
-    const energia_injetada_kwh = Math.max(0, geracao_media_mensal_kwh - (data.consumo_mensal_kwh - custo_disponibilidade_kwh));
-    const saldo_energia_kwh = Math.min(geracao_media_mensal_kwh, data.consumo_mensal_kwh) - custo_disponibilidade_kwh;
-    const energia_compensada_kwh = Math.max(0, saldo_energia_kwh);
+    // 5. Compensable Energy Calculation
+    const custo_disponibilidade_kwh = DISPONIBILITY_COST_KWH[data.rede_fases];
     
-    const consumo_faturado_com_gd_kwh = data.consumo_mensal_kwh - energia_compensada_kwh;
-    const consumo_faturado_com_gd_reais = consumo_faturado_com_gd_kwh * tarifa_final_reais_kwh;
+    const parcela_consumo_compensavel_kwh = Math.max(0, data.consumo_mensal_kwh - custo_disponibilidade_kwh);
+    const meta_compensacao_kwh = parcela_consumo_compensavel_kwh * (data.meta_compensacao_percent / 100);
+    const energia_compensada_kwh = Math.min(geracao_media_mensal_kwh, meta_compensacao_kwh);
+
+    // 6. Calculate Costs After Solar
+    const consumo_nao_compensado_kwh = data.consumo_mensal_kwh - energia_compensada_kwh;
     
-    const conta_depois_reais = custo_disponibilidade_reais + data.cip_iluminacao_publica_reais;
+    // The bill after solar is the cost of non-compensated energy + availability cost + public lighting tax.
+    // The availability cost is the value of `custo_disponibilidade_kwh` in currency.
+    const custo_disponibilidade_reais = custo_disponibilidade_kwh * tarifa_final_reais_kwh;
+    const consumo_faturado_com_gd_reais = (consumo_nao_compensado_kwh - custo_disponibilidade_kwh) * tarifa_final_reais_kwh;
     
-    // 6. Savings and Financial Analysis
-    const economia_mensal_reais = conta_antes_reais - conta_depois_reais;
+    // Ensure the billed consumption isn't negative and add the fixed costs
+    const conta_depois_reais = Math.max(0, consumo_faturado_com_gd_reais) + custo_disponibilidade_reais + data.cip_iluminacao_publica_reais;
+
+    // 7. Savings and Financial Analysis
+    const economia_mensal_reais = Math.max(0, conta_antes_reais - conta_depois_reais);
     const economia_anual_reais = economia_mensal_reais * 12;
 
-    const custo_sistema_reais = data.custo_sistema_reais ?? potencia_sistema_kwp * 4500; // R$4500 per kWp as a fallback estimate
-    const payback_simples_anos = custo_sistema_reais / economia_anual_reais;
-
-    // Simple VPL/TIR calculation could be added here if needed
+    // Estimate system cost if not provided. R$3.5 per Wp is a rough market estimate.
+    const custo_sistema_reais = data.custo_sistema_reais ?? potencia_sistema_kwp * 3500;
     
+    const payback_simples_anos = economia_anual_reais > 0 ? (custo_sistema_reais / economia_anual_reais) : Infinity;
+
     return {
       parametros_entrada: data,
-      tarifas: {
+      calculos_intermediarios: {
         tarifa_final_reais_kwh,
         custo_disponibilidade_kwh,
         custo_disponibilidade_reais,
+        eficiencia_efetiva_sistema,
+        energia_produzida_por_modulo_mes_kwh,
       },
       conta_media_mensal_reais: {
         antes: conta_antes_reais,
         depois: conta_depois_reais,
       },
       dimensionamento: {
-        potencia_pico_necessaria_kwp,
         quantidade_modulos,
         potencia_sistema_kwp,
       },
       geracao: {
         media_mensal_kwh: geracao_media_mensal_kwh,
-        pr_final
       },
       balanco_energetico: {
         energia_compensada_kwh,
-        consumo_faturado_com_gd_kwh,
-        saldo_creditos_mes_kwh: energia_injetada_kwh,
+        consumo_faturado_apos_gd_kwh: consumo_nao_compensado_kwh,
+        saldo_creditos_mes_kwh: Math.max(0, geracao_media_mensal_kwh - data.consumo_mensal_kwh),
       },
       economia_mensal_reais,
       economia_anual_reais,

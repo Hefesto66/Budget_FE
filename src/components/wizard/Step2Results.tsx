@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useFormContext } from "react-hook-form";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import type { SolarCalculationResult } from "@/types";
@@ -39,6 +38,9 @@ export function Step2Results({ results, onBack, formData }: Step2ResultsProps) {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
+
+  const paybackYears = results.payback_simples_anos;
+  const paybackText = isFinite(paybackYears) ? `${formatNumber(paybackYears, 1)} anos` : "N/A";
 
   const handleExportPdf = async () => {
     setIsGeneratingPdf(true);
@@ -79,7 +81,7 @@ export function Step2Results({ results, onBack, formData }: Step2ResultsProps) {
   };
   
   const handleShare = (platform: 'whatsapp' | 'email') => {
-    const text = `Confira meu orçamento de energia solar da FE Sistema Solar!\n\nEconomia Anual Estimada: ${formatCurrency(results.economia_anual_reais)}\nRetorno do Investimento: ${results.payback_simples_anos.toFixed(1)} anos\n\nFaça sua simulação também!`;
+    const text = `Confira meu orçamento de energia solar da FE Sistema Solar!\n\nEconomia Anual Estimada: ${formatCurrency(results.economia_anual_reais)}\nRetorno do Investimento: ${paybackText}\n\nFaça sua simulação também!`;
     const encodedText = encodeURIComponent(text);
 
     if (platform === 'whatsapp') {
@@ -96,10 +98,10 @@ export function Step2Results({ results, onBack, formData }: Step2ResultsProps) {
     const inputForAI = {
       consumption: formData.consumo_mensal_kwh,
       bill: results.conta_media_mensal_reais.antes,
-      location: `${formData.cidade}, ${formData.uf}`,
+      location: `${formData.concessionaria}`, // Simplified location
       initialPanelQuantity: results.dimensionamento.quantidade_modulos,
       panelModel: `${formData.potencia_modulo_wp}W`,
-      totalCostEstimate: formData.custo_sistema_reais || results.financeiro.custo_sistema_reais,
+      totalCostEstimate: results.financeiro.custo_sistema_reais,
       estimatedAnnualSavings: results.economia_anual_reais,
       paybackPeriod: results.payback_simples_anos,
     };
@@ -140,7 +142,7 @@ export function Step2Results({ results, onBack, formData }: Step2ResultsProps) {
                 <ResultCard
                   icon={<Calendar />}
                   title="Retorno (Payback)"
-                  value={`${formatNumber(results.payback_simples_anos, 1)} anos`}
+                  value={paybackText}
                   description="Período para o sistema se pagar"
                 />
                 <ResultCard
@@ -218,7 +220,7 @@ export function Step2Results({ results, onBack, formData }: Step2ResultsProps) {
                       <h4 className="font-semibold text-foreground">Configuração Inicial</h4>
                       <ComparisonItem label="Painéis" value={`${results.dimensionamento.quantidade_modulos} de ${formData.potencia_modulo_wp}Wp`} />
                       <ComparisonItem label="Custo Total" value={formatCurrency(results.financeiro.custo_sistema_reais)} />
-                      <ComparisonItem label="Payback" value={`${formatNumber(results.payback_simples_anos, 1)} anos`} />
+                      <ComparisonItem label="Payback" value={paybackText} />
                   </div>
                   <div className="space-y-4 rounded-md border border-primary bg-primary/5 p-4">
                       <h4 className="font-semibold text-primary">Configuração Otimizada</h4>
