@@ -22,24 +22,14 @@ export function SavingsChart({ annualSavings }: SavingsChartProps) {
   });
 
   const chartColors = useMemo(() => {
-    // This is a bit of a hack to get the CSS variables into the chart
-    // In a real app, you'd likely have a more robust way to do this
-    if (typeof window === "undefined") {
-      return {
-        grid: "hsl(var(--border))",
-        text: "hsl(var(--muted-foreground))",
-        tooltipBg: "hsl(var(--background))",
-        tooltipBorder: "hsl(var(--border))",
-        bar: "hsl(var(--primary))",
-      };
-    }
-    const styles = getComputedStyle(document.documentElement);
+    // These values are the HSL variables from globals.css
     return {
-        grid: styles.getPropertyValue('--border'),
-        text: styles.getPropertyValue('--muted-foreground'),
-        tooltipBg: styles.getPropertyValue('--background'),
-        tooltipBorder: styles.getPropertyValue('--border'),
-        bar: styles.getPropertyValue('--primary'),
+        grid: "var(--border)",
+        text: "var(--muted-foreground)",
+        tooltipBg: "var(--background)",
+        tooltipBorder: "var(--border)",
+        bar: "var(--primary)",
+        accent: "var(--accent)"
     }
   }, [resolvedTheme]);
 
@@ -64,7 +54,7 @@ export function SavingsChart({ annualSavings }: SavingsChartProps) {
           tickFormatter={(value) => formatCurrency(Number(value))}
         />
         <Tooltip
-          cursor={{ fill: 'hsla(var(--accent), 0.1)' }}
+          cursor={{ fill: `hsla(${chartColors.accent}, 0.1)` }}
           contentStyle={{
             background: `hsl(${chartColors.tooltipBg})`,
             border: `1px solid hsl(${chartColors.tooltipBorder})`,
