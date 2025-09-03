@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -8,18 +7,11 @@ import { z } from "zod";
 import { Step1DataInput } from "./Step1DataInput";
 import { Step2Results } from "./Step2Results";
 import { StepIndicator } from "./StepIndicator";
-import type { FormData, CalculationResults } from "@/types";
-import { calculateSystem } from "@/lib/solar-calculations";
-import { PANEL_MODELS, LOCATIONS } from "@/lib/constants";
+import type { SolarCalculationResult, SolarCalculationInput } from "@/types";
+import { getCalculation } from "@/app/orcamento/actions";
+import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-
-const formSchema = z.object({
-  consumption: z.coerce.number().min(1, "O consumo deve ser maior que 0."),
-  bill: z.coerce.number().min(1, "O valor da conta deve ser maior que 0."),
-  location: z.string().nonempty("Por favor, selecione uma localização."),
-  panelModel: z.string().nonempty("Por favor, selecione um modelo de painel."),
-  panelQuantity: z.coerce.number().optional(),
-});
+import { solarCalculationSchema } from "@/ai/flows/calculate-solar";
 
 const steps = [
   { id: "01", name: "Dados de Consumo" },
@@ -28,31 +20,53 @@ const steps = [
 
 export function Wizard() {
   const [currentStep, setCurrentStep] = useState(0);
-  const [results, setResults] = useState<CalculationResults | null>(null);
+  const [results, setResults] = useState<SolarCalculationResult | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
-  const methods = useForm<FormData & { panelQuantity?: number }>({
-    resolver: zodResolver(formSchema),
+  const methods = useForm<z.infer<typeof solarCalculationSchema>>({
+    resolver: zodResolver(solarCalculationSchema),
     defaultValues: {
-      consumption: 0,
-      bill: 0,
-      panelModel: PANEL_MODELS[1].value,
-      location: LOCATIONS[2].value,
+      concessionaria: "Equatorial GO",
+      classe: "residencial",
+      rede_fases: "mono",
+      bandeira_tarifaria: "verde",
+      cip_iluminacao_publica_reais: 25,
+      consumo_mensal_kwh: 500,
+      meta_compensacao_percent: 100,
+      cidade: "Goiânia",
+      uf: "GO",
+      // irradiacao_psh_kwh_m2_dia will be fetched or defaulted in the backend
+      potencia_modulo_wp: 550,
+      // All other fields will use defaults defined in the schema on the backend
     },
   });
 
-  const processForm = (data: FormData & { panelQuantity?: number }) => {
-    const calculation = calculateSystem(data);
-    setResults(calculation);
-    methods.setValue("panelQuantity", calculation.panelQuantity);
-    setCurrentStep(1);
+  const processForm = async (data: SolarCalculationInput) => {
+    setIsLoading(true);
+    // Ensure numeric values are correctly formatted
+    const parsedData = {
+        ...data,
+        consumo_mensal_kwh: Number(data.consumo_mensal_kwh),
+        cip_iluminacao_publica_reais: Number(data.cip_iluminacao_publica_reais),
+        potencia_modulo_wp: Number(data.potencia_modulo_wp),
+    };
+    
+    const result = await getCalculation(parsedData);
+    setIsLoading(false);
+
+    if (result.success && result.data) {
+      setResults(result.data);
+      setCurrentStep(1);
+    } else {
+      toast({
+        title: "Erro no Cálculo",
+        description: result.error,
+        variant: "destructive",
+      });
+    }
   };
   
-  const reCalculate = () => {
-    const formData = methods.getValues();
-    const calculation = calculateSystem(formData);
-    setResults(calculation);
-  };
-
   const goBack = () => {
     setCurrentStep(0);
     setResults(null);
@@ -72,7 +86,7 @@ export function Wizard() {
                 exit={{ opacity: 0, x: 50 }}
                 transition={{ duration: 0.3 }}
               >
-                <Step1DataInput />
+                <Step1DataInput isLoading={isLoading} />
               </motion.div>
             )}
             {currentStep === 1 && results && (
@@ -85,7 +99,6 @@ export function Wizard() {
               >
                 <Step2Results 
                   results={results}
-                  onRecalculate={reCalculate}
                   onBack={goBack}
                   formData={methods.getValues()}
                 />

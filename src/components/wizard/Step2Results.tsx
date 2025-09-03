@@ -1,25 +1,14 @@
-
 "use client";
 
 import { useState, useRef } from "react";
 import { useFormContext } from "react-hook-form";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import type { CalculationResults, FormData, RefinedSuggestion } from "@/types";
-import { formatCurrency, formatNumber } from "@/lib/solar-calculations";
+import type { SolarCalculationResult, RefinedSuggestion } from "@/types";
 import { ResultCard } from "@/components/ResultCard";
 import { SavingsChart } from "@/components/SavingsChart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,21 +19,32 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
-import { PANEL_MODELS } from "@/lib/constants";
 import { getRefinedSuggestions } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
-import { Zap, Calendar, DollarSign, BarChart, ArrowLeft, RefreshCw, Sparkles, Download, Share2, Info } from "lucide-react";
+import { Zap, Calendar, DollarSign, BarChart, ArrowLeft, Sparkles, Download, Share2 } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 
-interface Step2ResultsProps {
-  results: CalculationResults;
-  onRecalculate: () => void;
-  onBack: () => void;
-  formData: FormData;
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value);
 }
 
-export function Step2Results({ results, onRecalculate, onBack, formData }: Step2ResultsProps) {
-  const form = useFormContext();
+function formatNumber(value: number, decimalPlaces = 0) {
+    return new Intl.NumberFormat("pt-BR", {
+        minimumFractionDigits: decimalPlaces,
+        maximumFractionDigits: decimalPlaces,
+    }).format(value);
+}
+
+interface Step2ResultsProps {
+  results: SolarCalculationResult;
+  onBack: () => void;
+  formData: any;
+}
+
+export function Step2Results({ results, onBack, formData }: Step2ResultsProps) {
   const { toast } = useToast();
   const reportRef = useRef<HTMLDivElement>(null);
   
@@ -91,7 +91,7 @@ export function Step2Results({ results, onRecalculate, onBack, formData }: Step2
   };
   
   const handleShare = (platform: 'whatsapp' | 'email') => {
-    const text = `Confira meu orçamento de energia solar da FE Sistema Solar!\n\nEconomia Anual Estimada: ${formatCurrency(results.annualSavings)}\nRetorno do Investimento: ${results.paybackPeriod.toFixed(1)} anos\n\nFaça sua simulação também!`;
+    const text = `Confira meu orçamento de energia solar da FE Sistema Solar!\n\nEconomia Anual Estimada: ${formatCurrency(results.economia_anual_reais)}\nRetorno do Investimento: ${results.payback_simples_anos.toFixed(1)} anos\n\nFaça sua simulação também!`;
     const encodedText = encodeURIComponent(text);
 
     if (platform === 'whatsapp') {
@@ -106,14 +106,14 @@ export function Step2Results({ results, onRecalculate, onBack, formData }: Step2
     setRefinedSuggestion(null);
 
     const inputForAI = {
-      energyConsumption: formData.consumption,
-      energyBill: formData.bill,
-      location: formData.location,
-      initialPanelQuantity: results.panelQuantity,
-      panelModel: results.panelModel,
-      totalCostEstimate: results.totalCost,
-      estimatedSavings: results.annualSavings,
-      paybackPeriod: results.paybackPeriod,
+      consumption: formData.consumo_mensal_kwh,
+      bill: results.conta_media_mensal_reais.antes,
+      location: `${formData.cidade}, ${formData.uf}`,
+      initialPanelQuantity: results.dimensionamento.quantidade_modulos,
+      panelModel: `${formData.potencia_modulo_wp}W`,
+      totalCostEstimate: formData.custo_sistema_reais || results.financeiro.custo_sistema_reais,
+      estimatedAnnualSavings: results.economia_anual_reais,
+      paybackPeriod: results.payback_simples_anos,
     };
     
     const response = await getRefinedSuggestions(inputForAI);
@@ -138,7 +138,7 @@ export function Step2Results({ results, onRecalculate, onBack, formData }: Step2
            <CardHeader>
             <CardTitle className="font-headline text-2xl">Seu Orçamento Personalizado</CardTitle>
             <CardDescription>
-              Aqui está a análise baseada nos dados que você forneceu. Você pode ajustar a configuração abaixo e recalcular.
+             Esta é uma simulação com base nos dados fornecidos. Os valores são estimativas.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -146,25 +146,25 @@ export function Step2Results({ results, onRecalculate, onBack, formData }: Step2
                 <ResultCard
                   icon={<DollarSign />}
                   title="Economia Anual"
-                  value={formatCurrency(results.annualSavings)}
-                  description={`~ ${formatCurrency(results.monthlySavings)} / mês`}
+                  value={formatCurrency(results.economia_anual_reais)}
+                  description={`~ ${formatCurrency(results.economia_mensal_reais)} / mês`}
                 />
                 <ResultCard
                   icon={<Calendar />}
                   title="Retorno (Payback)"
-                  value={`${formatNumber(results.paybackPeriod, 1)} anos`}
+                  value={`${formatNumber(results.payback_simples_anos, 1)} anos`}
                   description="Período para o sistema se pagar"
                 />
                 <ResultCard
                   icon={<Zap />}
                   title="Sistema Sugerido"
-                  value={`${results.panelQuantity} painéis`}
-                  description={`${results.panelModel} | ${formatNumber(results.monthlyProduction)} kWh/mês`}
+                  value={`${results.dimensionamento.quantidade_modulos} painéis`}
+                  description={`${formData.potencia_modulo_wp}Wp | ${formatNumber(results.geracao.media_mensal_kwh, 0)} kWh/mês`}
                 />
                 <ResultCard
                   icon={<BarChart />}
                   title="Custo Estimado"
-                  value={formatCurrency(results.totalCost)}
+                  value={formatCurrency(results.financeiro.custo_sistema_reais)}
                   description="Valor total do sistema instalado"
                 />
               </div>
@@ -179,63 +179,7 @@ export function Step2Results({ results, onRecalculate, onBack, formData }: Step2
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <SavingsChart annualSavings={results.annualSavings} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-headline text-2xl">Ajustar Configuração</CardTitle>
-            <CardDescription>
-              Altere a quantidade ou o modelo dos painéis e clique em "Recalcular" para ver o impacto nos resultados.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="panelQuantity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quantidade de Painéis</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="panelModel"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Modelo do Painel</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {PANEL_MODELS.map((model) => (
-                          <SelectItem key={model.value} value={model.value}>
-                            {model.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <div className="flex justify-end">
-              <Button type="button" onClick={onRecalculate}>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Recalcular
-              </Button>
-            </div>
+            <SavingsChart annualSavings={results.economia_anual_reais} />
           </CardContent>
         </Card>
       </div>
@@ -284,9 +228,9 @@ export function Step2Results({ results, onRecalculate, onBack, formData }: Step2
                 <div className="grid grid-cols-2 gap-x-8 gap-y-4">
                   <div className="space-y-4">
                       <h4 className="font-semibold text-foreground">Configuração Inicial</h4>
-                      <ComparisonItem label="Painéis" value={`${results.panelQuantity} de ${results.panelModel}`} />
-                      <ComparisonItem label="Custo Total" value={formatCurrency(results.totalCost)} />
-                      <ComparisonItem label="Payback" value={`${formatNumber(results.paybackPeriod, 1)} anos`} />
+                      <ComparisonItem label="Painéis" value={`${results.dimensionamento.quantidade_modulos} de ${formData.potencia_modulo_wp}Wp`} />
+                      <ComparisonItem label="Custo Total" value={formatCurrency(results.financeiro.custo_sistema_reais)} />
+                      <ComparisonItem label="Payback" value={`${formatNumber(results.payback_simples_anos, 1)} anos`} />
                   </div>
                   <div className="space-y-4 rounded-md border border-primary bg-primary/5 p-4">
                       <h4 className="font-semibold text-primary">Configuração Otimizada</h4>
@@ -339,5 +283,3 @@ const SuggestionSkeleton = () => (
         </div>
     </div>
 );
-
-    

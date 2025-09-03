@@ -1,22 +1,9 @@
 import type { suggestRefinedPanelConfig } from "@/ai/flows/suggest-refined-panel-config";
+import type { calculateSolar, solarCalculationSchema } from "@/ai/flows/calculate-solar";
+import { z } from "zod";
 
-export type FormData = {
-  consumption: number;
-  bill: number;
-  location: string;
-  panelModel: string;
-};
-
-export type CalculationResults = {
-  panelQuantity: number;
-  totalCost: number;
-  monthlySavings: number;
-  annualSavings: number;
-  paybackPeriod: number; 
-  twentyFiveYearSavings: number;
-  monthlyProduction: number;
-  panelModel: string;
-};
+export type SolarCalculationInput = z.infer<typeof solarCalculationSchema>;
+export type SolarCalculationResult = Awaited<ReturnType<typeof calculateSolar>>;
 
 export type SavingsDataPoint = {
   year: number;

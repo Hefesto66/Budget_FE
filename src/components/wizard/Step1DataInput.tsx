@@ -19,10 +19,21 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LOCATIONS, PANEL_MODELS } from "@/lib/constants";
 import { ArrowRight } from "lucide-react";
 
-export function Step1DataInput() {
+const phaseOptions = [
+    { value: "mono", label: "Monofásico" },
+    { value: "bi", label: "Bifásico" },
+    { value: "tri", label: "Trifásico" },
+];
+
+const panelOptions = [
+  { value: "550", label: "550W | Alta Eficiência" },
+  { value: "670", label: "670W | Máxima Eficiência" },
+  { value: "450", label: "450W | Média Eficiência" },
+]
+
+export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
   const form = useFormContext();
 
   return (
@@ -37,12 +48,12 @@ export function Step1DataInput() {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <FormField
               control={form.control}
-              name="consumption"
+              name="consumo_mensal_kwh"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Consumo médio mensal (kWh)</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="ex: 500" {...field} />
+                    <Input type="number" placeholder="ex: 500" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))}/>
                   </FormControl>
                   <FormDescription>Encontre na sua conta de energia.</FormDescription>
                   <FormMessage />
@@ -51,14 +62,14 @@ export function Step1DataInput() {
             />
             <FormField
               control={form.control}
-              name="bill"
+              name="cip_iluminacao_publica_reais"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Valor médio da conta (R$)</FormLabel>
+                  <FormLabel>Taxa de Iluminação Pública (R$)</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="ex: 450" {...field} />
+                    <Input type="number" placeholder="ex: 25.50" {...field} onChange={e => field.onChange(parseFloat(e.target.value))}/>
                   </FormControl>
-                  <FormDescription>O valor médio mensal que você paga.</FormDescription>
+                  <FormDescription>Valor da taxa CIP/COSIP na conta.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -66,45 +77,45 @@ export function Step1DataInput() {
         </div>
         
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <FormField
+           <FormField
             control={form.control}
-            name="location"
+            name="rede_fases"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Sua região</FormLabel>
+                <FormLabel>Tipo de Rede</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                     <SelectTrigger>
-                        <SelectValue placeholder="Selecione a sua região" />
+                        <SelectValue placeholder="Selecione o tipo de rede" />
                     </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                    {LOCATIONS.map((loc) => (
-                        <SelectItem key={loc.value} value={loc.value}>
-                        {loc.label}
+                    {phaseOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
                         </SelectItem>
                     ))}
                     </SelectContent>
                 </Select>
-                <FormDescription>Isso afeta a estimativa de geração.</FormDescription>
+                <FormDescription>Consulte na sua conta de luz.</FormDescription>
                 <FormMessage />
                 </FormItem>
             )}
             />
-            <FormField
+             <FormField
                 control={form.control}
-                name="panelModel"
+                name="potencia_modulo_wp"
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Tipo de Painel Solar</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={String(field.value)}>
                         <FormControl>
                         <SelectTrigger>
                             <SelectValue placeholder="Selecione o modelo do painel" />
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                        {PANEL_MODELS.map((model) => (
+                        {panelOptions.map((model) => (
                             <SelectItem key={model.value} value={model.value}>
                             {model.label}
                             </SelectItem>
@@ -117,11 +128,40 @@ export function Step1DataInput() {
                 )}
             />
         </div>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="cidade"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cidade</FormLabel>
+                  <FormControl>
+                    <Input placeholder="ex: Goiânia" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="uf"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>UF</FormLabel>
+                  <FormControl>
+                    <Input placeholder="ex: GO" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+        </div>
+
 
         <div className="flex justify-end pt-4">
-            <Button type="submit" size="lg">
-                Calcular Economia
-                <ArrowRight className="ml-2 h-5 w-5" />
+            <Button type="submit" size="lg" disabled={isLoading}>
+                {isLoading && <ArrowRight className="mr-2 h-5 w-5 animate-spin" />}
+                {!isLoading && <>Calcular Economia <ArrowRight className="ml-2 h-5 w-5" /></>}
             </Button>
         </div>
       </CardContent>
