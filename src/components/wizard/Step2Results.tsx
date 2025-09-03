@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef } from "react";
@@ -56,7 +57,7 @@ export function Step2Results({ results, onRecalculate, onBack, formData }: Step2
     const input = reportRef.current;
     if (input) {
       try {
-        const canvas = await html2canvas(input, { scale: 2, backgroundColor: "hsl(var(--background))" });
+        const canvas = await html2canvas(input, { scale: 2 });
         const imgData = canvas.toDataURL("image/png");
         const pdf = new jsPDF({
           orientation: "portrait",
@@ -69,7 +70,11 @@ export function Step2Results({ results, onRecalculate, onBack, formData }: Step2
         const canvasHeight = canvas.height;
         const ratio = canvasWidth / canvasHeight;
         const width = pdfWidth - 40; // with margin
-        const height = width / ratio;
+        let height = width / ratio;
+        if (height > pdfHeight) {
+          height = pdfHeight - 40;
+        }
+
 
         pdf.addImage(imgData, "PNG", 20, 20, width, height);
         pdf.save("orcamento_solar_fe.pdf");
@@ -334,3 +339,5 @@ const SuggestionSkeleton = () => (
         </div>
     </div>
 );
+
+    

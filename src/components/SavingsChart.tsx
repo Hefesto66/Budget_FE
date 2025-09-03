@@ -24,46 +24,46 @@ export function SavingsChart({ annualSavings }: SavingsChartProps) {
   const chartColors = useMemo(() => {
     // These values are the HSL variables from globals.css
     return {
-        grid: "var(--border)",
-        text: "var(--muted-foreground)",
-        tooltipBg: "var(--background)",
-        tooltipBorder: "var(--border)",
-        bar: "var(--primary)",
-        accent: "var(--accent)"
+        grid: "hsl(var(--border))",
+        text: "hsl(var(--muted-foreground))",
+        tooltipBg: "hsl(var(--background))",
+        tooltipBorder: "hsl(var(--border))",
+        bar: "hsl(var(--primary))",
+        accent: "hsla(var(--accent), 0.1)"
     }
-  }, [resolvedTheme]);
+  }, []);
 
 
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke={`hsl(${chartColors.grid})`} />
+        <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
         <XAxis
           dataKey="year"
-          stroke={`hsl(${chartColors.text})`}
+          stroke={chartColors.text}
           fontSize={12}
           tickLine={false}
           axisLine={false}
           tickFormatter={(value) => `Ano ${value}`}
         />
         <YAxis
-          stroke={`hsl(${chartColors.text})`}
+          stroke={chartColors.text}
           fontSize={12}
           tickLine={false}
           axisLine={false}
           tickFormatter={(value) => formatCurrency(Number(value))}
         />
         <Tooltip
-          cursor={{ fill: `hsla(${chartColors.accent}, 0.1)` }}
+          cursor={{ fill: chartColors.accent }}
           contentStyle={{
-            background: `hsl(${chartColors.tooltipBg})`,
-            border: `1px solid hsl(${chartColors.tooltipBorder})`,
+            background: chartColors.tooltipBg,
+            border: `1px solid ${chartColors.tooltipBorder}`,
             borderRadius: 'var(--radius)',
             fontFamily: 'var(--font-sans)',
           }}
           formatter={(value) => [formatCurrency(Number(value)), 'Economia Acumulada']}
         />
-        <Bar dataKey="Economia Acumulada" fill={`hsl(${chartColors.bar})`} radius={[4, 4, 0, 0]} />
+        <Bar dataKey="Economia Acumulada" fill={chartColors.bar} radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
