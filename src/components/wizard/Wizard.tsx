@@ -11,7 +11,7 @@ import type { SolarCalculationResult, SolarCalculationInput } from "@/types";
 import { getCalculation } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { solarCalculationSchema } from "@/ai/flows/calculate-solar";
+import { solarCalculationSchema } from "@/types";
 
 const steps = [
   { id: "01", name: "Dados de Consumo" },
