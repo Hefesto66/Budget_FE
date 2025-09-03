@@ -33,8 +33,8 @@ export function Wizard() {
   const methods = useForm<FormData & { panelQuantity?: number }>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      consumption: undefined,
-      bill: undefined,
+      consumption: 0,
+      bill: 0,
       panelModel: PANEL_MODELS[1].value,
       location: LOCATIONS[2].value,
     },
