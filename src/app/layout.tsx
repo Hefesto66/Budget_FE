@@ -4,7 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "EcoCalc Solar",
+  title: "FE Sistema Solar",
   description: "Calcule a economia e o retorno do seu investimento em energia solar.",
 };
 

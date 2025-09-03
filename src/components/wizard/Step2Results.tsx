@@ -72,7 +72,7 @@ export function Step2Results({ results, onRecalculate, onBack, formData }: Step2
         const height = width / ratio;
 
         pdf.addImage(imgData, "PNG", 20, 20, width, height);
-        pdf.save("orcamento_solar_ecocalc.pdf");
+        pdf.save("orcamento_solar_fe.pdf");
       } catch (error) {
         toast({
           title: "Erro ao gerar PDF",
@@ -86,7 +86,7 @@ export function Step2Results({ results, onRecalculate, onBack, formData }: Step2
   };
   
   const handleShare = (platform: 'whatsapp' | 'email') => {
-    const text = `Confira meu orçamento de energia solar da EcoCalc Solar!\n\nEconomia Anual Estimada: ${formatCurrency(results.annualSavings)}\nRetorno do Investimento: ${results.paybackPeriod.toFixed(1)} anos\n\nFaça sua simulação também!`;
+    const text = `Confira meu orçamento de energia solar da FE Sistema Solar!\n\nEconomia Anual Estimada: ${formatCurrency(results.annualSavings)}\nRetorno do Investimento: ${results.paybackPeriod.toFixed(1)} anos\n\nFaça sua simulação também!`;
     const encodedText = encodeURIComponent(text);
 
     if (platform === 'whatsapp') {

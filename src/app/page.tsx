@@ -107,7 +107,7 @@ export default function Home() {
 
       <footer className="py-8 bg-background">
         <div className="container mx-auto px-4 text-center text-foreground/60">
-          <p>&copy; {new Date().getFullYear()} EcoCalc Solar. Todos os direitos reservados.</p>
+          <p>&copy; {new Date().getFullYear()} FE Sistema Solar. Todos os direitos reservados.</p>
         </div>
       </footer>
     </div>
