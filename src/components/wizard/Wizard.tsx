@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -32,6 +33,8 @@ export function Wizard() {
   const methods = useForm<FormData & { panelQuantity?: number }>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      consumption: undefined,
+      bill: undefined,
       panelModel: PANEL_MODELS[1].value,
       location: LOCATIONS[2].value,
     },
