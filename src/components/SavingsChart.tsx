@@ -2,7 +2,7 @@
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { SavingsDataPoint } from "@/types";
-import { formatCurrency } from "@/lib/solar-calculations";
+import { formatCurrency } from "@/lib/utils";
 import { useTheme } from "next-themes";
 import { useMemo } from "react";
 
@@ -37,7 +37,7 @@ export function SavingsChart({ annualSavings }: SavingsChartProps) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+        <CartesianGrid strokeDasharray="3, 3" stroke={chartColors.grid} />
         <XAxis
           dataKey="year"
           stroke={chartColors.text}

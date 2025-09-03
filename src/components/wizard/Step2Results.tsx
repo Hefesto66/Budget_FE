@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { useFormContext } from "react-hook-form";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import type { SolarCalculationResult, RefinedSuggestion } from "@/types";
+import type { SolarCalculationResult } from "@/types";
 import { ResultCard } from "@/components/ResultCard";
 import { SavingsChart } from "@/components/SavingsChart";
 import { Button } from "@/components/ui/button";
@@ -23,20 +23,8 @@ import { getRefinedSuggestions } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Zap, Calendar, DollarSign, BarChart, ArrowLeft, Sparkles, Download, Share2 } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(value);
-}
-
-function formatNumber(value: number, decimalPlaces = 0) {
-    return new Intl.NumberFormat("pt-BR", {
-        minimumFractionDigits: decimalPlaces,
-        maximumFractionDigits: decimalPlaces,
-    }).format(value);
-}
+import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
+import { formatCurrency, formatNumber } from "@/lib/utils";
 
 interface Step2ResultsProps {
   results: SolarCalculationResult;
@@ -50,7 +38,7 @@ export function Step2Results({ results, onBack, formData }: Step2ResultsProps) {
   
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
-  const [refinedSuggestion, setRefinedSuggestion] = useState<RefinedSuggestion | null>(null);
+  const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
 
   const handleExportPdf = async () => {
     setIsGeneratingPdf(true);

@@ -1,4 +1,4 @@
-import type { suggestRefinedPanelConfig } from "@/ai/flows/suggest-refined-panel-config";
+import type { suggestRefinedPanelConfig, SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
 import type { calculateSolar, solarCalculationSchema } from "@/ai/flows/calculate-solar";
 import { z } from "zod";
 
@@ -10,4 +10,4 @@ export type SavingsDataPoint = {
   "Economia Acumulada": number;
 };
 
-export type RefinedSuggestion = Awaited<ReturnType<typeof suggestRefinedPanelConfig>>;
+export type { SuggestRefinedPanelConfigOutput };
