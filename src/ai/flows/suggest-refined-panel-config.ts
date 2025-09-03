@@ -19,7 +19,7 @@ const SuggestRefinedPanelConfigInputSchema = z.object({
   initialPanelQuantity: z.number().describe('The initially calculated number of solar panels.'),
   panelModel: z.string().describe('The model/power of the solar panels being considered.'),
   totalCostEstimate: z.number().describe('The estimated total cost of the system.'),
-  estimatedSavings: z.number().describe('The estimated monthly and annual savings.'),
+  estimatedSavings: z.number().describe('The estimated annual savings in R$.'),
   paybackPeriod: z.number().describe('The payback period for the solar system investment.'),
 });
 export type SuggestRefinedPanelConfigInput = z.infer<
@@ -38,7 +38,7 @@ const SuggestRefinedPanelConfigOutputSchema = z.object({
     .describe('The refined estimated total cost of the system.'),
   refinedEstimatedSavings: z
     .number()
-    .describe('The refined estimated monthly and annual savings.'),
+    .describe('The refined estimated annual savings.'),
   refinedPaybackPeriod: z
     .number()
     .describe('The refined payback period for the solar system investment.'),
@@ -72,7 +72,7 @@ Consider the following factors to refine the panel configuration:
 - Initial panel quantity: {{{initialPanelQuantity}}}
 - Panel model: {{{panelModel}}}
 - Total cost estimate: R$ {{{totalCostEstimate}}}
-- Estimated savings: R$ {{{estimatedSavings}}}
+- Estimated annual savings: R$ {{{estimatedSavings}}}
 - Payback period: {{{paybackPeriod}}} years
 
 Based on these parameters, suggest a refined panel configuration with the following properties:
@@ -80,7 +80,7 @@ Based on these parameters, suggest a refined panel configuration with the follow
 - refinedPanelQuantity: The refined/suggested number of solar panels.
 - refinedPanelModel: The refined/suggested model/power of the solar panels.
 - refinedTotalCostEstimate: The refined estimated total cost of the system.
-- refinedEstimatedSavings: The refined estimated monthly and annual savings.
+- refinedEstimatedSavings: The refined estimated annual savings.
 - refinedPaybackPeriod: The refined payback period for the solar system investment.
 - reasoning: Provide the AI reasoning behind the suggested refined configuration.
 
