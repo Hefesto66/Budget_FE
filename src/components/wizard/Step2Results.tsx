@@ -37,8 +37,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import LZString from 'lz-string';
-
 
 interface Step2ResultsProps {
   results: SolarCalculationResult;
@@ -49,6 +47,7 @@ interface Step2ResultsProps {
 
 const COMPANY_DATA_KEY = "companyData";
 const CUSTOMIZATION_KEY = "proposalCustomization";
+const PROPOSAL_DATA_KEY = "current_proposal_data_for_print";
 
 const defaultCustomization: CustomizationSettings = {
   colors: {
@@ -136,17 +135,16 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
     };
 
     try {
-      const jsonString = JSON.stringify(pdfData);
-      const compressedData = LZString.compressToEncodedURIComponent(jsonString);
+      localStorage.setItem(PROPOSAL_DATA_KEY, JSON.stringify(pdfData));
       
-      const url = `/orcamento/imprimir?data=${compressedData}`;
+      const url = `/orcamento/imprimir`;
       window.open(url, '_blank');
 
     } catch (error) {
-        console.error("Error compressing data:", error);
+        console.error("Error saving data to localStorage:", error);
         toast({
-            title: "Erro ao Preparar Dados",
-            description: "Não foi possível comprimir os dados da proposta para exportação.",
+            title: "Erro ao Salvar Dados",
+            description: "Não foi possível salvar os dados da proposta para exportação.",
             variant: "destructive"
         });
     } finally {
@@ -371,15 +369,12 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
             <div className="flex items-center gap-2">
                 <Button type="button" onClick={() => handleShare('whatsapp')} variant="outline"><Share2 className="mr-2 h-4 w-4" /> Compartilhar</Button>
                 <div className="flex items-center">
-                    <Button type="button" onClick={handleExportPdf} disabled={isPreparingPdf || !companyData} className="rounded-r-none">
-                        <Download className={`mr-2 h-4 w-4 ${isPreparingPdf ? 'animate-pulse' : ''}`} />
-                        {isPreparingPdf ? "Preparando..." : "Exportar PDF"}
-                    </Button>
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="outline" size="icon" className="rounded-l-none border-l-0">
-                                    <HelpCircle className="h-4 w-4" />
+                                <Button type="button" onClick={handleExportPdf} disabled={isPreparingPdf || !companyData}>
+                                    <Download className={`mr-2 h-4 w-4 ${isPreparingPdf ? 'animate-pulse' : ''}`} />
+                                    {isPreparingPdf ? "Preparando..." : "Exportar PDF"}
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent>
@@ -472,3 +467,5 @@ const SuggestionSkeleton = () => (
         </div>
     </div>
 );
+
+    

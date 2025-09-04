@@ -1,12 +1,13 @@
 
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { ProposalDocument } from "@/components/proposal/ProposalDocument";
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings, SolarCalculationInput } from "@/types";
 import type { CompanyFormData } from "@/app/minha-empresa/page";
-import LZString from 'lz-string';
+import { Skeleton } from "@/components/ui/skeleton";
+
+const PROPOSAL_DATA_KEY = "current_proposal_data_for_print";
 
 interface PrintData {
   results: SolarCalculationResult;
@@ -19,31 +20,24 @@ interface PrintData {
   proposalValidity: string;
 }
 
-function PrintPageContent() {
+export default function PrintProposalPage() {
   const [printData, setPrintData] = useState<PrintData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const searchParams = useSearchParams();
 
   useEffect(() => {
-    const compressedData = searchParams.get("data");
-
-    if (!compressedData) {
-      setError("Nenhum dado da proposta foi encontrado no URL. Por favor, tente gerar o PDF novamente.");
-      return;
-    }
-
     try {
-      const jsonString = LZString.decompressFromEncodedURIComponent(compressedData);
-      if (!jsonString) {
-          throw new Error("Falha ao descomprimir os dados. A string de dados pode estar corrompida.");
+      const savedDataString = localStorage.getItem(PROPOSAL_DATA_KEY);
+      if (savedDataString) {
+        const data = JSON.parse(savedDataString);
+        setPrintData(data);
+      } else {
+        setError("Dados da proposta não encontrados. Por favor, volte e tente gerar o PDF novamente.");
       }
-      const data = JSON.parse(jsonString);
-      setPrintData(data);
     } catch (e) {
-      console.error("Failed to parse or decompress proposal data:", e);
-      setError("Falha ao processar os dados da proposta. Eles podem estar mal formatados ou corrompidos.");
+      console.error("Failed to load or parse proposal data from localStorage:", e);
+      setError("Falha ao processar os dados da proposta. Eles podem estar corrompidos ou mal formatados.");
     }
-  }, [searchParams]);
+  }, []);
 
   useEffect(() => {
     if (printData) {
@@ -66,8 +60,13 @@ function PrintPageContent() {
   if (!printData) {
     return (
       <div className="p-8 font-sans text-center animate-pulse">
-        <h2 className="text-xl font-bold">A processar os dados...</h2>
-        <p>A preparar a pré-visualização do seu documento.</p>
+        <h2 className="text-xl font-bold">A preparar a pré-visualização...</h2>
+        <p>A carregar os dados do seu documento.</p>
+        <div className="max-w-2xl mx-auto mt-4 space-y-4">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-64 w-full" />
+        </div>
       </div>
     );
   }
@@ -82,17 +81,10 @@ function PrintPageContent() {
         customization={printData.customization}
         proposalId={printData.proposalId}
         proposalDate={new Date(printData.proposalDate)}
-        proposalValidity={new Date(printData.proposalValidity)}
+        proposalValidity={new Date(printa.proposalValidity)}
       />
     </div>
   );
 }
 
-
-export default function PrintProposalPage() {
-    return (
-        <Suspense fallback={<div className="p-8 font-sans text-center">A carregar...</div>}>
-            <PrintPageContent />
-        </Suspense>
-    );
-}
+    
