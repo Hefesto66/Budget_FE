@@ -47,7 +47,6 @@ interface Step2ResultsProps {
 
 const COMPANY_DATA_KEY = "companyData";
 const CUSTOMIZATION_KEY = "proposalCustomization";
-const PROPOSAL_DATA_KEY = "current_proposal_data_for_print";
 
 const defaultCustomization: CustomizationSettings = {
   colors: {
@@ -110,7 +109,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
   const paybackYears = results.payback_simples_anos;
   const paybackText = isFinite(paybackYears) ? `${formatNumber(paybackYears, 1)} anos` : "N/A";
 
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
     setIsPreparingPdf(true);
 
     if (!companyData) {
@@ -123,7 +122,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
       return;
     }
 
-    const pdfData = {
+    const dataForPdf = {
         results,
         formData,
         companyData,
@@ -135,16 +134,39 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
     };
 
     try {
-      localStorage.setItem(PROPOSAL_DATA_KEY, JSON.stringify(pdfData));
-      
-      const url = `/orcamento/imprimir`;
-      window.open(url, '_blank');
+        const response = await fetch('/api/gerar-pdf', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(dataForPdf),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`O servidor respondeu com o status ${response.status}: ${errorText}`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `proposta-${proposalId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        
+        toast({
+          title: "Download Iniciado",
+          description: "O seu PDF está a ser descarregado.",
+        });
 
     } catch (error) {
-        console.error("Error saving data to localStorage:", error);
+        console.error("Error generating PDF:", error);
         toast({
-            title: "Erro ao Salvar Dados",
-            description: "Não foi possível salvar os dados da proposta para exportação.",
+            title: "Erro ao Gerar PDF",
+            description: "Não foi possível gerar o ficheiro PDF. Tente novamente mais tarde.",
             variant: "destructive"
         });
     } finally {
@@ -378,7 +400,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                                <p>Na tela de impressão, selecione "Salvar como PDF".</p>
+                                <p>Gera um PDF para download no seu servidor.</p>
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
@@ -467,5 +489,3 @@ const SuggestionSkeleton = () => (
         </div>
     </div>
 );
-
-    
