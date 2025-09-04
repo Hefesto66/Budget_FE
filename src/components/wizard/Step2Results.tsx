@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -80,35 +81,19 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
       estimatedAnnualSavings: results.economia_anual_reais,
       paybackPeriod: results.payback_simples_anos,
     };
-    
-    const response = await fetch('/.netlify/functions/gemini', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: `
-          Consumo: ${inputForAI.consumption} kWh
-          Conta: R$ ${inputForAI.bill}
-          Localização: ${inputForAI.location}
-          Painéis iniciais: ${inputForAI.initialPanelQuantity}
-          Modelo: ${inputForAI.panelModel}
-          Custo: R$ ${inputForAI.totalCostEstimate}
-          Economia anual: R$ ${inputForAI.estimatedAnnualSavings}
-          Payback: ${inputForAI.paybackPeriod} anos
 
-          Gere uma sugestão refinada de configuração de painéis solares, no formato JSON conforme instruções originais.
-        `
-      })
-    });
-    const data = await response.json();
-    if (data && data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
-      setRefinedSuggestion(JSON.parse(data.candidates[0].content.parts[0].text));
+    const response = await getRefinedSuggestions(inputForAI);
+
+    if (response.success && response.data) {
+      setRefinedSuggestion(response.data);
     } else {
       toast({
         title: "Erro na Sugestão",
-        description: "Não foi possível obter uma sugestão da IA. Tente novamente.",
+        description: response.error || "Não foi possível obter uma sugestão da IA. Tente novamente.",
         variant: "destructive",
       });
     }
+
     setIsRefining(false);
   };
   
@@ -445,6 +430,8 @@ const defaultCustomization: CustomizationSettings = {
     showTimeline: false,
   },
 };
+    
+
     
 
     
