@@ -84,7 +84,13 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
       }
       const savedCustomization = localStorage.getItem(CUSTOMIZATION_KEY);
       if (savedCustomization) {
-        setCustomization(JSON.parse(savedCustomization));
+        const parsed = JSON.parse(savedCustomization);
+         setCustomization(prev => ({
+          ...prev,
+          ...parsed,
+          colors: { ...prev.colors, ...parsed.colors },
+          content: { ...prev.content, ...parsed.content },
+        }));
       }
     } catch (error) {
       console.error("Failed to load data from localStorage", error);
@@ -102,58 +108,93 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
   const handleExportPdf = async () => {
     setIsGeneratingPdf(true);
     const pdfContainer = document.getElementById("pdf-container");
-    
-    if (pdfContainer) {
-       // Temporarily make it visible for rendering
-      pdfContainer.style.display = 'block';
-      pdfContainer.style.position = 'absolute';
-      pdfContainer.style.left = '-9999px'; // Move off-screen
+
+    if (!pdfContainer || !companyData) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível encontrar os dados da empresa ou o contêiner do PDF.",
+        variant: "destructive",
+      });
+      setIsGeneratingPdf(false);
+      return;
+    }
+
+    // Temporarily make it visible for rendering
+    pdfContainer.style.display = 'block';
+    pdfContainer.style.position = 'absolute';
+    pdfContainer.style.left = '-9999px';
+    pdfContainer.style.top = '0';
+
+    try {
+      // Small delay to ensure all elements, especially charts, are fully rendered
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const canvas = await html2canvas(pdfContainer, {
+        scale: 2, // Higher scale for better quality
+        useCORS: true,
+        logging: false,
+        allowTaint: true,
+        onclone: (document) => {
+            // This helps with chart rendering issues in some cases
+            const animations = document.querySelectorAll('animate');
+            animations.forEach(anim => anim.remove());
+        }
+      });
       
-      try {
-        const canvas = await html2canvas(pdfContainer, { scale: 2, useCORS: true });
-        const imgData = canvas.toDataURL("image/png");
-        const pdf = new jsPDF({
-          orientation: "portrait",
-          unit: "in",
-          format: "a4",
-        });
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'in',
+        format: 'a4',
+      });
 
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const pageRatio = pageWidth / pageHeight;
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
+      const canvasAspectRatio = canvasWidth / canvasHeight;
+      const pageHeightInPixels = canvasWidth / pdfWidth; // Width of canvas divided by width of PDF in inches gives pixel density
+      
+      let startY = 0;
+      let pages = 0;
+      
+      while (startY < canvasHeight) {
+        pages++;
+        const pageCanvas = document.createElement('canvas');
+        const pageContext = pageCanvas.getContext('2d');
         
-        const canvasWidth = canvas.width;
-        const canvasHeight = canvas.height;
-        const canvasRatio = canvasWidth / canvasHeight;
+        pageCanvas.width = canvasWidth;
+        pageCanvas.height = pageHeightInPixels;
+        
+        const sourceY = startY;
+        const sourceHeight = Math.min(pageHeightInPixels, canvasHeight - startY);
 
-        let finalWidth, finalHeight;
-
-        if (canvasRatio > pageRatio) {
-            finalWidth = pageWidth;
-            finalHeight = pageWidth / canvasRatio;
-        } else {
-            finalHeight = pageHeight;
-            finalWidth = pageHeight * canvasRatio;
+        // Draw the slice of the original canvas onto the page-sized canvas
+        pageContext?.drawImage(canvas, 0, sourceY, canvasWidth, sourceHeight, 0, 0, canvasWidth, sourceHeight);
+        
+        const imgData = pageCanvas.toDataURL('image/png');
+        
+        if (pages > 1) {
+          pdf.addPage();
         }
 
-        const x = (pageWidth - finalWidth) / 2;
-        const y = 0; // Start from top
-
-        pdf.addImage(imgData, "PNG", x, y, finalWidth, finalHeight);
-        pdf.save("orcamento_solar_fe.pdf");
-      } catch (error) {
-        toast({
-          title: "Erro ao gerar PDF",
-          description: "Houve um problema ao tentar exportar o orçamento. Tente novamente.",
-          variant: "destructive",
-        });
-        console.error(error);
-      } finally {
-         // Hide it again
-        pdfContainer.style.display = 'none';
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, (sourceHeight / pageHeightInPixels) * pdfHeight);
+        
+        startY += pageHeightInPixels;
       }
+
+      pdf.save(`proposta_${proposalId}.pdf`);
+
+    } catch (error) {
+      console.error("PDF Generation Error:", error);
+      toast({
+        title: "Erro ao Gerar PDF",
+        description: "Houve um problema ao criar o documento. Por favor, tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      pdfContainer.style.display = 'none'; // Hide it again
+      setIsGeneratingPdf(false);
     }
-    setIsGeneratingPdf(false);
   };
   
   const handleShare = (platform: 'whatsapp' | 'email') => {
@@ -475,3 +516,5 @@ const SuggestionSkeleton = () => (
         </div>
     </div>
 );
+
+    

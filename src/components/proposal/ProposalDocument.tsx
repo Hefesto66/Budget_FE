@@ -3,7 +3,6 @@ import Image from 'next/image';
 import type { SolarCalculationInput, SolarCalculationResult, ClientFormData, CustomizationSettings } from '@/types';
 import type { CompanyFormData } from '@/app/minha-empresa/page';
 import { formatCurrency, formatNumber } from '@/lib/utils';
-import { Separator } from '../ui/separator';
 import { Leaf, Car, Globe, FileSignature, Wrench, Zap as ZapIcon, CheckCircle } from 'lucide-react';
 import { SavingsChart } from '../SavingsChart';
 import { format } from 'date-fns';
@@ -50,7 +49,7 @@ export function ProposalDocument({
   const treesSaved = Math.round(co2AvoidedKg / 21.77); // 21.77 kg CO2 absorbed by a tree per year
 
   return (
-    <div className="bg-white text-black font-sans text-sm p-10" style={{ width: '8.5in', minHeight: '11in' }}>
+    <div className="bg-white text-black font-sans text-sm p-8" style={{ fontFamily: '"PT Sans", sans-serif', width: '8.5in' }}>
       {/* Header */}
       <header className="flex justify-between items-start pb-4 border-b-2 border-gray-200">
         <div className="w-1/3">
@@ -59,7 +58,7 @@ export function ProposalDocument({
           )}
         </div>
         <div className="w-2/3 text-right text-xs">
-          <h1 className="text-lg font-bold uppercase" style={{ color: colors.primary }}>{companyData.name}</h1>
+          <h1 className="text-lg font-bold uppercase" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>{companyData.name}</h1>
           <p>{formatAddress(companyData.address)}</p>
           <p>CNPJ: {companyData.cnpj}</p>
           <p>Email: {companyData.email}</p>
@@ -70,15 +69,15 @@ export function ProposalDocument({
       <main className="py-8">
         {/* Proposal Title */}
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold uppercase" style={{ color: colors.primary }}>Proposta de Sistema Fotovoltaico</h2>
+          <h2 className="text-2xl font-bold uppercase" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Proposta de Sistema Fotovoltaico</h2>
           <p className="text-gray-500">Documento gerado em: {format(new Date(), 'dd/MM/yyyy')}</p>
         </div>
 
         {/* Client Info Placeholder */}
         {clientData && (
-          <section className="mb-8">
+          <section className="mb-8" style={{ pageBreakInside: 'avoid' }}>
             <div className="border border-gray-200 p-4 rounded-lg">
-              <h3 className="font-bold mb-2" style={{ color: colors.primary }}>Preparado para:</h3>
+              <h3 className="font-bold mb-2" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Preparado para:</h3>
               <p className="font-semibold">{clientData.name}</p>
               <p>{clientData.address}</p>
               <p>CPF/CNPJ: {clientData.document}</p>
@@ -87,7 +86,7 @@ export function ProposalDocument({
         )}
 
         {/* Proposal Summary */}
-        <section className="grid grid-cols-3 gap-4 mb-8 text-center">
+        <section className="grid grid-cols-3 gap-4 mb-8 text-center" style={{ pageBreakInside: 'avoid' }}>
             <div className="bg-gray-100 p-3 rounded">
                 <p className="text-xs text-gray-600">ID da Proposta</p>
                 <p className="font-bold">{proposalId}</p>
@@ -105,7 +104,7 @@ export function ProposalDocument({
         {/* System Description */}
         {content.showInvestmentTable && (
             <section className="mb-8" style={{ pageBreakInside: 'avoid' }}>
-            <h3 className="font-bold text-lg mb-2 border-b border-gray-200 pb-1" style={{ color: colors.primary }}>Descrição do Sistema e Investimento</h3>
+            <h3 className="font-bold text-lg mb-2 border-b border-gray-200 pb-1" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Descrição do Sistema e Investimento</h3>
             <table className="w-full text-left">
                 <thead>
                 <tr className="border-b border-gray-300">
@@ -169,7 +168,7 @@ export function ProposalDocument({
 
          {/* Financial Summary */}
         <section className="mb-8" style={{ pageBreakInside: 'avoid' }}>
-             <h3 className="font-bold text-lg mb-2 border-b border-gray-200 pb-1" style={{ color: colors.primary }}>Análise Financeira e de Geração</h3>
+             <h3 className="font-bold text-lg mb-2 border-b border-gray-200 pb-1" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Análise Financeira e de Geração</h3>
             <div className="grid grid-cols-2 gap-8">
                  {content.showFinancialSummary && (
                     <div>
@@ -199,7 +198,7 @@ export function ProposalDocument({
         {/* Environmental Impact */}
         {content.showEnvironmentalImpact && (
             <section className="mb-8" style={{ pageBreakInside: 'avoid' }}>
-                <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary }}>Seu Impacto Positivo no Planeta</h3>
+                <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Seu Impacto Positivo no Planeta</h3>
                 <div className="grid grid-cols-3 gap-4 text-center">
                     <ImpactCard icon={<Leaf size={32}/>} value={formatNumber(treesSaved, 0)} label="Árvores Salvas por Ano"/>
                     <ImpactCard icon={<Car size={32}/>} value={`${formatNumber(co2AvoidedKg, 0)} kg`} label="de CO₂ Evitados por Ano"/>
@@ -211,7 +210,7 @@ export function ProposalDocument({
         {/* Generation and Savings Charts */}
         {content.showGenerationChart && (
             <section className="mb-8" style={{ pageBreakBefore: 'always' }}>
-                <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary }}>Estimativa de Geração Mensal</h3>
+                <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Estimativa de Geração Mensal</h3>
                 <p className="text-xs text-gray-500 mb-4">Este gráfico mostra a variação da geração de energia do seu sistema ao longo do ano, com base na irradiação solar local.</p>
                 {/* Placeholder for monthly generation chart */}
                 <div className="w-full h-64 bg-gray-100 flex items-center justify-center rounded-lg">
@@ -222,9 +221,9 @@ export function ProposalDocument({
 
         {content.showSavingsChart && (
              <section className="mb-8" style={{ pageBreakBefore: 'always' }}>
-                <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary }}>Projeção de Economia em 25 Anos</h3>
+                <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Projeção de Economia em 25 Anos</h3>
                  <p className="text-xs text-gray-500 mb-4">Veja como sua economia acumulada cresce ao longo da vida útil do sistema solar, superando o investimento inicial.</p>
-                <div className="w-full h-64 bg-white flex items-center justify-center rounded-lg border">
+                <div className="w-full h-[22rem] bg-white flex items-center justify-center rounded-lg border">
                    <SavingsChart annualSavings={results.economia_anual_reais} />
                 </div>
             </section>
@@ -233,7 +232,7 @@ export function ProposalDocument({
         {/* Timeline */}
         {content.showTimeline && (
             <section className="mb-8" style={{ pageBreakInside: 'avoid' }}>
-                <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary }}>Nossas Próximas Etapas</h3>
+                <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Nossas Próximas Etapas</h3>
                 <div className="flex flex-col space-y-4">
                     <TimelineStep icon={<FileSignature />} title="Assinatura do Contrato" description="Formalização da nossa parceria para um futuro mais sustentável." />
                     <TimelineStep icon={<Wrench />} title="Elaboração do Projeto e Homologação" description="Nossa engenharia cuida de toda a burocracia com a concessionária (Prazo: 15-30 dias)." />
@@ -246,7 +245,7 @@ export function ProposalDocument({
 
        {/* Footer */}
        {content.showTerms && (
-            <footer className="pt-8 text-xs text-gray-500 text-center border-t-2 border-gray-200 mt-auto" style={{ pageBreakBefore: 'auto' }}>
+            <footer className="pt-4 text-xs text-gray-500 text-center border-t-2 border-gray-200 mt-auto" style={{ pageBreakBefore: 'always' }}>
                 <p>Esta é uma proposta comercial. Os valores e estimativas de geração são baseados nos dados fornecidos e podem variar.</p>
                 <p>Condições de pagamento a combinar. | {companyData.name} - Todos os direitos reservados &copy; {new Date().getFullYear()}</p>
             </footer>
@@ -281,3 +280,5 @@ const TimelineStep = ({ icon, title, description }: { icon: React.ReactNode, tit
         </div>
     </div>
 )
+
+    
