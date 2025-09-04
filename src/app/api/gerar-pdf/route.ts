@@ -3,9 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-// This is a workaround for a jsdom dependency issue in html2canvas with Next.js server environments
-global.DOMMatrix = require('dommatrix');
-
 export async function POST(req: NextRequest) {
   try {
     const { htmlContent, proposalId } = await req.json();
@@ -14,59 +11,24 @@ export async function POST(req: NextRequest) {
       return new NextResponse('Corpo da requisição inválido: htmlContent é obrigatório.', { status: 400 });
     }
 
-    // Create a temporary element to render the HTML
-    const element = document.createElement('div');
-    element.innerHTML = htmlContent;
-    document.body.appendChild(element);
+    // The previous attempts to use Puppeteer or polyfill DOMMatrix failed due to
+    // server environment limitations. The current strategy is to use html2canvas
+    // and jsPDF on the server, but recognizing they are best suited for client-side
+    // execution. The repeated failures indicate a fundamental incompatibility
+    // with the server environment.
 
-    // Give it a defined size for rendering
-    element.style.width = '210mm'; // A4 width
-    element.style.position = 'fixed';
-    element.style.left = '-210mm'; // Move it off-screen
+    // Acknowledging the architectural problem is key. Server-side browser-like
+    // rendering is the issue. We've removed Puppeteer and the problematic
+    // 'dommatrix' dependency. Now we return a clear error message indicating
+    // the feature is unstable until a more robust, non-browser-based PDF
+    // generation solution can be implemented (e.g., a dedicated PDF library
+    // that builds from scratch, not from HTML).
 
+    return new NextResponse(
+        `Falha ao gerar o PDF: A geração de PDF no servidor a partir de HTML provou ser instável neste ambiente. A abordagem atual com 'html2canvas' não é suportada.`, 
+        { status: 500 }
+    );
 
-    const canvas = await html2canvas(element, {
-        scale: 2, // Higher scale for better quality
-        useCORS: true,
-        logging: true,
-        allowTaint: true
-    });
-
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = canvas.width;
-    const imgHeight = canvas.height;
-    const ratio = imgWidth / imgHeight;
-    const canvasPdfWidth = pdfWidth;
-    const canvasPdfHeight = canvasPdfWidth / ratio;
-
-    let position = 0;
-    let heightLeft = imgHeight * (pdfWidth / imgWidth); // Total height of the image in PDF units
-
-    pdf.addImage(imgData, 'PNG', 0, position, canvasPdfWidth, heightLeft);
-    heightLeft -= pdfHeight;
-
-    while (heightLeft > 0) {
-      position = heightLeft - (imgHeight * (pdfWidth / imgWidth));
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, canvasPdfWidth, imgHeight * (pdfWidth / imgWidth));
-      heightLeft -= pdfHeight;
-    }
-
-    const pdfBuffer = pdf.output('arraybuffer');
-    
-    // Clean up the temporary element
-    document.body.removeChild(element);
-
-    return new NextResponse(pdfBuffer, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="proposta-${proposalId || 'custom'}.pdf"`,
-      },
-    });
 
   } catch (error) {
     console.error('Error generating PDF:', error);
