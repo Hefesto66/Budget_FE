@@ -112,74 +112,65 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
     if (!pdfContainer || !companyData) {
       toast({
         title: "Erro",
-        description: "Não foi possível encontrar os dados da empresa ou o contêiner do PDF.",
+        description: "Dados da empresa não encontrados. Por favor, cadastre em 'Minha Empresa'.",
         variant: "destructive",
       });
       setIsGeneratingPdf(false);
       return;
     }
-
+    
     // Temporarily make it visible for rendering
     pdfContainer.style.display = 'block';
     pdfContainer.style.position = 'absolute';
-    pdfContainer.style.left = '-9999px';
+    pdfContainer.style.left = '-9999px'; // Position off-screen
     pdfContainer.style.top = '0';
 
     try {
-      // Small delay to ensure all elements, especially charts, are fully rendered
+      // Give charts a moment to render fully
       await new Promise(resolve => setTimeout(resolve, 500));
-
+      
       const canvas = await html2canvas(pdfContainer, {
         scale: 2, // Higher scale for better quality
         useCORS: true,
         logging: false,
         allowTaint: true,
-        onclone: (document) => {
-            // This helps with chart rendering issues in some cases
-            const animations = document.querySelectorAll('animate');
-            animations.forEach(anim => anim.remove());
-        }
       });
-      
+
       const pdf = new jsPDF({
         orientation: 'portrait',
-        unit: 'in',
+        unit: 'pt', // Use points for more consistent sizing
         format: 'a4',
       });
-
+      
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
+      
       const canvasWidth = canvas.width;
       const canvasHeight = canvas.height;
+      
+      // Calculate the aspect ratio
       const canvasAspectRatio = canvasWidth / canvasHeight;
-      const pageHeightInPixels = canvasWidth / pdfWidth; // Width of canvas divided by width of PDF in inches gives pixel density
-      
-      let startY = 0;
-      let pages = 0;
-      
-      while (startY < canvasHeight) {
-        pages++;
-        const pageCanvas = document.createElement('canvas');
-        const pageContext = pageCanvas.getContext('2d');
-        
-        pageCanvas.width = canvasWidth;
-        pageCanvas.height = pageHeightInPixels;
-        
-        const sourceY = startY;
-        const sourceHeight = Math.min(pageHeightInPixels, canvasHeight - startY);
+      const pdfAspectRatio = pdfWidth / pdfHeight;
 
-        // Draw the slice of the original canvas onto the page-sized canvas
-        pageContext?.drawImage(canvas, 0, sourceY, canvasWidth, sourceHeight, 0, 0, canvasWidth, sourceHeight);
-        
-        const imgData = pageCanvas.toDataURL('image/png');
-        
-        if (pages > 1) {
-          pdf.addPage();
-        }
+      // Calculate the image dimensions to fit the PDF page width
+      const imgWidth = pdfWidth;
+      const imgHeight = imgWidth / canvasAspectRatio;
 
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, (sourceHeight / pageHeightInPixels) * pdfHeight);
-        
-        startY += pageHeightInPixels;
+      let heightLeft = imgHeight;
+      let position = 0;
+      let pageNumber = 1;
+
+      // Add the first page
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
+
+      // Add new pages if content overflows
+      while (heightLeft > 0) {
+        position = -pdfHeight * pageNumber;
+        pdf.addPage();
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+        pageNumber++;
       }
 
       pdf.save(`proposta_${proposalId}.pdf`);
@@ -188,7 +179,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
       console.error("PDF Generation Error:", error);
       toast({
         title: "Erro ao Gerar PDF",
-        description: "Houve um problema ao criar o documento. Por favor, tente novamente.",
+        description: "Houve um problema ao criar o documento. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -516,5 +507,7 @@ const SuggestionSkeleton = () => (
         </div>
     </div>
 );
+
+    
 
     
