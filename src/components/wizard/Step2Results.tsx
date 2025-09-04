@@ -129,46 +129,46 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       
-      // Get all sections that should be treated as unbreakable blocks
       const sections = proposalElement.querySelectorAll('.pdf-section') as NodeListOf<HTMLElement>;
-      let yOffset = 0; // Tracks the y position on the current PDF page
+      let yOffset = 0; 
 
       for (let i = 0; i < sections.length; i++) {
         const section = sections[i];
-
-        // Force a new page if the section has the 'pdf-page-break-before' class
-        if (section.classList.contains('pdf-page-break-before') && yOffset > 0) {
-            pdf.addPage();
-            yOffset = 0;
-        }
-
+        
         const canvas = await html2canvas(section, {
             scale: 2,
             useCORS: true,
             logging: false,
             allowTaint: true,
             onclone: (document) => {
-                // Ensure charts are fully rendered before capture
                 const chartElements = document.querySelectorAll('.recharts-surface');
                 chartElements.forEach((chart) => {
-                    chart.setAttribute('width', chart.parentElement?.style.width || '100%');
-                    chart.setAttribute('height', chart.parentElement?.style.height || '100%');
+                    const parent = chart.parentElement;
+                    if (parent) {
+                      chart.setAttribute('width', parent.style.width);
+                      chart.setAttribute('height', parent.style.height);
+                    }
                 });
             }
         });
         
         const imgData = canvas.toDataURL('image/png');
-        const imgWidth = pdfWidth; // Full width
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const imgProps = pdf.getImageProperties(imgData);
+        const imgWidth = pdfWidth;
+        const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
         
-        // Check if the section fits on the current page
-        if (yOffset + imgHeight > pdfHeight) {
+        if (section.classList.contains('pdf-page-break-before') && yOffset > 0) {
+            pdf.addPage();
+            yOffset = 0;
+        }
+
+        if (yOffset + imgHeight > pdfHeight && yOffset > 0) {
           pdf.addPage();
-          yOffset = 0; // Reset y-offset for the new page
+          yOffset = 0;
         }
 
         pdf.addImage(imgData, 'PNG', 0, yOffset, imgWidth, imgHeight);
-        yOffset += imgHeight; // Increment the y position for the next section
+        yOffset += imgHeight;
       }
 
       pdf.save(`proposta_${proposalId}.pdf`);
@@ -505,3 +505,5 @@ const SuggestionSkeleton = () => (
         </div>
     </div>
 );
+
+    
