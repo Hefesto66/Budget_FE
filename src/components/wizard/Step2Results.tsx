@@ -47,6 +47,7 @@ interface Step2ResultsProps {
 
 const COMPANY_DATA_KEY = "companyData";
 const CUSTOMIZATION_KEY = "proposalCustomization";
+const CHANNEL_NAME = "proposal_data_channel";
 
 const defaultCustomization: CustomizationSettings = {
   colors: {
@@ -121,46 +122,49 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
       setIsPreparingPdf(false);
       return;
     }
+    
+    // 1. Open the print page in a new tab. It will start listening on the channel.
+    const printWindow = window.open('/orcamento/imprimir', '_blank');
 
-    try {
-        const pdfData = {
-            results,
-            formData,
-            companyData,
-            clientData,
-            customization,
-            proposalId,
-            proposalDate: proposalDate.toISOString(),
-            proposalValidity: proposalValidity.toISOString(),
-        };
-
-        // 1. Serialize: Convert the object to a JSON string.
-        const jsonString = JSON.stringify(pdfData);
-        // 2. Encode: Base64 encode the string to make it URL-safe.
-        const encodedData = btoa(jsonString);
-        
-        // 3. Build URL and open in a new tab.
-        const url = `/orcamento/imprimir?data=${encodedData}`;
-        const printWindow = window.open(url, '_blank');
-
-        if (!printWindow) {
-             toast({
-                title: "Bloqueador de Pop-up Ativado",
-                description: "Por favor, desative o bloqueador de pop-ups para este site para gerar o PDF.",
-                variant: "destructive",
-            });
-        }
-        
-    } catch (error) {
-      console.error("PDF preparation failed:", error);
-      toast({
-        title: "Erro ao Preparar PDF",
-        description: error instanceof Error ? error.message : "Houve um problema ao preparar o documento. Tente novamente.",
-        variant: "destructive",
-      });
-    } finally {
+    if (!printWindow) {
+        toast({
+            title: "Bloqueador de Pop-up Ativado",
+            description: "Por favor, desative o bloqueador de pop-ups para este site para gerar o PDF.",
+            variant: "destructive",
+        });
         setIsPreparingPdf(false);
+        return;
     }
+
+    const pdfData = {
+        results,
+        formData,
+        companyData,
+        clientData,
+        customization,
+        proposalId,
+        proposalDate: proposalDate.toISOString(),
+        proposalValidity: proposalValidity.toISOString(),
+    };
+
+    // 2. Broadcast the data to the listening print page.
+    // We add a small delay to give the new tab a moment to set up its listener.
+    setTimeout(() => {
+        try {
+            const channel = new BroadcastChannel(CHANNEL_NAME);
+            channel.postMessage(pdfData);
+            channel.close(); // Close the channel after sending.
+        } catch (error) {
+             console.error("Broadcast Channel failed:", error);
+             toast({
+                title: "Erro de Comunicação",
+                description: "Não foi possível comunicar com a aba de impressão. Verifique se seu navegador é compatível.",
+                variant: "destructive",
+             });
+        } finally {
+            setIsPreparingPdf(false);
+        }
+    }, 500); // 500ms delay
 };
 
   
@@ -481,7 +485,3 @@ const SuggestionSkeleton = () => (
         </div>
     </div>
 );
-
-    
-
-    

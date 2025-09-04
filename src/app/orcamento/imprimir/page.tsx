@@ -1,8 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { ProposalDocument } from "@/components/proposal/ProposalDocument";
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings, SolarCalculationInput } from "@/types";
 import type { CompanyFormData } from "@/app/minha-empresa/page";
@@ -19,56 +18,79 @@ interface PrintData {
   proposalValidity: string;
 }
 
-function PrintPageContent() {
+// The Broadcast Channel name must be consistent between emitter and listener.
+const CHANNEL_NAME = "proposal_data_channel";
+
+export default function PrintProposalPage() {
   const [printData, setPrintData] = useState<PrintData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const searchParams = useSearchParams();
 
   useEffect(() => {
-    const encodedData = searchParams.get("data");
+    // This component acts as the "listener" for the broadcast.
+    const channel = new BroadcastChannel(CHANNEL_NAME);
 
-    if (encodedData) {
-      try {
-        // 1. Decode the Base64 string.
-        const jsonString = atob(encodedData);
-        // 2. Parse the JSON string back into an object.
-        const data = JSON.parse(jsonString);
-        setPrintData(data);
-      } catch (err) {
-        console.error("Failed to parse print data from URL", err);
-        setError("Os dados no URL estão corrompidos ou são inválidos.");
-      } finally {
+    // Set up the message handler.
+    channel.onmessage = (event) => {
+      if (event.data) {
+        setPrintData(event.data);
+        setIsLoading(false);
+        setError(null);
+      } else {
+        setError("Recebidos dados inválidos da página principal.");
         setIsLoading(false);
       }
-    } else {
-        setError("Dados da proposta não encontrados no URL.");
-        setIsLoading(false);
-    }
-  }, [searchParams]);
+      // Once the message is received and processed, we can close the channel.
+      channel.close();
+    };
+    
+    // Set a timeout to prevent waiting indefinitely.
+    const timeoutId = setTimeout(() => {
+        if (isLoading) {
+            setError("Não foi possível receber os dados da proposta. Por favor, tente gerar o PDF novamente.");
+            setIsLoading(false);
+            channel.close();
+        }
+    }, 10000); // 10-second timeout
+
+    // Cleanup function to close the channel when the component unmounts.
+    return () => {
+      clearTimeout(timeoutId);
+      channel.close();
+    };
+  }, [isLoading]); // Rerun effect if isLoading changes, though it primarily runs once.
 
   useEffect(() => {
+    // This effect triggers the print dialog once the data is ready.
     if (printData && !isLoading && !error) {
-      // Give the browser a moment to render the content before printing
       const timer = setTimeout(() => {
         window.print();
-      }, 500); 
+      }, 500); // Small delay to ensure content is fully rendered.
       return () => clearTimeout(timer);
     }
   }, [printData, isLoading, error]);
 
-  if (isLoading) {
-    return (
-        <div className="p-8">
-            <Skeleton className="h-16 w-full mb-4" />
-            <Skeleton className="h-40 w-full mb-8" />
-            <Skeleton className="h-64 w-full" />
+  if (isLoading || error) {
+     return (
+        <div className="p-8 font-sans text-center">
+            {error ? (
+                <div className="text-red-600">
+                    <h2 className="text-xl font-bold">Erro</h2>
+                    <p>{error}</p>
+                </div>
+            ) : (
+                <div className="animate-pulse">
+                    <h2 className="text-xl font-bold">Aguardando dados...</h2>
+                    <p>A preparar a pré-visualização do seu documento.</p>
+                </div>
+            )}
         </div>
     );
   }
 
-  if (error || !printData) {
-    return <div className="p-8 font-sans text-center">{error || "Dados da proposta não encontrados. Por favor, gere o orçamento novamente."}</div>;
+  if (!printData) {
+    // This case should ideally not be reached if timeout works correctly.
+    return <div className="p-8 font-sans text-center">Dados da proposta não encontrados. Por favor, gere o orçamento novamente.</div>;
   }
 
   return (
@@ -86,14 +108,3 @@ function PrintPageContent() {
     </div>
   );
 }
-
-
-export default function PrintProposalPage() {
-    return (
-        <Suspense fallback={<div className="p-8">Carregando...</div>}>
-            <PrintPageContent />
-        </Suspense>
-    )
-}
-
-    
