@@ -1,68 +1,52 @@
-# Relatório Técnico: Diagnóstico de Erros na Geração de PDF Server-Side
+# Relatório Técnico: Diagnóstico de Erros na Geração de PDF
 
 **Data:** 24/07/2024
 **Autor:** Assistente de IA - Firebase Studio
 
-## 1. Contexto e Objetivo
+## 1. Resumo Executivo
 
-Após a falha das abordagens de geração de PDF no lado do cliente (client-side) com `html2canvas` e `jspdf`, foi adotada uma nova arquitetura para gerar os documentos no lado do servidor (server-side) usando a biblioteca `Puppeteer`.
+O objetivo de gerar um PDF profissional e bem formatado a partir dos dados do orçamento tem enfrentado múltiplos desafios técnicos. Este relatório documenta a evolução do problema, as arquiteturas tentadas e as razões pelas quais falharam, culminando na situação atual.
 
-**O objetivo desta nova arquitetura era:**
-- Utilizar um motor de navegador real (headless browser) para garantir a fidelidade do layout.
-- Fazer com que as regras de CSS de impressão (ex: `page-break-inside: avoid`) fossem respeitadas, resolvendo o problema original de quebras de página incorretas.
+As abordagens podem ser divididas em três fases principais:
+1.  **Geração Client-Side (html2canvas):** Falhou devido a quebras de página incorretas e erros de renderização.
+2.  **Geração Server-Side (Puppeteer):** Falhou devido a conflitos de arquitetura e erros de build do Next.js.
+3.  **Impressão Nativa do Navegador:** Está a falhar devido a problemas de transferência de dados entre abas.
 
-Apesar de a arquitetura estar teoricamente correta, uma série de erros de build do Next.js impediu o seu funcionamento. Este relatório detalha a causa fundamental desses erros.
+---
 
-## 2. O Problema Central: A Fronteira Rígida entre Cliente e Servidor no Next.js
+## 2. Fase 1: Geração Client-Side com `html2canvas`
 
-O erro persistente que encontramos é:
+- **Estratégia:** Utilizar a biblioteca `html2canvas` para tirar uma "fotografia" do conteúdo da proposta e a `jspdf` para fatiar essa imagem em páginas PDF.
+- **Problema Fundamental:** `html2canvas` não interpreta as regras de impressão do CSS (`@media print`). A diretiva `page-break-inside: avoid`, crucial para evitar que secções sejam cortadas ao meio, era completamente ignorada. A biblioteca simplesmente criava uma imagem longa que era depois cortada de forma "cega" pela `jspdf`.
+- **Erro Manifestado:** "Unable to find element in cloned iframe". Este erro ocorria consistentemente porque o `html2canvas` tinha dificuldade em renderizar elementos complexos (como os gráficos da `recharts`) dentro do seu `<iframe>` de captura.
+- **Conclusão da Fase:** A abordagem de "fotografar e fatiar" no cliente é inerentemente falha para documentos complexos que exigem controlo de paginação.
 
-**`You're importing a component that imports react-dom/server. To fix it, render or return the content directly as a Server Component...`**
+---
 
-Este erro não é um bug, mas sim uma regra fundamental e de segurança imposta pelo Next.js. Ele pode ser traduzido da seguinte forma:
+## 3. Fase 2: Geração Server-Side com `Puppeteer`
 
-> "Você está a tentar importar código que só pode e só deve rodar no servidor (neste caso, `react-dom/server` para renderizar o HTML da proposta) para dentro de um ficheiro que, de alguma forma, está a ser incluído no pacote de código que é enviado para o navegador do cliente. Isto é proibido."
+- **Estratégia:** Mover a lógica de geração para o servidor, utilizando um *headless browser* (Puppeteer) que consegue interpretar HTML/CSS como um navegador real, incluindo as regras de impressão.
+- **Implementação:** Foi criada uma Server Action (`generatePdfAction`) que renderizava o componente da proposta para HTML estático (`renderToStaticMarkup`) e usava o Puppeteer para converter esse HTML num PDF.
+- **Problema Fundamental:** Conflito com a fronteira cliente-servidor do Next.js.
+- **Erro Manifestado:** **`You're importing a component that imports react-dom/server...`**
+- **Análise do Erro:**
+    1.  O ficheiro que continha a lógica do Puppeteer (`actions.tsx`) precisava de importar `react-dom/server` para renderizar o componente React para HTML.
+    2.  Um componente de cliente (`"use client"`), `Step2Results.tsx`, precisava de importar uma função desse mesmo ficheiro para iniciar a geração do PDF.
+    3.  O sistema de build do Next.js detetou esta cadeia de importação e bloqueou-a para impedir que código exclusivo de servidor (como `puppeteer` e `react-dom/server`) fosse incluído no pacote de código enviado para o navegador do cliente.
+    4.  As tentativas de separar as funções em ficheiros `.ts` e `.tsx` distintos falharam devido a erros de importação que mantiveram a violação da fronteira.
+- **Conclusão da Fase:** Embora a lógica do Puppeteer estivesse correta, a complexidade de isolar o código do servidor dentro da arquitetura do Next.js tornou esta abordagem inviável e frágil.
 
-O Next.js proíbe estritamente que pacotes de servidor (como `puppeteer` ou `react-dom/server`) acabem no código do cliente por duas razões principais:
-1.  **Segurança:** Exporia a lógica do servidor.
-2.  **Tamanho e Desempenho:** Aumentaria desnecessariamente o tamanho dos ficheiros JavaScript enviados para o navegador.
+---
 
-## 3. Análise das Tentativas de Correção e Porque Falharam
+## 4. Fase 3 (Atual): Impressão Nativa do Navegador
 
-Nossa implementação continha uma cadeia de importações que violava esta regra. Vamos seguir o rasto:
-
-1.  **O Componente "Gatilho" (Client-Side):**
-    - `src/components/wizard/Step2Results.tsx`
-    - Este é um **Componente de Cliente** (`"use client"`), pois precisa de interatividade (state, botões, etc.).
-    - Ele contém o botão "Exportar PDF" que chama a nossa função de geração de PDF.
-
-2.  **A Função de Geração de PDF (Server-Side):**
-    - `src/app/orcamento/actions.tsx`
-    - Esta é uma **Ação de Servidor** (`"use server"`), que contém a lógica do `Puppeteer` e do `renderToStaticMarkup`.
-    - **Este é o ficheiro que importa os pacotes de servidor proibidos.**
-
-3.  **A Violação da Fronteira:**
-    - O erro acontecia porque o ficheiro `Step2Results.tsx` (cliente) estava a importar diretamente uma função do ficheiro `actions.tsx` (servidor).
-    - Mesmo que a função importada não fosse a `generatePdfAction`, o simples facto de o ficheiro `actions.tsx` conter uma importação de `react-dom/server` era suficiente para o Next.js bloquear o build. O sistema de build analisa todas as importações de um ficheiro, não apenas a função que está a ser usada.
-
-**Tentativas de Correção:**
-
-- **Tentativa 1: Renomear para `.tsx`**
-  - **Problema:** A função `generatePdfAction` usa JSX (`<ProposalDocument />`), pelo que o ficheiro precisa da extensão `.tsx`.
-  - **Resultado:** A mudança foi necessária, mas não resolveu o erro de importação.
-
-- **Tentativa 2: Separar as Ações**
-  - **Estratégia:** Criámos dois ficheiros de ações: `actions.ts` (para funções seguras que podem ser chamadas do cliente) e `actions.tsx` (exclusivamente para `generatePdfAction`).
-  - **Razão da Falha:** Um erro de digitação ou um caminho de importação incorreto fez com que `Step2Results.tsx` continuasse a importar de `actions.tsx` em vez do novo ficheiro `actions.ts`. Isto manteve a violação da fronteira cliente-servidor.
-
-## 4. Conclusão e Solução Definitiva
-
-O problema não está na lógica de geração do PDF com o Puppeteer, que continua a ser a abordagem correta. **O problema reside exclusivamente na forma como os ficheiros estão organizados e importados, violando as regras do Next.js.**
-
-**A solução definitiva e correta é garantir um isolamento absoluto:**
-
-1.  **Confirmar o Isolamento:** O ficheiro `src/app/orcamento/actions.tsx`, que contém o código do Puppeteer, **NUNCA** deve ser importado por nenhum componente de cliente (`"use client"`).
-2.  **Verificar Todas as Importações:** É necessário garantir que `Step2Results.tsx` e `Wizard.tsx` importam as suas funções (`getRefinedSuggestions`, `getCalculation`) **APENAS** do ficheiro `src/app/orcamento/actions.ts` (o ficheiro sem código de servidor).
-3.  **Chamada Correta:** O botão em `Step2Results.tsx` deve chamar `generatePdfAction` (do ficheiro `actions.tsx`) corretamente, sem que o sistema de build tente agrupar os dois. Muitas vezes, passar a função como uma propriedade ou usar a `startTransition` do React para chamá-la pode ajudar o Next.js a entender a separação.
-
-A tarefa imediata é auditar e corrigir os caminhos de importação em todo o fluxo do wizard para garantir que a fronteira entre o código que é executado no servidor e o código que é enviado para o cliente seja 100% respeitada.
+- **Estratégia:** Abandonar a geração de ficheiros e, em vez disso, alavancar a funcionalidade "Imprimir para PDF" do próprio navegador, que respeita perfeitamente as regras de CSS.
+- **Implementação:**
+    1.  Foi criada uma rota dedicada (`/orcamento/imprimir`) que renderiza apenas o documento da proposta.
+    2.  O botão "Exportar PDF" foi modificado para passar os dados da proposta para esta nova página e invocar `window.print()`.
+- **Problema Fundamental:** Falha na transferência de dados da página principal para a nova aba de impressão.
+- **Erro Manifestado:** A página de impressão exibe "Dados da proposta não encontrados".
+- **Análise do Erro:**
+    1.  **Tentativa 1 (localStorage):** A primeira abordagem foi guardar os dados no `localStorage` e depois abrir a nova aba. Isto falhou devido a uma *race condition*: a nova aba carregava e tentava ler os dados *antes* de o `localStorage` terminar a escrita, resultando em dados não encontrados. Adicionar um `setTimeout` não foi uma solução robusta.
+    2.  **Tentativa 2 (Escrita Programática):** A segunda abordagem foi abrir uma aba em branco (`window.open('')`) e injetar o HTML e os dados programaticamente. Esta abordagem também falhou, provavelmente devido a políticas de segurança do navegador ou à complexidade de recriar o contexto do React numa janela gerada dinamicamente.
+- **Conclusão da Fase:** A abordagem de impressão nativa é a mais promissora, mas o mecanismo de transferência de dados entre a página da aplicação e a página de impressão é o ponto de falha atual e precisa de uma solução 100% confiável.
