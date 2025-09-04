@@ -20,7 +20,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { getRefinedSuggestions } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
-import { Zap, Calendar, DollarSign, BarChart, ArrowLeft, Sparkles, Download, Share2, Wallet, TrendingUp, FilePenLine, HelpCircle } from "lucide-react";
+import { Zap, Calendar, DollarSign, BarChart, ArrowLeft, Sparkles, Download, Share2, Wallet, TrendingUp, FilePenLine, HelpCircle, Printer } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
 import { formatCurrency, formatNumber } from "@/lib/utils";
@@ -39,6 +39,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ProposalDocument } from "../proposal/ProposalDocument";
+import lzString from "lz-string";
 
 
 interface Step2ResultsProps {
@@ -110,125 +111,35 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
   const paybackYears = results.payback_simples_anos;
   const paybackText = isFinite(paybackYears) ? `${formatNumber(paybackYears, 1)} anos` : "N/A";
 
-  const handleExportPdf = async () => {
-    setIsPreparingPdf(true);
-
+  const handleExportPdf = () => {
     if (!companyData) {
-      toast({
-        title: "Dados da Empresa Ausentes",
-        description: "Por favor, cadastre os dados da sua empresa antes de gerar um PDF.",
-        variant: "destructive",
-      });
-      setIsPreparingPdf(false);
-      return;
+        toast({
+            title: "Dados da Empresa Ausentes",
+            description: "Por favor, cadastre os dados da sua empresa na página 'Minha Empresa' antes de exportar.",
+            variant: "destructive",
+        });
+        return;
     }
 
-    try {
-      // 1. Render the React component to an HTML string on the client
-      const documentHtml = ReactDOMServer.renderToStaticMarkup(
-        React.createElement(ProposalDocument, {
-          results,
-          formData,
-          companyData,
-          clientData,
-          customization,
-          proposalId,
-          proposalDate,
-          proposalValidity
-        })
-      );
-      
-      const fullHtml = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="UTF-8" />
-          <style>
-            @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=PT+Sans:wght@400;700&display=swap');
-            
-            body, html {
-              margin: 0;
-              padding: 0;
-              background-color: white !important;
-              color: black;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-            }
-            .proposal-document {
-              font-family: "PT Sans", sans-serif;
-            }
-             @page {
-                size: A4;
-                margin: 2cm;
-              }
-              
-              .proposal-document {
-                box-shadow: none !important;
-                border: none !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                max-width: 100% !important;
-                width: 100% !important;
-              }
+    const dataToPass = {
+        results,
+        formData,
+        companyData,
+        clientData,
+        customization,
+        proposalId,
+        // Dates need to be converted to ISO strings to be safely passed in JSON
+        proposalDate: proposalDate.toISOString(),
+        proposalValidity: proposalValidity.toISOString(),
+    };
 
-              .pdf-section {
-                page-break-inside: avoid !important;
-                break-inside: avoid-page !important;
-              }
-
-              .pdf-page-break-before {
-                page-break-before: always !important;
-                break-before: page !important;
-              }
-          </style>
-        </head>
-        <body>
-          ${documentHtml}
-        </body>
-      </html>
-    `;
-
-      // 2. Send this HTML string to the API route
-      const response = await fetch('/api/gerar-pdf', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ htmlContent: fullHtml, proposalId }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`O servidor respondeu com o status ${response.status}: ${errorText}`);
-      }
-
-      // 3. Receive the PDF blob and trigger download
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `proposta-${proposalId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-        
-      toast({
-        title: "Download Iniciado",
-        description: "O seu PDF está a ser descarregado.",
-      });
-
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      toast({
-        title: "Erro ao Gerar PDF",
-        description: `Não foi possível gerar o ficheiro PDF. ${error instanceof Error ? error.message : ''}`,
-        variant: "destructive"
-      });
-    } finally {
-      setIsPreparingPdf(false);
-    }
+    // Compress the data to make the URL smaller and safer
+    const compressedData = lzString.compressToEncodedURIComponent(JSON.stringify(dataToPass));
+    
+    const url = `/orcamento/imprimir?data=${compressedData}`;
+    window.open(url, '_blank');
   };
+
 
   const handleShare = (platform: 'whatsapp' | 'email') => {
     const text = `Confira meu orçamento de energia solar da FE Sistema Solar!\n\nEconomia Anual Estimada: ${formatCurrency(results.economia_anual_reais)}\nRetorno do Investimento: ${paybackText}\n\nFaça sua simulação também!`;
@@ -446,12 +357,12 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button type="button" onClick={handleExportPdf} disabled={isPreparingPdf || !companyData}>
-                                    <Download className={`mr-2 h-4 w-4 ${isPreparingPdf ? 'animate-pulse' : ''}`} />
-                                    {isPreparingPdf ? "Preparando..." : "Exportar PDF"}
+                                    <Printer className={`mr-2 h-4 w-4 ${isPreparingPdf ? 'animate-pulse' : ''}`} />
+                                    {isPreparingPdf ? "Preparando..." : "Imprimir / Exportar PDF"}
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                                <p>Gera um PDF para download no seu servidor.</p>
+                                <p>Abre a página de impressão para gerar um PDF ou imprimir.</p>
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
@@ -539,3 +450,5 @@ const SuggestionSkeleton = () => (
         </div>
     </div>
 );
+
+    
