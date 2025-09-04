@@ -104,7 +104,7 @@ export function ProposalDocument({
 
         {/* System Description */}
         {content.showInvestmentTable && (
-            <section className="mb-8">
+            <section className="mb-8" style={{ pageBreakInside: 'avoid' }}>
             <h3 className="font-bold text-lg mb-2 border-b border-gray-200 pb-1" style={{ color: colors.primary }}>Descrição do Sistema e Investimento</h3>
             <table className="w-full text-left">
                 <thead>
@@ -168,7 +168,7 @@ export function ProposalDocument({
         
 
          {/* Financial Summary */}
-        <section className="mb-8">
+        <section className="mb-8" style={{ pageBreakInside: 'avoid' }}>
              <h3 className="font-bold text-lg mb-2 border-b border-gray-200 pb-1" style={{ color: colors.primary }}>Análise Financeira e de Geração</h3>
             <div className="grid grid-cols-2 gap-8">
                  {content.showFinancialSummary && (
@@ -198,7 +198,7 @@ export function ProposalDocument({
 
         {/* Environmental Impact */}
         {content.showEnvironmentalImpact && (
-            <section className="mb-8">
+            <section className="mb-8" style={{ pageBreakInside: 'avoid' }}>
                 <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary }}>Seu Impacto Positivo no Planeta</h3>
                 <div className="grid grid-cols-3 gap-4 text-center">
                     <ImpactCard icon={<Leaf size={32}/>} value={formatNumber(treesSaved, 0)} label="Árvores Salvas por Ano"/>
@@ -210,7 +210,7 @@ export function ProposalDocument({
 
         {/* Generation and Savings Charts */}
         {content.showGenerationChart && (
-            <section className="mb-8">
+            <section className="mb-8" style={{ pageBreakBefore: 'always' }}>
                 <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary }}>Estimativa de Geração Mensal</h3>
                 <p className="text-xs text-gray-500 mb-4">Este gráfico mostra a variação da geração de energia do seu sistema ao longo do ano, com base na irradiação solar local.</p>
                 {/* Placeholder for monthly generation chart */}
@@ -221,7 +221,7 @@ export function ProposalDocument({
         )}
 
         {content.showSavingsChart && (
-             <section className="mb-8">
+             <section className="mb-8" style={{ pageBreakBefore: 'always' }}>
                 <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary }}>Projeção de Economia em 25 Anos</h3>
                  <p className="text-xs text-gray-500 mb-4">Veja como sua economia acumulada cresce ao longo da vida útil do sistema solar, superando o investimento inicial.</p>
                 <div className="w-full h-64 bg-white flex items-center justify-center rounded-lg border">
@@ -232,7 +232,7 @@ export function ProposalDocument({
 
         {/* Timeline */}
         {content.showTimeline && (
-            <section className="mb-8">
+            <section className="mb-8" style={{ pageBreakInside: 'avoid' }}>
                 <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary }}>Nossas Próximas Etapas</h3>
                 <div className="flex flex-col space-y-4">
                     <TimelineStep icon={<FileSignature />} title="Assinatura do Contrato" description="Formalização da nossa parceria para um futuro mais sustentável." />
@@ -246,7 +246,7 @@ export function ProposalDocument({
 
        {/* Footer */}
        {content.showTerms && (
-            <footer className="pt-8 text-xs text-gray-500 text-center border-t-2 border-gray-200 mt-auto">
+            <footer className="pt-8 text-xs text-gray-500 text-center border-t-2 border-gray-200 mt-auto" style={{ pageBreakBefore: 'auto' }}>
                 <p>Esta é uma proposta comercial. Os valores e estimativas de geração são baseados nos dados fornecidos e podem variar.</p>
                 <p>Condições de pagamento a combinar. | {companyData.name} - Todos os direitos reservados &copy; {new Date().getFullYear()}</p>
             </footer>

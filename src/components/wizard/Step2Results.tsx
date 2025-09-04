@@ -114,26 +114,32 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
         const imgData = canvas.toDataURL("image/png");
         const pdf = new jsPDF({
           orientation: "portrait",
-          unit: "pt",
+          unit: "in",
           format: "a4",
         });
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
+
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const pageRatio = pageWidth / pageHeight;
+        
         const canvasWidth = canvas.width;
         const canvasHeight = canvas.height;
-        const ratio = canvasWidth / canvasHeight;
-        let width = pdfWidth;
-        let height = width / ratio;
+        const canvasRatio = canvasWidth / canvasHeight;
 
-        if (height > pdfHeight) {
-          height = pdfHeight;
-          width = height * ratio;
+        let finalWidth, finalHeight;
+
+        if (canvasRatio > pageRatio) {
+            finalWidth = pageWidth;
+            finalHeight = pageWidth / canvasRatio;
+        } else {
+            finalHeight = pageHeight;
+            finalWidth = pageHeight * canvasRatio;
         }
-        
-        const xOffset = (pdfWidth - width) / 2;
-        const yOffset = (pdfHeight - height) / 2;
 
-        pdf.addImage(imgData, "PNG", xOffset, yOffset, width, height);
+        const x = (pageWidth - finalWidth) / 2;
+        const y = 0; // Start from top
+
+        pdf.addImage(imgData, "PNG", x, y, finalWidth, finalHeight);
         pdf.save("orcamento_solar_fe.pdf");
       } catch (error) {
         toast({
