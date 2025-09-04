@@ -2,6 +2,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -21,6 +22,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Loader2, Save, UploadCloud } from "lucide-react"
 import Image from "next/image"
 import { saveCompanyData } from "./actions"
+import { Header } from "@/components/layout/Header"
 
 const companySchema = z.object({
   logo: z.string().optional(),
@@ -35,6 +37,7 @@ type CompanyFormData = z.infer<typeof companySchema>
 
 export default function MinhaEmpresaPage() {
   const { toast } = useToast()
+  const router = useRouter()
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -74,7 +77,6 @@ export default function MinhaEmpresaPage() {
   const onSubmit = async (data: CompanyFormData) => {
     setIsSaving(true)
     
-    // In a real app, you'd handle the logo upload here and get back a URL
     const dataToSave = { ...data, logo: logoPreview || "" };
 
     const result = await saveCompanyData(dataToSave)
@@ -84,6 +86,7 @@ export default function MinhaEmpresaPage() {
         title: "Sucesso!",
         description: "Os dados da sua empresa foram salvos.",
       })
+      router.push("/")
     } else {
       toast({
         title: "Erro ao Salvar",
@@ -95,103 +98,108 @@ export default function MinhaEmpresaPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-12 sm:py-16">
-      <form onSubmit={form.handleSubmit(onSubmit)}>
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="font-headline text-2xl">Dados da Sua Empresa</CardTitle>
-            <CardDescription>
-              Estas informações aparecerão no cabeçalho das suas propostas de orçamento.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-              {/* Coluna 1: Identificação */}
-              <div className="space-y-6">
-                <div>
-                  <Label htmlFor="logo-upload">Logotipo</Label>
-                  <div className="mt-2">
-                    <input
-                      id="logo-upload"
-                      type="file"
-                      className="hidden"
-                      accept="image/png, image/jpeg, image/svg+xml"
-                      onChange={handleLogoUpload}
-                    />
-                    <label
-                      htmlFor="logo-upload"
-                      className="relative flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-8 text-center transition-colors hover:bg-accent/50"
-                    >
-                      {logoPreview ? (
-                        <>
-                          <Image src={logoPreview} alt="Pré-visualização do logo" width={128} height={128} className="max-h-32 object-contain" />
-                           <span className="mt-4 inline-block rounded-md bg-secondary px-3 py-1 text-sm text-secondary-foreground">Alterar</span>
-                        </>
-                      ) : (
-                        <>
-                          <UploadCloud className="h-10 w-10 text-muted-foreground" />
-                          <span className="mt-4 block font-medium text-foreground">
-                            Clique para enviar ou arraste seu logotipo aqui
-                          </span>
-                        </>
-                      )}
-                    </label>
+    <div className="flex min-h-screen flex-col">
+      <Header />
+      <main className="flex-1">
+        <div className="container mx-auto max-w-4xl px-4 py-12 sm:py-16">
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="font-headline text-2xl">Dados da Sua Empresa</CardTitle>
+                <CardDescription>
+                  Estas informações aparecerão no cabeçalho das suas propostas de orçamento.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+                  {/* Coluna 1: Identificação */}
+                  <div className="space-y-6">
+                    <div>
+                      <Label htmlFor="logo-upload">Logotipo</Label>
+                      <div className="mt-2">
+                        <input
+                          id="logo-upload"
+                          type="file"
+                          className="hidden"
+                          accept="image/png, image/jpeg, image/svg+xml"
+                          onChange={handleLogoUpload}
+                        />
+                        <label
+                          htmlFor="logo-upload"
+                          className="relative flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-8 text-center transition-colors hover:bg-accent/50"
+                        >
+                          {logoPreview ? (
+                            <>
+                              <Image src={logoPreview} alt="Pré-visualização do logo" width={128} height={128} className="max-h-32 object-contain" />
+                              <span className="mt-4 inline-block rounded-md bg-secondary px-3 py-1 text-sm text-secondary-foreground">Alterar</span>
+                            </>
+                          ) : (
+                            <>
+                              <UploadCloud className="h-10 w-10 text-muted-foreground" />
+                              <span className="mt-4 block font-medium text-foreground">
+                                Clique para enviar ou arraste seu logotipo aqui
+                              </span>
+                            </>
+                          )}
+                        </label>
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">Recomendado: PNG com fundo transparente, máx 2MB.</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Nome da Empresa</Label>
+                      <Input id="name" placeholder="Ex: Soluções Solares Ltda." {...form.register("name")} />
+                      {form.formState.errors.name && <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="cnpj">CNPJ ou CPF</Label>
+                      <Input id="cnpj" placeholder="00.000.000/0001-00" {...form.register("cnpj")} />
+                      {form.formState.errors.cnpj && <p className="text-sm text-destructive">{form.formState.errors.cnpj.message}</p>}
+                    </div>
                   </div>
-                   <p className="mt-2 text-xs text-muted-foreground">Recomendado: PNG com fundo transparente, máx 2MB.</p>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome da Empresa</Label>
-                  <Input id="name" placeholder="Ex: Soluções Solares Ltda." {...form.register("name")} />
-                  {form.formState.errors.name && <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>}
-                </div>
+                  {/* Coluna 2: Contato */}
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                        <Label htmlFor="email">E-mail de Contato</Label>
+                        <Input id="email" type="email" placeholder="contato@suaempresa.com" {...form.register("email")} />
+                        {form.formState.errors.email && <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>}
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="cnpj">CNPJ ou CPF</Label>
-                  <Input id="cnpj" placeholder="00.000.000/0001-00" {...form.register("cnpj")} />
-                  {form.formState.errors.cnpj && <p className="text-sm text-destructive">{form.formState.errors.cnpj.message}</p>}
-                </div>
-              </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="phone">Telefone / WhatsApp</Label>
+                        <Input id="phone" type="tel" placeholder="(62) 99999-9999" {...form.register("phone")} />
+                        {form.formState.errors.phone && <p className="text-sm text-destructive">{form.formState.errors.phone.message}</p>}
+                    </div>
 
-              {/* Coluna 2: Contato */}
-              <div className="space-y-6">
-                 <div className="space-y-2">
-                    <Label htmlFor="email">E-mail de Contato</Label>
-                    <Input id="email" type="email" placeholder="contato@suaempresa.com" {...form.register("email")} />
-                    {form.formState.errors.email && <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>}
+                    <div className="space-y-2">
+                        <Label htmlFor="address">Endereço da Empresa</Label>
+                        <Textarea id="address" placeholder="Rua, Nº, Bairro, Cidade - Estado, CEP" rows={4} {...form.register("address")} />
+                        {form.formState.errors.address && <p className="text-sm text-destructive">{form.formState.errors.address.message}</p>}
+                    </div>
+                  </div>
                 </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="phone">Telefone / WhatsApp</Label>
-                    <Input id="phone" type="tel" placeholder="(62) 99999-9999" {...form.register("phone")} />
-                    {form.formState.errors.phone && <p className="text-sm text-destructive">{form.formState.errors.phone.message}</p>}
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="address">Endereço da Empresa</Label>
-                    <Textarea id="address" placeholder="Rua, Nº, Bairro, Cidade - Estado, CEP" rows={4} {...form.register("address")} />
-                    {form.formState.errors.address && <p className="text-sm text-destructive">{form.formState.errors.address.message}</p>}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-end">
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Salvar Alterações
-                </>
-              )}
-            </Button>
-          </CardFooter>
-        </Card>
-      </form>
+              </CardContent>
+              <CardFooter className="flex justify-end">
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Salvar Alterações
+                    </>
+                  )}
+                </Button>
+              </CardFooter>
+            </Card>
+          </form>
+        </div>
+      </main>
     </div>
   )
 }
