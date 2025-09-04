@@ -34,6 +34,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { cn } from "@/lib/utils";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { format, addDays } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
 
@@ -273,11 +274,12 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
                             )}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {proposalDate ? format(proposalDate, "PPP") : <span>Selecione uma data</span>}
+                            {proposalDate ? format(proposalDate, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
                         </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
                         <CalendarComponent
+                            locale={ptBR}
                             mode="single"
                             selected={proposalDate}
                             onSelect={(date) => date && setProposalDate(date)}
@@ -298,11 +300,12 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
                             )}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {proposalValidity ? format(proposalValidity, "PPP") : <span>Selecione uma data</span>}
+                            {proposalValidity ? format(proposalValidity, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
                         </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
                         <CalendarComponent
+                            locale={ptBR}
                             mode="single"
                             selected={proposalValidity}
                             onSelect={(date) => date && setProposalValidity(date)}
@@ -430,6 +433,8 @@ const defaultCustomization: CustomizationSettings = {
     showTimeline: false,
   },
 };
+    
+
     
 
     
