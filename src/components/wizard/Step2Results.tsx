@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
-import type { SolarCalculationResult, ClientFormData, CustomizationSettings } from "@/types";
+import type { SolarCalculationResult, ClientFormData, CustomizationSettings, SolarCalculationInput } from "@/types";
 import { ResultCard } from "@/components/ResultCard";
 import { SavingsChart } from "@/components/SavingsChart";
 import { Button } from "@/components/ui/button";
@@ -18,7 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
-import { getRefinedSuggestions } from "@/app/orcamento/actions";
+import { getRefinedSuggestions, generatePdfAction } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Zap, Calendar, DollarSign, BarChart, ArrowLeft, Sparkles, Download, Share2, Wallet, TrendingUp, FilePenLine } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
@@ -37,7 +35,7 @@ import { cn } from "@/lib/utils";
 interface Step2ResultsProps {
   results: SolarCalculationResult;
   onBack: () => void;
-  formData: any;
+  formData: SolarCalculationInput;
   clientData: ClientFormData | null;
 }
 
@@ -107,78 +105,57 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
 
   const handleExportPdf = async () => {
     setIsGeneratingPdf(true);
-    const proposalElement = document.getElementById("proposal-content");
 
-    if (!proposalElement || !companyData) {
+    if (!companyData) {
       toast({
-        title: "Erro",
-        description: "Dados da empresa não encontrados ou conteúdo da proposta ausente.",
+        title: "Dados da Empresa Ausentes",
+        description: "Por favor, cadastre os dados da sua empresa antes de gerar um PDF.",
         variant: "destructive",
       });
       setIsGeneratingPdf(false);
       return;
     }
 
-    // Ensure all images are loaded before capture
-    const images = Array.from(proposalElement.getElementsByTagName("img"));
-    const promises = images.map(img => {
-        if (img.complete) return Promise.resolve();
-        return new Promise<void>(resolve => {
-            img.onload = () => resolve();
-            img.onerror = () => resolve(); // Resolve even on error to not block PDF generation
-        });
-    });
-
-    await Promise.all(promises);
-
-
     try {
-      const canvas = await html2canvas(proposalElement, {
-        scale: 2, // Higher scale for better quality
-        useCORS: true,
-        logging: false,
-        allowTaint: true,
-      });
+        const pdfData = {
+            results,
+            formData,
+            companyData,
+            clientData,
+            customization,
+            proposalId,
+            proposalDate: proposalDate.toISOString(),
+            proposalValidity: proposalValidity.toISOString(),
+        };
 
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'pt',
-        format: 'a4',
-      });
-      
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      const canvasWidth = canvas.width;
-      const canvasHeight = canvas.height;
-      
-      const ratio = canvasWidth / pdfWidth;
-      const scaledCanvasHeight = canvasHeight / ratio;
-      
-      const totalPages = Math.ceil(scaledCanvasHeight / pdfHeight);
-      
-      for (let i = 0; i < totalPages; i++) {
-        if (i > 0) {
-          pdf.addPage();
+        const response = await generatePdfAction(pdfData);
+
+        if (response.success && response.data) {
+            const link = document.createElement('a');
+            link.href = `data:application/pdf;base64,${response.data}`;
+            link.download = `proposta_${proposalId}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            toast({
+                title: "Sucesso!",
+                description: "Seu PDF foi gerado e o download foi iniciado.",
+            });
+        } else {
+            throw new Error(response.error || "A geração do PDF falhou no servidor.");
         }
-        const yPosition = -(pdfHeight * i);
-        pdf.addImage(imgData, 'PNG', 0, yPosition, pdfWidth, scaledCanvasHeight);
-      }
-      
-      pdf.save(`proposta_${proposalId}.pdf`);
-
     } catch (error) {
       console.error("PDF Generation Error:", error);
       toast({
         title: "Erro ao Gerar PDF",
-        description: "Houve um problema ao criar o documento. Tente novamente.",
+        description: error instanceof Error ? error.message : "Houve um problema ao criar o documento. Tente novamente.",
         variant: "destructive",
       });
     } finally {
       setIsGeneratingPdf(false);
     }
 };
+
   
   const handleShare = (platform: 'whatsapp' | 'email') => {
     const text = `Confira meu orçamento de energia solar da FE Sistema Solar!\n\nEconomia Anual Estimada: ${formatCurrency(results.economia_anual_reais)}\nRetorno do Investimento: ${paybackText}\n\nFaça sua simulação também!`;
@@ -402,25 +379,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
             </div>
           </div>
       </div>
-
-      {/* Hidden container for PDF rendering */}
-      <div className="fixed left-[-9999px] top-0 z-[-1]">
-        <div id="proposal-container" style={{ width: '8.5in' }}>
-             {companyData && (
-                <ProposalDocument
-                    results={results}
-                    formData={formData}
-                    companyData={companyData}
-                    clientData={clientData}
-                    customization={customization}
-                    proposalId={proposalId}
-                    proposalDate={proposalDate}
-                    proposalValidity={proposalValidity}
-                />
-            )}
-        </div>
-      </div>
-
+      
       <AlertDialog open={!!refinedSuggestion} onOpenChange={() => setRefinedSuggestion(null)}>
         <AlertDialogContent className="max-w-2xl">
           <AlertDialogHeader>
@@ -500,5 +459,3 @@ const SuggestionSkeleton = () => (
         </div>
     </div>
 );
-
-    
