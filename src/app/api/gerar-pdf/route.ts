@@ -1,45 +1,64 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import puppeteer from 'puppeteer';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+
+// This is a workaround for a jsdom dependency issue in html2canvas with Next.js server environments
+global.DOMMatrix = require('dommatrix');
 
 export async function POST(req: NextRequest) {
   try {
-    // We receive the already-rendered HTML string from the client
     const { htmlContent, proposalId } = await req.json();
 
     if (!htmlContent) {
       return new NextResponse('Corpo da requisição inválido: htmlContent é obrigatório.', { status: 400 });
     }
 
-    const browser = await puppeteer.launch({ 
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-gpu'
-      ] 
+    // Create a temporary element to render the HTML
+    const element = document.createElement('div');
+    element.innerHTML = htmlContent;
+    document.body.appendChild(element);
+
+    // Give it a defined size for rendering
+    element.style.width = '210mm'; // A4 width
+    element.style.position = 'fixed';
+    element.style.left = '-210mm'; // Move it off-screen
+
+
+    const canvas = await html2canvas(element, {
+        scale: 2, // Higher scale for better quality
+        useCORS: true,
+        logging: true,
+        allowTaint: true
     });
-    const page = await browser.newPage();
+
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
+    const ratio = imgWidth / imgHeight;
+    const canvasPdfWidth = pdfWidth;
+    const canvasPdfHeight = canvasPdfWidth / ratio;
+
+    let position = 0;
+    let heightLeft = imgHeight * (pdfWidth / imgWidth); // Total height of the image in PDF units
+
+    pdf.addImage(imgData, 'PNG', 0, position, canvasPdfWidth, heightLeft);
+    heightLeft -= pdfHeight;
+
+    while (heightLeft > 0) {
+      position = heightLeft - (imgHeight * (pdfWidth / imgWidth));
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, canvasPdfWidth, imgHeight * (pdfWidth / imgWidth));
+      heightLeft -= pdfHeight;
+    }
+
+    const pdfBuffer = pdf.output('arraybuffer');
     
-    // Set content directly from the string provided by the client
-    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: {
-        top: '2cm',
-        right: '2cm',
-        bottom: '2cm',
-        left: '2cm',
-      }
-    });
-
-    await browser.close();
+    // Clean up the temporary element
+    document.body.removeChild(element);
 
     return new NextResponse(pdfBuffer, {
       status: 200,
@@ -51,7 +70,6 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('Error generating PDF:', error);
-    // Ensure the error is a string for the response
     const errorMessage = error instanceof Error ? error.message : String(error);
     return new NextResponse(
         `Falha ao gerar o PDF: ${errorMessage}`, 
