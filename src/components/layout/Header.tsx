@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
-import { Building } from 'lucide-react';
+import { Building, Palette } from 'lucide-react';
 
 export function Header() {
   return (
@@ -11,6 +11,9 @@ export function Header() {
           <Logo />
         </Link>
         <div className="flex items-center gap-4">
+           <Button asChild variant="ghost">
+            <Link href="/personalizar-proposta"><Palette className="mr-2 h-4 w-4"/> Personalizar Proposta</Link>
+          </Button>
           <Button asChild variant="ghost">
             <Link href="/minha-empresa"><Building className="mr-2 h-4 w-4"/> Minha Empresa</Link>
           </Button>

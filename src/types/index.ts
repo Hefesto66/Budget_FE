@@ -69,3 +69,16 @@ export const clientSchema = z.object({
 export type ClientFormData = z.infer<typeof clientSchema>;
 
 export type { SuggestRefinedPanelConfigOutput };
+
+export interface CustomizationSettings {
+  colors: {
+    primary: string;
+    textOnPrimary: string;
+  };
+  content: {
+    showInvestmentTable: boolean;
+    showFinancialSummary: boolean;
+    showSystemPerformance: boolean;
+    showTerms: boolean;
+  };
+}

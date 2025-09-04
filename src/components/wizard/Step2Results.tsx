@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import type { SolarCalculationResult, ClientFormData } from "@/types";
+import type { SolarCalculationResult, ClientFormData, CustomizationSettings } from "@/types";
 import { ResultCard } from "@/components/ResultCard";
 import { SavingsChart } from "@/components/SavingsChart";
 import { Button } from "@/components/ui/button";
@@ -35,25 +35,42 @@ interface Step2ResultsProps {
 }
 
 const COMPANY_DATA_KEY = "companyData";
+const CUSTOMIZATION_KEY = "proposalCustomization";
 
+const defaultCustomization: CustomizationSettings = {
+  colors: {
+    primary: "#10B981",
+    textOnPrimary: "#FFFFFF",
+  },
+  content: {
+    showInvestmentTable: true,
+    showFinancialSummary: true,
+    showSystemPerformance: true,
+    showTerms: true,
+  },
+};
 
 export function Step2Results({ results, onBack, formData, clientData }: Step2ResultsProps) {
   const { toast } = useToast();
-  const reportRef = useRef<HTMLDivElement>(null);
   
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
   const [companyData, setCompanyData] = useState<CompanyFormData | null>(null);
+  const [customization, setCustomization] = useState<CustomizationSettings>(defaultCustomization);
 
   useEffect(() => {
     try {
-      const savedData = localStorage.getItem(COMPANY_DATA_KEY);
-      if (savedData) {
-        setCompanyData(JSON.parse(savedData));
+      const savedCompanyData = localStorage.getItem(COMPANY_DATA_KEY);
+      if (savedCompanyData) {
+        setCompanyData(JSON.parse(savedCompanyData));
+      }
+      const savedCustomization = localStorage.getItem(CUSTOMIZATION_KEY);
+      if (savedCustomization) {
+        setCustomization(JSON.parse(savedCustomization));
       }
     } catch (error) {
-      console.error("Failed to load company data from localStorage", error);
+      console.error("Failed to load data from localStorage", error);
     }
   }, []);
 
@@ -270,6 +287,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
             formData={formData}
             companyData={companyData}
             clientData={clientData}
+            customization={customization}
           />
         )}
       </div>
