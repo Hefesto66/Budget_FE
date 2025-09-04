@@ -37,6 +37,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import LZString from 'lz-string';
+
 
 interface Step2ResultsProps {
   results: SolarCalculationResult;
@@ -47,7 +49,6 @@ interface Step2ResultsProps {
 
 const COMPANY_DATA_KEY = "companyData";
 const CUSTOMIZATION_KEY = "proposalCustomization";
-const PROPOSAL_DATA_KEY = "printProposalData"; // Key for localStorage
 
 const defaultCustomization: CustomizationSettings = {
   colors: {
@@ -123,17 +124,6 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
       return;
     }
 
-    const printWindow = window.open('/orcamento/imprimir', '_blank');
-    if (!printWindow) {
-      toast({
-        title: "Bloqueador de Pop-up Ativado",
-        description: "Por favor, desative o bloqueador de pop-ups para gerar o PDF.",
-        variant: "destructive",
-      });
-      setIsPreparingPdf(false);
-      return;
-    }
-
     const pdfData = {
         results,
         formData,
@@ -145,17 +135,22 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
         proposalValidity: proposalValidity.toISOString(),
     };
 
-    // Write to localStorage. The new tab will be listening for this event.
     try {
-      localStorage.setItem(PROPOSAL_DATA_KEY, JSON.stringify(pdfData));
+      const jsonString = JSON.stringify(pdfData);
+      const compressedData = LZString.compressToEncodedURIComponent(jsonString);
+      
+      const url = `/orcamento/imprimir?data=${compressedData}`;
+      window.open(url, '_blank');
+
     } catch (error) {
-      toast({
-          title: "Erro ao Salvar Dados",
-          description: "Não foi possível salvar os dados da proposta para impressão.",
-          variant: "destructive",
-      });
+        console.error("Error compressing data:", error);
+        toast({
+            title: "Erro ao Preparar Dados",
+            description: "Não foi possível comprimir os dados da proposta para exportação.",
+            variant: "destructive"
+        });
     } finally {
-       setIsPreparingPdf(false);
+        setIsPreparingPdf(false);
     }
   };
 
