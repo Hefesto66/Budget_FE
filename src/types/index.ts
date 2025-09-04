@@ -35,7 +35,7 @@ export const solarCalculationSchema = z.object({
   quantidade_inversores: z.number().int().positive().default(1),
   garantia_inversor_anos: z.number().int().positive().default(7),
   eficiencia_inversor_percent: z.number().min(80).max(99, { message: "Eficiência do inversor deve estar entre 80% e 99%." }).default(97),
-  custo_inversor_reais: z_number().positive({ message: "O custo do inversor deve ser maior que zero." }),
+  custo_inversor_reais: z.number().positive({ message: "O custo do inversor deve ser maior que zero." }),
 
   // Custos e Perdas
   fator_perdas_percent: z.number().min(0).max(100, { message: "Fator de perdas deve estar entre 0% e 100%." }).default(20),
