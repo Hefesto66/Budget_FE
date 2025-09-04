@@ -1,90 +1,62 @@
-# Relatório Técnico do Aplicativo: FE Sistema Solar
+# Relatório Técnico: Desafios na Geração de PDF com Quebra de Página
 
-Este documento detalha a arquitetura, o fluxo de funcionamento, as tecnologias empregadas e a lógica de cálculo do aplicativo de orçamento para sistemas de energia solar.
+**Data:** 24/07/2024
+**Autor:** Assistente de IA - Firebase Studio
 
-## 1. Visão Geral e Objetivo
+## 1. Problema Principal: Quebra de Página Incorreta na Geração de PDF
 
-O aplicativo "FE Sistema Solar" é uma ferramenta web projetada para permitir que usuários simulem a instalação de um sistema de energia solar fotovoltaica. Seu principal objetivo é fornecer uma análise financeira e técnica detalhada, ajudando o usuário a entender a viabilidade, os custos, a economia e o tempo de retorno do investimento (payback).
+O objetivo central é gerar um documento PDF profissional e de várias páginas a partir de um conteúdo HTML dinâmico. O desafio mais crítico é controlar as quebras de página para garantir a integridade visual e a legibilidade do documento.
 
-O processo é guiado por um assistente (wizard) que coleta dados do usuário em etapas e apresenta um relatório completo e personalizado.
+O comportamento indesejado observado é que secções lógicas de conteúdo (por exemplo, um título de secção e o seu conteúdo associado, como "Seu Impacto Positivo no Planeta") são "cortadas" ao meio quando uma página termina e a seguinte começa. Isto resulta numa aparência pouco profissional e numa má experiência de leitura.
 
-## 2. Tecnologias Utilizadas
+O comportamento desejado é que o motor de geração de PDF trate estas secções como blocos "inseparáveis". Se um bloco de conteúdo não couber no espaço restante de uma página, ele deve ser movido integralmente para o topo da página seguinte.
 
-A aplicação é construída sobre uma pilha de tecnologias moderna, focada em performance, escalabilidade e uma excelente experiência de desenvolvimento e de usuário.
+## 2. Pilha de Tecnologia Utilizada
 
-- **Frontend Framework:** **Next.js 15** com App Router. Utilizado para renderização no servidor (SSR) e no cliente (CSR), otimizando a velocidade de carregamento e o SEO.
-- **Linguagem:** **TypeScript**. Garante a segurança de tipos em todo o projeto, reduzindo bugs e facilitando a manutenção.
-- **UI (Interface do Usuário):**
-    - **React 18:** Biblioteca principal para a construção da interface de usuário reativa.
-    - **ShadCN/UI:** Coleção de componentes de UI reutilizáveis, acessíveis e customizáveis, construídos sobre Radix UI e Tailwind CSS.
-    - **Tailwind CSS:** Framework CSS "utility-first" para estilização rápida e consistente.
-    - **Framer Motion:** Utilizada para as animações de transição entre as etapas do assistente, tornando a navegação mais fluida.
-- **Backend e Lógica de Servidor:**
-    - **Genkit (Firebase):** Framework de IA do Google, utilizado aqui para orquestrar as "flows" (fluxos) que rodam no servidor. Toda a lógica de cálculo pesada e a comunicação com a IA são encapsuladas em flows Genkit.
-- **Validação de Dados:**
-    - **Zod:** Biblioteca para declaração e validação de schemas. É usada para garantir que todos os dados enviados do formulário para o servidor estejam corretos e seguros.
+- **Biblioteca de Geração de PDF:** `jspdf`
+- **Biblioteca de Renderização de HTML para Canvas:** `html2canvas`
+- **Framework:** Next.js (React)
 
-## 3. Lógica de Funcionamento e Processos
+O fluxo de trabalho fundamental consiste em utilizar o `html2canvas` para capturar o conteúdo HTML da proposta e renderizá-lo para um elemento `<canvas>`. Em seguida, o `jspdf` pega a imagem desse canvas e insere-a num documento PDF.
 
-O fluxo principal do usuário é simples e linear, dividido em três partes principais:
+## 3. Histórico de Soluções Tentadas e Resultados
 
-1.  **Página Inicial (`/`):** Atua como uma landing page. Apresenta os benefícios da energia solar e incentiva o usuário a iniciar um orçamento gratuito.
-2.  **Página de Orçamento (`/orcamento`):** É o coração da aplicação. Contém o assistente de múltiplos passos.
-    - **Passo 1: Coleta de Dados:** O usuário preenche um formulário detalhado com informações sobre seu consumo de energia, custos atuais, características técnicas da sua instalação e os equipamentos desejados (módulos e inversor).
-    - **Passo 2: Apresentação dos Resultados:** Após o envio, os dados são processados no servidor e os resultados são devolvidos e exibidos em uma página de relatório.
-3.  **Refinamento com IA:** Na página de resultados, o usuário tem a opção de solicitar uma "análise refinada por IA". Isso aciona um segundo fluxo no servidor que analisa os resultados iniciais e sugere otimizações, justificando as sugestões.
+Foram implementadas várias estratégias para resolver o problema da quebra de página. Abaixo está um resumo detalhado de cada abordagem e a razão pela qual não foi bem-sucedida.
 
-## 4. Análise de Orçamento Solar (Funcionalidade Principal)
+### Tentativa 1: Utilização de Propriedades CSS de Impressão (`page-break-`)
 
-Esta seção detalha como a funcionalidade de cálculo de orçamento é implementada.
+- **Estratégia:** A abordagem mais padrão e semanticamente correta para controlar a impressão a partir do HTML. Foram aplicadas as seguintes regras de CSS às secções que não deveriam ser quebradas:
+  - `page-break-inside: avoid !important;` para evitar quebras dentro de um elemento.
+  - `page-break-before: always !important;` para forçar que uma secção comece sempre numa nova página (por exemplo, para gráficos importantes).
 
-### 4.1. Coleta de Dados (Campos de Entrada)
+- **Razão da Falha:** Esta abordagem falhou porque o `html2canvas` não funciona como um navegador de impressão. Ele não interpreta as regras de `@media print` nem as propriedades de `page-break-*`. Em vez disso, ele renderiza o conteúdo HTML como uma única imagem longa e contínua num elemento `<canvas>`. A lógica subsequente no `jspdf` simplesmente "fatiava" esta imagem alta em pedaços do tamanho de uma página A4, ignorando completamente as diretivas de CSS e resultando nas quebras de página incorretas.
 
-Os dados são coletados no componente `Step1DataInput.tsx` e validados pelo schema Zod (`solarCalculationSchema`) em `src/types/index.ts`. Os campos obrigatórios para o cálculo são:
+### Tentativa 2: Refatoração da Lógica para Cálculo Programático de Páginas
 
-**Informações de Consumo e Fatura:**
-- `consumo_mensal_kwh`: Consumo médio mensal de energia (em kWh).
-- `valor_medio_fatura_reais`: Custo médio da conta de luz (em R$).
-- `cip_iluminacao_publica_reais`: Taxa de iluminação pública (CIP/COSIP), não compensável.
-- `adicional_bandeira_reais_kwh`: Custo extra da bandeira tarifária por kWh (opcional).
+- **Estratégia:** Reconhecendo que o CSS não funcionaria, a abordagem foi alterada para uma solução programática. O plano era:
+  1. Dar a cada secção inseparável uma classe CSS específica (ex: `pdf-section`).
+  2. No `handleExportPdf`, iterar sobre cada elemento com a classe `pdf-section`.
+  3. Medir a altura de cada secção.
+  4. Manter um registo do espaço vertical restante na página atual do PDF.
+  5. Antes de desenhar uma secção, verificar se a sua altura era maior do que o espaço restante. Se fosse, adicionar uma nova página (`pdf.addPage()`) antes de desenhar a secção.
 
-**Detalhes Técnicos:**
-- `concessionaria`: Nome da empresa de energia (limitado a "Equatorial GO" e "CHESP").
-- `rede_fases`: Tipo de rede elétrica ("mono", "bi" ou "tri"), que define a taxa de disponibilidade.
-- `irradiacao_psh_kwh_m2_dia`: Média de horas de sol pico no local.
+- **Razão da Falha:** Esta abordagem, embora teoricamente sólida, foi impedida por um erro persistente originado no `html2canvas`: **`Unable to find element in cloned iframe`**. Este erro ocorre frequentemente quando a biblioteca tenta renderizar conteúdo complexo, como:
+    - Imagens externas que ainda não foram totalmente carregadas.
+    - Fontes personalizadas.
+    - Componentes baseados em SVG com estruturas DOM complexas (como os gráficos da biblioteca `recharts`).
+  
+  O erro impedia que o canvas fosse gerado corretamente, pelo que a lógica de medição e quebra de página nunca chegava a ser executada.
 
-**Equipamentos e Custos (Sistema):**
-- `potencia_modulo_wp`: Potência de cada painel solar (em Wp).
-- `preco_modulo_reais`: Custo unitário de cada painel.
-- `quantidade_modulos`: Quantidade de painéis (opcional; se vazio, é calculado automaticamente).
-- `eficiencia_inversor_percent`: Eficiência do inversor (em %).
-- `custo_inversor_reais`: Custo do inversor.
-- `fator_perdas_percent`: Perdas totais do sistema (sujeira, aquecimento, etc.).
-- `custo_fixo_instalacao_reais`: Custos de mão de obra, projeto, etc.
-- `custo_om_anual_reais`: Custo de operação e manutenção anual (opcional).
+### Tentativa 3: Resolução do Erro `html2canvas`
 
-### 4.2. Lógica de Cálculo de Precificação
+- **Estratégia:** O foco mudou para a resolução do erro `Unable to find element...`. As tentativas incluíram:
+  1. **Aguardar pelo Carregamento de Imagens:** Adicionar lógica para garantir que todas as imagens (`<img>`) no documento tivessem concluído o carregamento antes de chamar o `html2canvas`.
+  2. **Remoção de Conteúdo Complexo:** Isolar o problema removendo o componente do gráfico `SavingsChart` do documento durante a renderização para o PDF.
+  
+- **Razão da Falha:** Apesar destas medidas, o erro persistiu. Isto indica que a causa raiz é mais profunda do que simplesmente imagens ou gráficos, podendo estar relacionada com a forma como o Next.js e o React hidratam e estruturam o DOM, ou com outros componentes da UI (ShadCN) que o `html2canvas` tem dificuldade em clonar para o seu `iframe` de renderização.
 
-Toda a lógica de cálculo é executada de forma segura no servidor, dentro do flow Genkit em `src/ai/flows/calculate-solar.ts`. O processo segue a seguinte ordem:
+## 4. Conclusão e Próximos Passos Sugeridos
 
-1.  **Cálculo da Tarifa Efetiva:** A tarifa de energia (R$/kWh) é derivada da divisão entre o valor da fatura e o consumo mensal. A isso, soma-se o custo da bandeira para obter a tarifa final.
-2.  **Custo da Fatura Atual:** O custo da fatura "antes" do sistema solar é simplesmente o valor médio da fatura informado pelo usuário.
-3.  **Dimensionamento do Sistema:**
-    - **Eficiência Efetiva:** Calcula-se a eficiência real do sistema, descontando as perdas da eficiência do inversor. `(eficiencia_inversor / 100) * (1 - perdas / 100)`.
-    - **Geração por Módulo:** Estima-se a energia (kWh) que um único painel gera por mês. `(potencia_modulo_wp / 1000) * irradiacao * 30 * eficiencia_efetiva`.
-    - **Quantidade de Módulos:** Se não for informada, é calculada dividindo o consumo mensal pela geração de um módulo, com o resultado sempre arredondado para cima.
-4.  **Cálculo da Geração Total:** A geração média mensal do sistema é a geração por módulo multiplicada pela quantidade de módulos.
-5.  **Cálculo da Energia Compensada:**
-    - **Custo de Disponibilidade:** Define-se a energia mínima não compensável com base na rede: 30 kWh (mono), 50 kWh (bi) ou 100 kWh (tri).
-    - **Energia Compensável:** A energia que o sistema pode de fato compensar é o consumo mensal menos a taxa de disponibilidade. O valor final compensado é o menor entre a geração total do sistema e essa parcela compensável.
-6.  **Cálculo da Nova Fatura ("Depois" do Sistema):**
-    - **Consumo Não Compensado:** É o consumo total menos a energia efetivamente compensada.
-    - **Custo da Energia Pós-Solar:** É o consumo não compensado multiplicado pela tarifa final.
-    - **Custo Mínimo:** A lógica garante que o valor cobrado pela energia nunca seja menor que o custo de disponibilidade (`custo_disponibilidade_kwh * tarifa_final_reais_kwh`).
-    - **Valor Final da Fatura:** O valor final é o **maior** valor entre o custo da energia pós-solar e o custo mínimo, somado à taxa de iluminação pública (CIP).
-7.  **Análise Financeira:**
-    - **Economia Mensal:** `Fatura Antes - Fatura Depois`.
-    - **Custo Total do Sistema:** Soma dos custos dos módulos, do inversor e da instalação.
-    - **Payback Simples (Anos):** `Custo Total do Sistema / Economia Anual`.
+A abordagem baseada em CSS falha devido à natureza do `html2canvas`. A abordagem programática, que é a solução correta em teoria, está a ser bloqueada por um problema de renderização fundamental dentro do próprio `html2canvas` no contexto desta aplicação específica.
 
-Este processo garante uma simulação robusta, segura e alinhada às regras do setor elétrico brasileiro para geração distribuída.
+Sugere-se que a próxima tentativa se concentre em **substituir `html2canvas`** por uma biblioteca de geração de PDF mais direta e poderosa que possa interpretar HTML e CSS, incluindo regras de impressão. Uma excelente alternativa é a biblioteca **`Puppeteer`**, que utiliza uma instância headless do Chrome para gerar o PDF, garantindo uma fidelidade de 100% com o que é renderizado no navegador, incluindo a aplicação correta das propriedades `page-break-*`. No entanto, o Puppeteer precisa de ser executado num ambiente de backend (Node.js), pelo que exigiria a criação de uma API route ou de uma server action no Next.js para lidar com a geração do PDF.
