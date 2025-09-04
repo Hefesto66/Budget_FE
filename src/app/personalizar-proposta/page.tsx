@@ -35,11 +35,12 @@ const defaultSettings: CustomizationSettings = {
     showFinancialSummary: true,
     showSystemPerformance: true,
     showTerms: true,
+    // advanced options removed
     showGenerationChart: false,
-    showSavingsChart: true,
-    showEnvironmentalImpact: true,
+    showSavingsChart: false,
+    showEnvironmentalImpact: false,
     showEquipmentDetails: false,
-    showTimeline: true,
+    showTimeline: false,
   },
 };
 
@@ -228,54 +229,6 @@ export default function PersonalizarPropostaPage() {
                     />
                 </CardContent>
               </Card>
-
-              {/* Módulos Avançados */}
-              <Card className="mt-6">
-                 <CardHeader>
-                  <CardTitle>Módulos Avançados</CardTitle>
-                  <CardDescription>
-                    Adicione informações detalhadas e gráficos para aumentar o valor da sua proposta.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <ContentSwitch
-                        id="showGenerationChart"
-                        label="Exibir Gráfico de Geração Anual"
-                        description="Mostra um gráfico de barras com a estimativa de energia (kWh) gerada a cada mês do ano."
-                        checked={settings.content.showGenerationChart}
-                        onCheckedChange={(val) => handleContentToggle('showGenerationChart', val)}
-                    />
-                    <ContentSwitch
-                        id="showSavingsChart"
-                        label="Exibir Gráfico de Economia Acumulada"
-                        description="Mostra um gráfico projetando a economia total acumulada ao longo de 25 anos."
-                        checked={settings.content.showSavingsChart}
-                        onCheckedChange={(val) => handleContentToggle('showSavingsChart', val)}
-                    />
-                    <ContentSwitch
-                        id="showEnvironmentalImpact"
-                        label="Exibir Análise de Impacto Ambiental"
-                        description="Adiciona uma seção que traduz a geração de energia em benefícios para o meio ambiente."
-                        checked={settings.content.showEnvironmentalImpact}
-                        onCheckedChange={(val) => handleContentToggle('showEnvironmentalImpact', val)}
-                    />
-                    <ContentSwitch
-                        id="showEquipmentDetails"
-                        label="Exibir Detalhes Adicionais dos Equipamentos"
-                        description="Mostra marca e foto do módulo e do inversor na tabela de investimento."
-                        checked={settings.content.showEquipmentDetails}
-                        onCheckedChange={(val) => handleContentToggle('showEquipmentDetails', val)}
-                    />
-                    <ContentSwitch
-                        id="showTimeline"
-                        label="Exibir Linha do Tempo do Projeto"
-                        description="Adiciona uma linha do tempo visual mostrando o que acontece após a aprovação da proposta."
-                        checked={settings.content.showTimeline}
-                        onCheckedChange={(val) => handleContentToggle('showTimeline', val)}
-                    />
-                </CardContent>
-              </Card>
-
             </TabsContent>
           </Tabs>
 

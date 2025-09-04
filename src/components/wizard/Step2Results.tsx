@@ -1,11 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import ReactDOMServer from 'react-dom/server';
-import React from 'react';
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings, SolarCalculationInput } from "@/types";
 import { ResultCard } from "@/components/ResultCard";
-import { SavingsChart } from "@/components/SavingsChart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -20,26 +17,10 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { getRefinedSuggestions } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
-import { Zap, Calendar, DollarSign, BarChart, ArrowLeft, Sparkles, Download, Share2, Wallet, TrendingUp, FilePenLine, HelpCircle, Printer } from "lucide-react";
+import { Zap, Calendar, DollarSign, BarChart, ArrowLeft, Sparkles, Wallet, TrendingUp } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
 import { formatCurrency, formatNumber } from "@/lib/utils";
-import type { CompanyFormData } from "@/app/minha-empresa/page";
-import { addDays, format } from "date-fns";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { Calendar as CalendarIcon } from "lucide-react";
-import { Calendar as CalendarComponent } from "../ui/calendar";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import { cn } from "@/lib/utils";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { ProposalDocument } from "../proposal/ProposalDocument";
-import lzString from "lz-string";
 
 
 interface Step2ResultsProps {
@@ -49,108 +30,16 @@ interface Step2ResultsProps {
   clientData: ClientFormData | null;
 }
 
-const COMPANY_DATA_KEY = "companyData";
-const CUSTOMIZATION_KEY = "proposalCustomization";
-
-const defaultCustomization: CustomizationSettings = {
-  colors: {
-    primary: "#10B981",
-    textOnPrimary: "#FFFFFF",
-  },
-  content: {
-    showInvestmentTable: true,
-    showFinancialSummary: true,
-    showSystemPerformance: true,
-    showTerms: true,
-    showGenerationChart: false,
-    showSavingsChart: true,
-    showEnvironmentalImpact: true,
-    showEquipmentDetails: false,
-    showTimeline: true,
-  },
-};
 
 export function Step2Results({ results, onBack, formData, clientData }: Step2ResultsProps) {
   const { toast } = useToast();
   
-  const [isPreparingPdf, setIsPreparingPdf] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
-  const [companyData, setCompanyData] = useState<CompanyFormData | null>(null);
-  const [customization, setCustomization] = useState<CustomizationSettings>(defaultCustomization);
-
-  const [proposalId, setProposalId] = useState("FE-S001");
-  const [proposalDate, setProposalDate] = useState<Date>(new Date());
-  const [proposalValidity, setProposalValidity] = useState<Date>(addDays(new Date(), 15));
-
-  useEffect(() => {
-    try {
-      const savedCompanyData = localStorage.getItem(COMPANY_DATA_KEY);
-      if (savedCompanyData) {
-        setCompanyData(JSON.parse(savedCompanyData));
-      }
-      const savedCustomization = localStorage.getItem(CUSTOMIZATION_KEY);
-      if (savedCustomization) {
-        const parsed = JSON.parse(savedCustomization);
-         setCustomization(prev => ({
-          ...prev,
-          ...parsed,
-          colors: { ...prev.colors, ...parsed.colors },
-          content: { ...prev.content, ...parsed.content },
-        }));
-      }
-    } catch (error) {
-      console.error("Failed to load data from localStorage", error);
-    }
-  }, []);
-
-  useEffect(() => {
-    setProposalValidity(addDays(proposalDate, 15));
-  }, [proposalDate]);
 
   const paybackYears = results.payback_simples_anos;
   const paybackText = isFinite(paybackYears) ? `${formatNumber(paybackYears, 1)} anos` : "N/A";
 
-  const handleExportPdf = () => {
-    if (!companyData) {
-        toast({
-            title: "Dados da Empresa Ausentes",
-            description: "Por favor, cadastre os dados da sua empresa na página 'Minha Empresa' antes de exportar.",
-            variant: "destructive",
-        });
-        return;
-    }
-
-    const dataToPass = {
-        results,
-        formData,
-        companyData,
-        clientData,
-        customization,
-        proposalId,
-        // Dates need to be converted to ISO strings to be safely passed in JSON
-        proposalDate: proposalDate.toISOString(),
-        proposalValidity: proposalValidity.toISOString(),
-    };
-
-    // Compress the data to make the URL smaller and safer
-    const compressedData = lzString.compressToEncodedURIComponent(JSON.stringify(dataToPass));
-    
-    const url = `/orcamento/imprimir?data=${compressedData}`;
-    window.open(url, '_blank');
-  };
-
-
-  const handleShare = (platform: 'whatsapp' | 'email') => {
-    const text = `Confira meu orçamento de energia solar da FE Sistema Solar!\n\nEconomia Anual Estimada: ${formatCurrency(results.economia_anual_reais)}\nRetorno do Investimento: ${paybackText}\n\nFaça sua simulação também!`;
-    const encodedText = encodeURIComponent(text);
-
-    if (platform === 'whatsapp') {
-      window.open(`https://api.whatsapp.com/send?text=${encodedText}`, '_blank');
-    } else {
-      window.open(`mailto:?subject=Orçamento Energia Solar&body=${encodedText}`, '_blank');
-    }
-  };
 
   const handleAiRefinement = async () => {
     setIsRefining(true);
@@ -259,85 +148,6 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
           </CardContent>
         </Card>
         
-        <Card>
-            <CardHeader>
-                <CardTitle className="font-headline text-2xl flex items-center gap-2">
-                    <FilePenLine />
-                    Detalhes da Proposta
-                </CardTitle>
-                <CardDescription>
-                    Revise e ajuste as informações de identificação e validade para este orçamento.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                <div className="space-y-2">
-                    <Label htmlFor="proposalId">ID da Proposta</Label>
-                    <Input id="proposalId" value={proposalId} onChange={(e) => setProposalId(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                    <Label>Data da Proposta</Label>
-                    <Popover>
-                        <PopoverTrigger asChild>
-                        <Button
-                            variant={"outline"}
-                            className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !proposalDate && "text-muted-foreground"
-                            )}
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {proposalDate ? format(proposalDate, "dd/MM/yyyy") : <span>Escolha uma data</span>}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                        <CalendarComponent
-                            mode="single"
-                            selected={proposalDate}
-                            onSelect={(date) => date && setProposalDate(date)}
-                            initialFocus
-                        />
-                        </PopoverContent>
-                    </Popover>
-                </div>
-                 <div className="space-y-2">
-                    <Label>Validade</Label>
-                    <Popover>
-                        <PopoverTrigger asChild>
-                        <Button
-                            variant={"outline"}
-                            className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !proposalValidity && "text-muted-foreground"
-                            )}
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {proposalValidity ? format(proposalValidity, "dd/MM/yyyy") : <span>Escolha uma data</span>}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                        <CalendarComponent
-                            mode="single"
-                            selected={proposalValidity}
-                            onSelect={(date) => date && setProposalValidity(date)}
-                            initialFocus
-                        />
-                        </PopoverContent>
-                    </Popover>
-                </div>
-            </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-headline text-2xl">Projeção de Economia (25 anos)</CardTitle>
-             <CardDescription>
-              Veja como sua economia acumulada cresce ao longo da vida útil do sistema solar.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <SavingsChart annualSavings={results.economia_anual_reais} />
-          </CardContent>
-        </Card>
       </div>
 
       <div className="mt-8 flex flex-col-reverse gap-4 sm:flex-row sm:justify-between">
@@ -350,24 +160,6 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
                 <Sparkles className={`mr-2 h-4 w-4 ${isRefining ? 'animate-spin' : ''}`} />
                 {isRefining ? "Analisando..." : "Refinar com IA"}
             </Button>
-            <div className="flex items-center gap-2">
-                <Button type="button" onClick={() => handleShare('whatsapp')} variant="outline"><Share2 className="mr-2 h-4 w-4" /> Compartilhar</Button>
-                <div className="flex items-center">
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button type="button" onClick={handleExportPdf} disabled={isPreparingPdf || !companyData}>
-                                    <Printer className={`mr-2 h-4 w-4 ${isPreparingPdf ? 'animate-pulse' : ''}`} />
-                                    {isPreparingPdf ? "Preparando..." : "Imprimir / Exportar PDF"}
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>Abre a página de impressão para gerar um PDF ou imprimir.</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                </div>
-            </div>
           </div>
       </div>
       
@@ -450,5 +242,3 @@ const SuggestionSkeleton = () => (
         </div>
     </div>
 );
-
-    
