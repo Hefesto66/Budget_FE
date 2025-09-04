@@ -1,9 +1,8 @@
 
 import type { SolarCalculationInput, SolarCalculationResult, ClientFormData, CustomizationSettings } from '@/types';
 import type { CompanyFormData } from '@/app/minha-empresa/page';
-import { formatCurrency, formatNumber } from '@/lib/utils';
+import { formatCurrency, formatNumber, formatDate } from '@/lib/utils';
 import { Leaf, Car, Globe, FileSignature, Wrench, Zap, CheckCircle, Package, Settings, PenLine, Power } from 'lucide-react';
-import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import React from 'react';
 
@@ -77,11 +76,11 @@ export function ProposalDocument({
                     </div>
                     <div style={{ flex: 1, backgroundColor: '#F9F9F9', padding: '12px', borderRadius: '4px', border: '1px solid #EEE' }}>
                         <p style={{ fontSize: '9pt', color: '#555', margin: 0, marginBottom: '4px' }}>Data da Proposta</p>
-                        <p style={{ fontWeight: 'bold', margin: 0 }}>{format(proposalDate, 'dd/MM/yyyy')}</p>
+                        <p style={{ fontWeight: 'bold', margin: 0 }}>{formatDate(proposalDate)}</p>
                     </div>
                     <div style={{ flex: 1, backgroundColor: '#F9F9F9', padding: '12px', borderRadius: '4px', border: '1px solid #EEE' }}>
                         <p style={{ fontSize: '9pt', color: '#555', margin: 0, marginBottom: '4px' }}>Validade</p>
-                        <p style={{ fontWeight: 'bold', margin: 0 }}>{format(proposalValidity, 'dd/MM/yyyy')}</p>
+                        <p style={{ fontWeight: 'bold', margin: 0 }}>{formatDate(proposalValidity)}</p>
                     </div>
                 </div>
             </div>
@@ -192,5 +191,7 @@ const InfoRow = ({ label, value, highlightColor }: { label: string; value: strin
         <span style={{ color: highlightColor || 'inherit' }}>{value}</span>
     </div>
 )
+
+    
 
     

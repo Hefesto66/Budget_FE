@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import ReactDOMServer from 'react-dom/server';
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings, SolarCalculationInput } from "@/types";
@@ -19,13 +20,21 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { getRefinedSuggestions } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, BarChart, Zap, Calendar, FileDown, Loader2 } from "lucide-react";
+import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, BarChart, Zap, Calendar, FileDown, Loader2, Info, FileSignature } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { SavingsChart } from "@/components/SavingsChart";
 import type { CompanyFormData } from "@/app/minha-empresa/page";
 import { ProposalDocument } from "../proposal/ProposalDocument";
+import { Label } from "../ui/label";
+import { Input } from "../ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { cn } from "@/lib/utils";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { format, addDays } from "date-fns";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+
 
 const COMPANY_DATA_KEY = "companyData";
 const CUSTOMIZATION_KEY = "proposalCustomization";
@@ -43,6 +52,16 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
   const [isRefining, setIsRefining] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
+
+  // State for the editable document details
+  const [proposalId, setProposalId] = useState(`PROP-${Date.now()}`);
+  const [proposalDate, setProposalDate] = useState<Date>(new Date());
+  const [proposalValidity, setProposalValidity] = useState<Date>(addDays(new Date(), 20));
+
+  useEffect(() => {
+    // Automatically update validity date when proposal date changes
+    setProposalValidity(addDays(proposalDate, 20));
+  }, [proposalDate]);
 
   const paybackYears = results.payback_simples_anos;
   const paybackText = isFinite(paybackYears) ? `${formatNumber(paybackYears, 1)} anos` : "N/A";
@@ -95,13 +114,11 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
   
   const handleExportPdf = async () => {
     setIsExporting(true);
-    const ReactDOMServer = (await import('react-dom/server')).default;
     
     try {
       const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
       const customizationData = localStorage.getItem(CUSTOMIZATION_KEY);
-      const customization: CustomizationSettings | null = customizationData ? JSON.parse(customizationData) : null;
-
+      const customization: CustomizationSettings | null = customizationData ? JSON.parse(customizationData) : defaultCustomization;
 
       if (!companyData) {
         toast({
@@ -113,10 +130,6 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
         return;
       }
       
-      const now = new Date();
-      const validityDate = new Date();
-      validityDate.setDate(now.getDate() + 15);
-
       const docToRender = (
         <ProposalDocument
           results={results}
@@ -124,9 +137,9 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
           companyData={companyData}
           clientData={clientData}
           customization={customization!}
-          proposalId={`PROP-${Date.now()}`}
-          proposalDate={now}
-          proposalValidity={validityDate}
+          proposalId={proposalId}
+          proposalDate={proposalDate}
+          proposalValidity={proposalValidity}
         />
       );
 
@@ -139,7 +152,6 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
       container.innerHTML = htmlString;
       document.body.appendChild(container);
       
-      // We need to temporarily load images
       const images = Array.from(container.querySelectorAll('img'));
       const imagePromises = images.map(img => new Promise(resolve => {
         if (img.complete) {
@@ -152,7 +164,6 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
 
       await Promise.all(imagePromises);
 
-
       const canvas = await html2canvas(container, {
           scale: 2, 
           useCORS: true,
@@ -162,14 +173,11 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
       document.body.removeChild(container);
       
       const imgData = canvas.toDataURL('image/png');
-
-      const pdf = new jsPDF({
-        orientation: 'p',
-        unit: 'px',
-        format: [canvas.width, canvas.height]
-      });
-
-      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save('proposta-solar.pdf');
 
     } catch (error) {
@@ -249,6 +257,75 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
             </CardHeader>
             <CardContent>
                 <SavingsChart annualSavings={results.economia_anual_reais} />
+            </CardContent>
+        </Card>
+
+        {/* Document Details Card */}
+        <Card>
+            <CardHeader>
+                <CardTitle className="font-headline text-xl flex items-center gap-2">
+                    <FileSignature />
+                    Detalhes do Documento
+                </CardTitle>
+                <CardDescription>
+                    Revise as informações de identificação e validade da proposta antes de a gerar.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                    <Label htmlFor="proposalId">ID da Proposta</Label>
+                    <Input id="proposalId" value={proposalId} onChange={(e) => setProposalId(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                    <Label>Data do Documento</Label>
+                     <Popover>
+                        <PopoverTrigger asChild>
+                        <Button
+                            variant={"outline"}
+                            className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !proposalDate && "text-muted-foreground"
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {proposalDate ? format(proposalDate, "PPP") : <span>Selecione uma data</span>}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                        <CalendarComponent
+                            mode="single"
+                            selected={proposalDate}
+                            onSelect={(date) => date && setProposalDate(date)}
+                            initialFocus
+                        />
+                        </PopoverContent>
+                    </Popover>
+                </div>
+                <div className="space-y-2">
+                    <Label>Data de Vencimento</Label>
+                     <Popover>
+                        <PopoverTrigger asChild>
+                        <Button
+                            variant={"outline"}
+                            className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !proposalValidity && "text-muted-foreground"
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {proposalValidity ? format(proposalValidity, "PPP") : <span>Selecione uma data</span>}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                        <CalendarComponent
+                            mode="single"
+                            selected={proposalValidity}
+                            onSelect={(date) => date && setProposalValidity(date)}
+                            initialFocus
+                        />
+                        </PopoverContent>
+                    </Popover>
+                </div>
             </CardContent>
         </Card>
 
@@ -349,5 +426,25 @@ const SuggestionSkeleton = () => (
         </div>
     </div>
 );
+
+
+const defaultCustomization: CustomizationSettings = {
+  colors: {
+    primary: "#10B981",
+    textOnPrimary: "#FFFFFF",
+  },
+  content: {
+    showInvestmentTable: true,
+    showFinancialSummary: true,
+    showSystemPerformance: true,
+    showTerms: true,
+    showGenerationChart: false,
+    showSavingsChart: true,
+    showEnvironmentalImpact: false,
+    showEquipmentDetails: false,
+    showTimeline: false,
+  },
+};
+    
 
     
