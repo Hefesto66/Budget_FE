@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import ReactDOMServer from "react-dom/server";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings, SolarCalculationInput } from "@/types";
 import { ResultCard } from "@/components/ResultCard";
 import { Button } from "@/components/ui/button";
@@ -17,13 +20,13 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { getRefinedSuggestions } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, BarChart, Zap, Calendar, FileDown } from "lucide-react";
+import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, BarChart, Zap, Calendar, FileDown, Loader2 } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { SavingsChart } from "@/components/SavingsChart";
-import LZString from 'lz-string';
 import type { CompanyFormData } from "@/app/minha-empresa/page";
+import { ProposalDocument } from "../proposal/ProposalDocument";
 
 const COMPANY_DATA_KEY = "companyData";
 const CUSTOMIZATION_KEY = "proposalCustomization";
@@ -39,6 +42,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
   const { toast } = useToast();
   
   const [isRefining, setIsRefining] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
 
   const paybackYears = results.payback_simples_anos;
@@ -90,7 +94,8 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
     setIsRefining(false);
   };
   
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
+    setIsExporting(true);
     try {
       const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
       const customization: CustomizationSettings | null = JSON.parse(localStorage.getItem(CUSTOMIZATION_KEY) || 'null');
@@ -101,54 +106,64 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
           description: "Por favor, configure os dados da sua empresa na página 'Minha Empresa' antes de exportar.",
           variant: "destructive",
         });
+        setIsExporting(false);
         return;
       }
       
       const now = new Date();
       const validityDate = new Date();
-      validityDate.setDate(now.getDate() + 15); // Proposal valid for 15 days
+      validityDate.setDate(now.getDate() + 15);
 
-      // Prepare only the necessary data to keep the URL small
-      const dataToPrint = {
-        results,
-        formData: { // Send only what ProposalDocument needs
-            fabricante_modulo: formData.fabricante_modulo,
-            potencia_modulo_wp: formData.potencia_modulo_wp,
-            garantia_defeito_modulo_anos: formData.garantia_defeito_modulo_anos,
-            garantia_geracao_modulo_anos: formData.garantia_geracao_modulo_anos,
-            preco_modulo_reais: formData.preco_modulo_reais,
-            fabricante_inversor: formData.fabricante_inversor,
-            modelo_inversor: formData.modelo_inversor,
-            potencia_inversor_kw: formData.potencia_inversor_kw,
-            tensao_inversor_v: formData.tensao_inversor_v,
-            garantia_inversor_anos: formData.garantia_inversor_anos,
-            quantidade_inversores: formData.quantidade_inversores,
-            custo_inversor_reais: formData.custo_inversor_reais,
-            custo_fixo_instalacao_reais: formData.custo_fixo_instalacao_reais,
-            consumo_mensal_kwh: formData.consumo_mensal_kwh,
-        },
-        companyData,
-        clientData,
-        customization,
-        proposalId: `PROP-${Date.now()}`,
-        proposalDate: now.toISOString(),
-        proposalValidity: validityDate.toISOString(),
-      };
+      const docToRender = (
+        <ProposalDocument
+          results={results}
+          formData={formData}
+          companyData={companyData}
+          clientData={clientData}
+          customization={customization!}
+          proposalId={`PROP-${Date.now()}`}
+          proposalDate={now}
+          proposalValidity={validityDate}
+        />
+      );
 
-      const jsonString = JSON.stringify(dataToPrint);
-      const compressedData = LZString.compressToEncodedURIComponent(jsonString);
+      const htmlString = ReactDOMServer.renderToString(docToRender);
+      
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.width = '800px'; 
+      container.innerHTML = htmlString;
+      document.body.appendChild(container);
 
-      const url = `/orcamento/imprimir?data=${compressedData}`;
-      window.open(url, '_blank');
+      const canvas = await html2canvas(container, {
+          scale: 2, // Aumenta a resolução para melhor qualidade
+          useCORS: true,
+          logging: false,
+      });
+
+      document.body.removeChild(container);
+      
+      const imgData = canvas.toDataURL('image/png');
+
+      const pdf = new jsPDF({
+        orientation: 'p',
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      });
+
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save('proposta-solar.pdf');
 
     } catch (error) {
-      console.error("Failed to prepare data for printing:", error);
+      console.error("Failed to export PDF:", error);
       toast({
         title: "Erro ao Exportar",
-        description: "Não foi possível preparar os dados para impressão. Verifique o console para mais detalhes.",
+        description: "Não foi possível gerar o PDF. Verifique o console para mais detalhes.",
         variant: "destructive",
       });
     }
+    setIsExporting(false);
   };
 
   return (
@@ -232,9 +247,9 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
                 <Sparkles className={`mr-2 h-4 w-4 ${isRefining ? 'animate-spin' : ''}`} />
                 {isRefining ? "Analisando..." : "Refinar com IA"}
             </Button>
-            <Button type="button" onClick={handleExportPdf}>
-                <FileDown className="mr-2 h-4 w-4" />
-                Exportar PDF
+            <Button type="button" onClick={handleExportPdf} disabled={isExporting}>
+                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                {isExporting ? "Exportando..." : "Exportar PDF"}
             </Button>
           </div>
       </div>
