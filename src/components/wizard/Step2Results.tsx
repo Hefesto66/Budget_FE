@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import ReactDOMServer from 'react-dom/server';
+import React from 'react';
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings, SolarCalculationInput } from "@/types";
 import { ResultCard } from "@/components/ResultCard";
 import { SavingsChart } from "@/components/SavingsChart";
@@ -30,13 +32,14 @@ import { Calendar as CalendarComponent } from "../ui/calendar";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { cn } from "@/lib/utils";
-import React from 'react';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@/components/ui/tooltip";
+import { ProposalDocument } from "../proposal/ProposalDocument";
+
 
 interface Step2ResultsProps {
   results: SolarCalculationResult;
@@ -75,7 +78,6 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
   const [companyData, setCompanyData] = useState<CompanyFormData | null>(null);
   const [customization, setCustomization] = useState<CustomizationSettings>(defaultCustomization);
 
-  // State for new editable proposal details
   const [proposalId, setProposalId] = useState("FE-S001");
   const [proposalDate, setProposalDate] = useState<Date>(new Date());
   const [proposalValidity, setProposalValidity] = useState<Date>(addDays(new Date(), 15));
@@ -102,7 +104,6 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
   }, []);
 
   useEffect(() => {
-    // Auto-update validity when proposal date changes
     setProposalValidity(addDays(proposalDate, 15));
   }, [proposalDate]);
 
@@ -122,59 +123,90 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
       return;
     }
 
-    const dataForPdf = {
-        results,
-        formData,
-        companyData,
-        clientData,
-        customization,
-        proposalId,
-        proposalDate: proposalDate.toISOString(),
-        proposalValidity: proposalValidity.toISOString(),
-    };
-
     try {
-        const response = await fetch('/api/gerar-pdf', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(dataForPdf),
-        });
+      // 1. Render the React component to an HTML string on the client
+      const documentHtml = ReactDOMServer.renderToStaticMarkup(
+        React.createElement(ProposalDocument, {
+          results,
+          formData,
+          companyData,
+          clientData,
+          customization,
+          proposalId,
+          proposalDate,
+          proposalValidity
+        })
+      );
+      
+      const fullHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8" />
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=PT+Sans:wght@400;700&display=swap');
+            
+            body, html {
+              margin: 0;
+              padding: 0;
+              background-color: white !important;
+              color: black;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .proposal-document {
+              font-family: "PT Sans", sans-serif;
+            }
+          </style>
+        </head>
+        <body>
+          ${documentHtml}
+        </body>
+      </html>
+    `;
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`O servidor respondeu com o status ${response.status}: ${errorText}`);
-        }
+      // 2. Send this HTML string to the API route
+      const response = await fetch('/api/gerar-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ htmlContent: fullHtml, proposalId }),
+      });
 
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `proposta-${proposalId}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`O servidor respondeu com o status ${response.status}: ${errorText}`);
+      }
+
+      // 3. Receive the PDF blob and trigger download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `proposta-${proposalId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
         
-        toast({
-          title: "Download Iniciado",
-          description: "O seu PDF está a ser descarregado.",
-        });
+      toast({
+        title: "Download Iniciado",
+        description: "O seu PDF está a ser descarregado.",
+      });
 
     } catch (error) {
-        console.error("Error generating PDF:", error);
-        toast({
-            title: "Erro ao Gerar PDF",
-            description: "Não foi possível gerar o ficheiro PDF. Tente novamente mais tarde.",
-            variant: "destructive"
-        });
+      console.error("Error generating PDF:", error);
+      toast({
+        title: "Erro ao Gerar PDF",
+        description: `Não foi possível gerar o ficheiro PDF. ${error instanceof Error ? error.message : ''}`,
+        variant: "destructive"
+      });
     } finally {
-        setIsPreparingPdf(false);
+      setIsPreparingPdf(false);
     }
   };
 
-  
   const handleShare = (platform: 'whatsapp' | 'email') => {
     const text = `Confira meu orçamento de energia solar da FE Sistema Solar!\n\nEconomia Anual Estimada: ${formatCurrency(results.economia_anual_reais)}\nRetorno do Investimento: ${paybackText}\n\nFaça sua simulação também!`;
     const encodedText = encodeURIComponent(text);
@@ -193,7 +225,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
     const inputForAI = {
       consumption: formData.consumo_mensal_kwh,
       bill: results.conta_media_mensal_reais.antes,
-      location: `${formData.concessionaria}`, // Simplified location
+      location: `${formData.concessionaria}`,
       initialPanelQuantity: results.dimensionamento.quantidade_modulos,
       panelModel: `${formData.potencia_modulo_wp}W`,
       totalCostEstimate: results.financeiro.custo_sistema_reais,
@@ -237,7 +269,6 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
   return (
     <>
       <div className="space-y-8 bg-background p-4 sm:p-0">
-        {/* Financial Analysis */}
         <Card>
            <CardHeader>
             <CardTitle className="font-headline text-2xl">Sua Análise Financeira</CardTitle>
@@ -294,7 +325,6 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
           </CardContent>
         </Card>
         
-        {/* Proposal Details */}
         <Card>
             <CardHeader>
                 <CardTitle className="font-headline text-2xl flex items-center gap-2">
@@ -363,8 +393,6 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
             </CardContent>
         </Card>
 
-
-        {/* Savings Projection */}
         <Card>
           <CardHeader>
             <CardTitle className="font-headline text-2xl">Projeção de Economia (25 anos)</CardTitle>
@@ -409,7 +437,6 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
           </div>
       </div>
       
-       {/* AI Suggestion Dialog */}
       <AlertDialog open={!!refinedSuggestion} onOpenChange={() => setRefinedSuggestion(null)}>
         <AlertDialogContent className="max-w-2xl">
           <AlertDialogHeader>
@@ -489,5 +516,3 @@ const SuggestionSkeleton = () => (
         </div>
     </div>
 );
-
-    
