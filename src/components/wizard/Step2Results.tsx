@@ -47,7 +47,7 @@ interface Step2ResultsProps {
 
 const COMPANY_DATA_KEY = "companyData";
 const CUSTOMIZATION_KEY = "proposalCustomization";
-const CHANNEL_NAME = "proposal_data_channel";
+const PROPOSAL_DATA_KEY = "printProposalData"; // Key for localStorage
 
 const defaultCustomization: CustomizationSettings = {
   colors: {
@@ -122,18 +122,16 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
       setIsPreparingPdf(false);
       return;
     }
-    
-    // 1. Open the print page in a new tab. It will start listening on the channel.
-    const printWindow = window.open('/orcamento/imprimir', '_blank');
 
+    const printWindow = window.open('/orcamento/imprimir', '_blank');
     if (!printWindow) {
-        toast({
-            title: "Bloqueador de Pop-up Ativado",
-            description: "Por favor, desative o bloqueador de pop-ups para este site para gerar o PDF.",
-            variant: "destructive",
-        });
-        setIsPreparingPdf(false);
-        return;
+      toast({
+        title: "Bloqueador de Pop-up Ativado",
+        description: "Por favor, desative o bloqueador de pop-ups para gerar o PDF.",
+        variant: "destructive",
+      });
+      setIsPreparingPdf(false);
+      return;
     }
 
     const pdfData = {
@@ -147,25 +145,19 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
         proposalValidity: proposalValidity.toISOString(),
     };
 
-    // 2. Broadcast the data to the listening print page.
-    // We add a small delay to give the new tab a moment to set up its listener.
-    setTimeout(() => {
-        try {
-            const channel = new BroadcastChannel(CHANNEL_NAME);
-            channel.postMessage(pdfData);
-            channel.close(); // Close the channel after sending.
-        } catch (error) {
-             console.error("Broadcast Channel failed:", error);
-             toast({
-                title: "Erro de Comunicação",
-                description: "Não foi possível comunicar com a aba de impressão. Verifique se seu navegador é compatível.",
-                variant: "destructive",
-             });
-        } finally {
-            setIsPreparingPdf(false);
-        }
-    }, 500); // 500ms delay
-};
+    // Write to localStorage. The new tab will be listening for this event.
+    try {
+      localStorage.setItem(PROPOSAL_DATA_KEY, JSON.stringify(pdfData));
+    } catch (error) {
+      toast({
+          title: "Erro ao Salvar Dados",
+          description: "Não foi possível salvar os dados da proposta para impressão.",
+          variant: "destructive",
+      });
+    } finally {
+       setIsPreparingPdf(false);
+    }
+  };
 
   
   const handleShare = (platform: 'whatsapp' | 'email') => {
@@ -485,3 +477,5 @@ const SuggestionSkeleton = () => (
         </div>
     </div>
 );
+
+    

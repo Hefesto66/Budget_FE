@@ -18,8 +18,8 @@ interface PrintData {
   proposalValidity: string;
 }
 
-// The Broadcast Channel name must be consistent between emitter and listener.
-const CHANNEL_NAME = "proposal_data_channel";
+// The localStorage key must be consistent between emitter and listener.
+const PROPOSAL_DATA_KEY = "printProposalData";
 
 export default function PrintProposalPage() {
   const [printData, setPrintData] = useState<PrintData | null>(null);
@@ -27,36 +27,37 @@ export default function PrintProposalPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // This component acts as the "listener" for the broadcast.
-    const channel = new BroadcastChannel(CHANNEL_NAME);
-
-    // Set up the message handler.
-    channel.onmessage = (event) => {
-      if (event.data) {
-        setPrintData(event.data);
-        setIsLoading(false);
-        setError(null);
-      } else {
-        setError("Recebidos dados inválidos da página principal.");
-        setIsLoading(false);
+    // Handler for the 'storage' event
+    const handleStorageChange = (event: StorageEvent) => {
+      // We only care about changes to our specific key from another tab
+      if (event.key === PROPOSAL_DATA_KEY && event.newValue) {
+        try {
+          const data = JSON.parse(event.newValue);
+          setPrintData(data);
+          setIsLoading(false);
+          setError(null);
+        } catch (e) {
+          setError("Falha ao analisar os dados da proposta recebidos.");
+          setIsLoading(false);
+        }
       }
-      // Once the message is received and processed, we can close the channel.
-      channel.close();
     };
+
+    // Add the event listener
+    window.addEventListener('storage', handleStorageChange);
     
-    // Set a timeout to prevent waiting indefinitely.
+    // Set a timeout to prevent waiting indefinitely if the event never fires.
     const timeoutId = setTimeout(() => {
         if (isLoading) {
             setError("Não foi possível receber os dados da proposta. Por favor, tente gerar o PDF novamente.");
             setIsLoading(false);
-            channel.close();
         }
     }, 10000); // 10-second timeout
 
-    // Cleanup function to close the channel when the component unmounts.
+    // Cleanup function to remove the listener and timeout when the component unmounts.
     return () => {
       clearTimeout(timeoutId);
-      channel.close();
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, [isLoading]); // Rerun effect if isLoading changes, though it primarily runs once.
 
@@ -108,3 +109,5 @@ export default function PrintProposalPage() {
     </div>
   );
 }
+
+    
