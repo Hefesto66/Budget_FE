@@ -54,17 +54,19 @@ export async function generatePdfAction(data: PdfGenerationData) {
                     }
                     .pdf-page-container {
                         width: 210mm;
-                        height: 297mm;
-                        padding: 1in;
+                        min-height: 297mm; /* Use min-height to allow content to flow */
                         box-sizing: border-box;
                         background-color: white;
+                        display: block;
                     }
                     .pdf-section { 
                         page-break-inside: avoid !important; 
+                        break-inside: avoid !important; /* Newer property */
                         margin-bottom: 32px;
                     }
                     .pdf-page-break-before { 
                         page-break-before: always !important; 
+                        break-before: page !important; /* Newer property */
                     }
                 </style>
                  <link

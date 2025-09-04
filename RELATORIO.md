@@ -1,62 +1,68 @@
-# Relatório Técnico: Desafios na Geração de PDF com Quebra de Página
+# Relatório Técnico: Diagnóstico de Erros na Geração de PDF Server-Side
 
 **Data:** 24/07/2024
 **Autor:** Assistente de IA - Firebase Studio
 
-## 1. Problema Principal: Quebra de Página Incorreta na Geração de PDF
+## 1. Contexto e Objetivo
 
-O objetivo central é gerar um documento PDF profissional e de várias páginas a partir de um conteúdo HTML dinâmico. O desafio mais crítico é controlar as quebras de página para garantir a integridade visual e a legibilidade do documento.
+Após a falha das abordagens de geração de PDF no lado do cliente (client-side) com `html2canvas` e `jspdf`, foi adotada uma nova arquitetura para gerar os documentos no lado do servidor (server-side) usando a biblioteca `Puppeteer`.
 
-O comportamento indesejado observado é que secções lógicas de conteúdo (por exemplo, um título de secção e o seu conteúdo associado, como "Seu Impacto Positivo no Planeta") são "cortadas" ao meio quando uma página termina e a seguinte começa. Isto resulta numa aparência pouco profissional e numa má experiência de leitura.
+**O objetivo desta nova arquitetura era:**
+- Utilizar um motor de navegador real (headless browser) para garantir a fidelidade do layout.
+- Fazer com que as regras de CSS de impressão (ex: `page-break-inside: avoid`) fossem respeitadas, resolvendo o problema original de quebras de página incorretas.
 
-O comportamento desejado é que o motor de geração de PDF trate estas secções como blocos "inseparáveis". Se um bloco de conteúdo não couber no espaço restante de uma página, ele deve ser movido integralmente para o topo da página seguinte.
+Apesar de a arquitetura estar teoricamente correta, uma série de erros de build do Next.js impediu o seu funcionamento. Este relatório detalha a causa fundamental desses erros.
 
-## 2. Pilha de Tecnologia Utilizada
+## 2. O Problema Central: A Fronteira Rígida entre Cliente e Servidor no Next.js
 
-- **Biblioteca de Geração de PDF:** `jspdf`
-- **Biblioteca de Renderização de HTML para Canvas:** `html2canvas`
-- **Framework:** Next.js (React)
+O erro persistente que encontramos é:
 
-O fluxo de trabalho fundamental consiste em utilizar o `html2canvas` para capturar o conteúdo HTML da proposta e renderizá-lo para um elemento `<canvas>`. Em seguida, o `jspdf` pega a imagem desse canvas e insere-a num documento PDF.
+**`You're importing a component that imports react-dom/server. To fix it, render or return the content directly as a Server Component...`**
 
-## 3. Histórico de Soluções Tentadas e Resultados
+Este erro não é um bug, mas sim uma regra fundamental e de segurança imposta pelo Next.js. Ele pode ser traduzido da seguinte forma:
 
-Foram implementadas várias estratégias para resolver o problema da quebra de página. Abaixo está um resumo detalhado de cada abordagem e a razão pela qual não foi bem-sucedida.
+> "Você está a tentar importar código que só pode e só deve rodar no servidor (neste caso, `react-dom/server` para renderizar o HTML da proposta) para dentro de um ficheiro que, de alguma forma, está a ser incluído no pacote de código que é enviado para o navegador do cliente. Isto é proibido."
 
-### Tentativa 1: Utilização de Propriedades CSS de Impressão (`page-break-`)
+O Next.js proíbe estritamente que pacotes de servidor (como `puppeteer` ou `react-dom/server`) acabem no código do cliente por duas razões principais:
+1.  **Segurança:** Exporia a lógica do servidor.
+2.  **Tamanho e Desempenho:** Aumentaria desnecessariamente o tamanho dos ficheiros JavaScript enviados para o navegador.
 
-- **Estratégia:** A abordagem mais padrão e semanticamente correta para controlar a impressão a partir do HTML. Foram aplicadas as seguintes regras de CSS às secções que não deveriam ser quebradas:
-  - `page-break-inside: avoid !important;` para evitar quebras dentro de um elemento.
-  - `page-break-before: always !important;` para forçar que uma secção comece sempre numa nova página (por exemplo, para gráficos importantes).
+## 3. Análise das Tentativas de Correção e Porque Falharam
 
-- **Razão da Falha:** Esta abordagem falhou porque o `html2canvas` não funciona como um navegador de impressão. Ele não interpreta as regras de `@media print` nem as propriedades de `page-break-*`. Em vez disso, ele renderiza o conteúdo HTML como uma única imagem longa e contínua num elemento `<canvas>`. A lógica subsequente no `jspdf` simplesmente "fatiava" esta imagem alta em pedaços do tamanho de uma página A4, ignorando completamente as diretivas de CSS e resultando nas quebras de página incorretas.
+Nossa implementação continha uma cadeia de importações que violava esta regra. Vamos seguir o rasto:
 
-### Tentativa 2: Refatoração da Lógica para Cálculo Programático de Páginas
+1.  **O Componente "Gatilho" (Client-Side):**
+    - `src/components/wizard/Step2Results.tsx`
+    - Este é um **Componente de Cliente** (`"use client"`), pois precisa de interatividade (state, botões, etc.).
+    - Ele contém o botão "Exportar PDF" que chama a nossa função de geração de PDF.
 
-- **Estratégia:** Reconhecendo que o CSS não funcionaria, a abordagem foi alterada para uma solução programática. O plano era:
-  1. Dar a cada secção inseparável uma classe CSS específica (ex: `pdf-section`).
-  2. No `handleExportPdf`, iterar sobre cada elemento com a classe `pdf-section`.
-  3. Medir a altura de cada secção.
-  4. Manter um registo do espaço vertical restante na página atual do PDF.
-  5. Antes de desenhar uma secção, verificar se a sua altura era maior do que o espaço restante. Se fosse, adicionar uma nova página (`pdf.addPage()`) antes de desenhar a secção.
+2.  **A Função de Geração de PDF (Server-Side):**
+    - `src/app/orcamento/actions.tsx`
+    - Esta é uma **Ação de Servidor** (`"use server"`), que contém a lógica do `Puppeteer` e do `renderToStaticMarkup`.
+    - **Este é o ficheiro que importa os pacotes de servidor proibidos.**
 
-- **Razão da Falha:** Esta abordagem, embora teoricamente sólida, foi impedida por um erro persistente originado no `html2canvas`: **`Unable to find element in cloned iframe`**. Este erro ocorre frequentemente quando a biblioteca tenta renderizar conteúdo complexo, como:
-    - Imagens externas que ainda não foram totalmente carregadas.
-    - Fontes personalizadas.
-    - Componentes baseados em SVG com estruturas DOM complexas (como os gráficos da biblioteca `recharts`).
-  
-  O erro impedia que o canvas fosse gerado corretamente, pelo que a lógica de medição e quebra de página nunca chegava a ser executada.
+3.  **A Violação da Fronteira:**
+    - O erro acontecia porque o ficheiro `Step2Results.tsx` (cliente) estava a importar diretamente uma função do ficheiro `actions.tsx` (servidor).
+    - Mesmo que a função importada não fosse a `generatePdfAction`, o simples facto de o ficheiro `actions.tsx` conter uma importação de `react-dom/server` era suficiente para o Next.js bloquear o build. O sistema de build analisa todas as importações de um ficheiro, não apenas a função que está a ser usada.
 
-### Tentativa 3: Resolução do Erro `html2canvas`
+**Tentativas de Correção:**
 
-- **Estratégia:** O foco mudou para a resolução do erro `Unable to find element...`. As tentativas incluíram:
-  1. **Aguardar pelo Carregamento de Imagens:** Adicionar lógica para garantir que todas as imagens (`<img>`) no documento tivessem concluído o carregamento antes de chamar o `html2canvas`.
-  2. **Remoção de Conteúdo Complexo:** Isolar o problema removendo o componente do gráfico `SavingsChart` do documento durante a renderização para o PDF.
-  
-- **Razão da Falha:** Apesar destas medidas, o erro persistiu. Isto indica que a causa raiz é mais profunda do que simplesmente imagens ou gráficos, podendo estar relacionada com a forma como o Next.js e o React hidratam e estruturam o DOM, ou com outros componentes da UI (ShadCN) que o `html2canvas` tem dificuldade em clonar para o seu `iframe` de renderização.
+- **Tentativa 1: Renomear para `.tsx`**
+  - **Problema:** A função `generatePdfAction` usa JSX (`<ProposalDocument />`), pelo que o ficheiro precisa da extensão `.tsx`.
+  - **Resultado:** A mudança foi necessária, mas não resolveu o erro de importação.
 
-## 4. Conclusão e Próximos Passos Sugeridos
+- **Tentativa 2: Separar as Ações**
+  - **Estratégia:** Criámos dois ficheiros de ações: `actions.ts` (para funções seguras que podem ser chamadas do cliente) e `actions.tsx` (exclusivamente para `generatePdfAction`).
+  - **Razão da Falha:** Um erro de digitação ou um caminho de importação incorreto fez com que `Step2Results.tsx` continuasse a importar de `actions.tsx` em vez do novo ficheiro `actions.ts`. Isto manteve a violação da fronteira cliente-servidor.
 
-A abordagem baseada em CSS falha devido à natureza do `html2canvas`. A abordagem programática, que é a solução correta em teoria, está a ser bloqueada por um problema de renderização fundamental dentro do próprio `html2canvas` no contexto desta aplicação específica.
+## 4. Conclusão e Solução Definitiva
 
-Sugere-se que a próxima tentativa se concentre em **substituir `html2canvas`** por uma biblioteca de geração de PDF mais direta e poderosa que possa interpretar HTML e CSS, incluindo regras de impressão. Uma excelente alternativa é a biblioteca **`Puppeteer`**, que utiliza uma instância headless do Chrome para gerar o PDF, garantindo uma fidelidade de 100% com o que é renderizado no navegador, incluindo a aplicação correta das propriedades `page-break-*`. No entanto, o Puppeteer precisa de ser executado num ambiente de backend (Node.js), pelo que exigiria a criação de uma API route ou de uma server action no Next.js para lidar com a geração do PDF.
+O problema não está na lógica de geração do PDF com o Puppeteer, que continua a ser a abordagem correta. **O problema reside exclusivamente na forma como os ficheiros estão organizados e importados, violando as regras do Next.js.**
+
+**A solução definitiva e correta é garantir um isolamento absoluto:**
+
+1.  **Confirmar o Isolamento:** O ficheiro `src/app/orcamento/actions.tsx`, que contém o código do Puppeteer, **NUNCA** deve ser importado por nenhum componente de cliente (`"use client"`).
+2.  **Verificar Todas as Importações:** É necessário garantir que `Step2Results.tsx` e `Wizard.tsx` importam as suas funções (`getRefinedSuggestions`, `getCalculation`) **APENAS** do ficheiro `src/app/orcamento/actions.ts` (o ficheiro sem código de servidor).
+3.  **Chamada Correta:** O botão em `Step2Results.tsx` deve chamar `generatePdfAction` (do ficheiro `actions.tsx`) corretamente, sem que o sistema de build tente agrupar os dois. Muitas vezes, passar a função como uma propriedade ou usar a `startTransition` do React para chamá-la pode ajudar o Next.js a entender a separação.
+
+A tarefa imediata é auditar e corrigir os caminhos de importação em todo o fluxo do wizard para garantir que a fronteira entre o código que é executado no servidor e o código que é enviado para o cliente seja 100% respeitada.
