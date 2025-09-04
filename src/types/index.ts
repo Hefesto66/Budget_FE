@@ -80,5 +80,10 @@ export interface CustomizationSettings {
     showFinancialSummary: boolean;
     showSystemPerformance: boolean;
     showTerms: boolean;
+    showGenerationChart: boolean;
+    showSavingsChart: boolean;
+    showEnvironmentalImpact: boolean;
+    showEquipmentDetails: boolean;
+    showTimeline: boolean;
   };
 }
