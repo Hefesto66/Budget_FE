@@ -119,58 +119,53 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
       return;
     }
 
+    // Ensure all images are loaded before capture
+    const images = Array.from(proposalElement.getElementsByTagName("img"));
+    const promises = images.map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise<void>(resolve => {
+            img.onload = () => resolve();
+            img.onerror = () => resolve(); // Resolve even on error to not block PDF generation
+        });
+    });
+
+    await Promise.all(promises);
+
+
     try {
+      const canvas = await html2canvas(proposalElement, {
+        scale: 2, // Higher scale for better quality
+        useCORS: true,
+        logging: false,
+        allowTaint: true,
+      });
+
+      const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'pt',
         format: 'a4',
       });
-
+      
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       
-      const sections = proposalElement.querySelectorAll('.pdf-section') as NodeListOf<HTMLElement>;
-      let yOffset = 0; 
-
-      for (let i = 0; i < sections.length; i++) {
-        const section = sections[i];
-        
-        const canvas = await html2canvas(section, {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            allowTaint: true,
-            onclone: (document) => {
-                const chartElements = document.querySelectorAll('.recharts-surface');
-                chartElements.forEach((chart) => {
-                    const parent = chart.parentElement;
-                    if (parent) {
-                      chart.setAttribute('width', parent.style.width);
-                      chart.setAttribute('height', parent.style.height);
-                    }
-                });
-            }
-        });
-        
-        const imgData = canvas.toDataURL('image/png');
-        const imgProps = pdf.getImageProperties(imgData);
-        const imgWidth = pdfWidth;
-        const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
-        
-        if (section.classList.contains('pdf-page-break-before') && yOffset > 0) {
-            pdf.addPage();
-            yOffset = 0;
-        }
-
-        if (yOffset + imgHeight > pdfHeight && yOffset > 0) {
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
+      
+      const ratio = canvasWidth / pdfWidth;
+      const scaledCanvasHeight = canvasHeight / ratio;
+      
+      const totalPages = Math.ceil(scaledCanvasHeight / pdfHeight);
+      
+      for (let i = 0; i < totalPages; i++) {
+        if (i > 0) {
           pdf.addPage();
-          yOffset = 0;
         }
-
-        pdf.addImage(imgData, 'PNG', 0, yOffset, imgWidth, imgHeight);
-        yOffset += imgHeight;
+        const yPosition = -(pdfHeight * i);
+        pdf.addImage(imgData, 'PNG', 0, yPosition, pdfWidth, scaledCanvasHeight);
       }
-
+      
       pdf.save(`proposta_${proposalId}.pdf`);
 
     } catch (error) {
