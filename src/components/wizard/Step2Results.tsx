@@ -134,11 +134,15 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
             proposalValidity: proposalValidity.toISOString(),
         };
 
-        // Save the data to localStorage for the print page to access
-        localStorage.setItem("proposalPrintData", JSON.stringify(pdfData));
+        // 1. Serialize: Convert the object to a JSON string.
+        const jsonString = JSON.stringify(pdfData);
+        // 2. Encode: Base64 encode the string to make it URL-safe.
+        const encodedData = btoa(jsonString);
+        
+        // 3. Build URL and open in a new tab.
+        const url = `/orcamento/imprimir?data=${encodedData}`;
+        const printWindow = window.open(url, '_blank');
 
-        // Open the print page in a new tab
-        const printWindow = window.open('/orcamento/imprimir', '_blank');
         if (!printWindow) {
              toast({
                 title: "Bloqueador de Pop-up Ativado",
@@ -477,5 +481,7 @@ const SuggestionSkeleton = () => (
         </div>
     </div>
 );
+
+    
 
     

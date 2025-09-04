@@ -1,7 +1,8 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { ProposalDocument } from "@/components/proposal/ProposalDocument";
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings, SolarCalculationInput } from "@/types";
 import type { CompanyFormData } from "@/app/minha-empresa/page";
@@ -18,35 +19,43 @@ interface PrintData {
   proposalValidity: string;
 }
 
-export default function PrintProposalPage() {
+function PrintPageContent() {
   const [printData, setPrintData] = useState<PrintData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    try {
-      const dataString = localStorage.getItem("proposalPrintData");
-      if (dataString) {
-        const data = JSON.parse(dataString);
+    const encodedData = searchParams.get("data");
+
+    if (encodedData) {
+      try {
+        // 1. Decode the Base64 string.
+        const jsonString = atob(encodedData);
+        // 2. Parse the JSON string back into an object.
+        const data = JSON.parse(jsonString);
         setPrintData(data);
-        // Optional: remove the data from localStorage after reading it
-        // localStorage.removeItem("proposalPrintData");
+      } catch (err) {
+        console.error("Failed to parse print data from URL", err);
+        setError("Os dados no URL estão corrompidos ou são inválidos.");
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Failed to load print data from localStorage", error);
-    } finally {
+    } else {
+        setError("Dados da proposta não encontrados no URL.");
         setIsLoading(false);
     }
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
-    if (printData && !isLoading) {
+    if (printData && !isLoading && !error) {
       // Give the browser a moment to render the content before printing
       const timer = setTimeout(() => {
         window.print();
       }, 500); 
       return () => clearTimeout(timer);
     }
-  }, [printData, isLoading]);
+  }, [printData, isLoading, error]);
 
   if (isLoading) {
     return (
@@ -58,8 +67,8 @@ export default function PrintProposalPage() {
     );
   }
 
-  if (!printData) {
-    return <div className="p-8 font-sans text-center">Dados da proposta não encontrados. Por favor, gere o orçamento novamente.</div>;
+  if (error || !printData) {
+    return <div className="p-8 font-sans text-center">{error || "Dados da proposta não encontrados. Por favor, gere o orçamento novamente."}</div>;
   }
 
   return (
@@ -77,3 +86,14 @@ export default function PrintProposalPage() {
     </div>
   );
 }
+
+
+export default function PrintProposalPage() {
+    return (
+        <Suspense fallback={<div className="p-8">Carregando...</div>}>
+            <PrintPageContent />
+        </Suspense>
+    )
+}
+
+    
