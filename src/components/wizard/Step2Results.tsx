@@ -17,14 +17,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { getRefinedSuggestions } from "@/app/orcamento/actions";
-import { generatePdfAction } from "@/app/orcamento/actions.tsx";
 import { useToast } from "@/hooks/use-toast";
-import { Zap, Calendar, DollarSign, BarChart, ArrowLeft, Sparkles, Download, Share2, Wallet, TrendingUp, FilePenLine } from "lucide-react";
+import { Zap, Calendar, DollarSign, BarChart, ArrowLeft, Sparkles, Download, Share2, Wallet, TrendingUp, FilePenLine, HelpCircle } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import type { CompanyFormData } from "@/app/minha-empresa/page";
-import { ProposalDocument } from "../proposal/ProposalDocument";
 import { addDays, format } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Calendar as CalendarIcon } from "lucide-react";
@@ -33,6 +31,12 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { cn } from "@/lib/utils";
 import React from 'react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface Step2ResultsProps {
   results: SolarCalculationResult;
@@ -65,7 +69,7 @@ const defaultCustomization: CustomizationSettings = {
 export function Step2Results({ results, onBack, formData, clientData }: Step2ResultsProps) {
   const { toast } = useToast();
   
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isPreparingPdf, setIsPreparingPdf] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
   const [companyData, setCompanyData] = useState<CompanyFormData | null>(null);
@@ -106,7 +110,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
   const paybackText = isFinite(paybackYears) ? `${formatNumber(paybackYears, 1)} anos` : "N/A";
 
   const handleExportPdf = async () => {
-    setIsGeneratingPdf(true);
+    setIsPreparingPdf(true);
 
     if (!companyData) {
       toast({
@@ -114,7 +118,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
         description: "Por favor, cadastre os dados da sua empresa antes de gerar um PDF.",
         variant: "destructive",
       });
-      setIsGeneratingPdf(false);
+      setIsPreparingPdf(false);
       return;
     }
 
@@ -130,31 +134,28 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
             proposalValidity: proposalValidity.toISOString(),
         };
 
-        const response = await generatePdfAction(pdfData);
+        // Save the data to localStorage for the print page to access
+        localStorage.setItem("proposalPrintData", JSON.stringify(pdfData));
 
-        if (response.success && response.data) {
-            const link = document.createElement('a');
-            link.href = `data:application/pdf;base64,${response.data}`;
-            link.download = `proposta_${proposalId}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            toast({
-                title: "Sucesso!",
-                description: "Seu PDF foi gerado e o download foi iniciado.",
+        // Open the print page in a new tab
+        const printWindow = window.open('/orcamento/imprimir', '_blank');
+        if (!printWindow) {
+             toast({
+                title: "Bloqueador de Pop-up Ativado",
+                description: "Por favor, desative o bloqueador de pop-ups para este site para gerar o PDF.",
+                variant: "destructive",
             });
-        } else {
-            throw new Error(response.error || "A geração do PDF falhou no servidor.");
         }
+        
     } catch (error) {
-      console.error("Puppeteer PDF generation failed:", error);
+      console.error("PDF preparation failed:", error);
       toast({
-        title: "Erro ao Gerar PDF",
-        description: error instanceof Error ? error.message : "Houve um problema ao criar o documento. Tente novamente.",
+        title: "Erro ao Preparar PDF",
+        description: error instanceof Error ? error.message : "Houve um problema ao preparar o documento. Tente novamente.",
         variant: "destructive",
       });
     } finally {
-      setIsGeneratingPdf(false);
+      setIsPreparingPdf(false);
     }
 };
 
@@ -372,12 +373,26 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
                 <Sparkles className={`mr-2 h-4 w-4 ${isRefining ? 'animate-spin' : ''}`} />
                 {isRefining ? "Analisando..." : "Refinar com IA"}
             </Button>
-            <div className="flex gap-4">
+            <div className="flex items-center gap-2">
                 <Button type="button" onClick={() => handleShare('whatsapp')} variant="outline"><Share2 className="mr-2 h-4 w-4" /> Compartilhar</Button>
-                <Button type="button" onClick={handleExportPdf} disabled={isGeneratingPdf || !companyData}>
-                    <Download className={`mr-2 h-4 w-4 ${isGeneratingPdf ? 'animate-pulse' : ''}`} />
-                    {isGeneratingPdf ? "Gerando..." : "Exportar PDF"}
-                </Button>
+                <div className="flex items-center">
+                    <Button type="button" onClick={handleExportPdf} disabled={isPreparingPdf || !companyData} className="rounded-r-none">
+                        <Download className={`mr-2 h-4 w-4 ${isPreparingPdf ? 'animate-pulse' : ''}`} />
+                        {isPreparingPdf ? "Preparando..." : "Exportar PDF"}
+                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="outline" size="icon" className="rounded-l-none border-l-0">
+                                    <HelpCircle className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>Na tela de impressão, selecione "Salvar como PDF".</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
             </div>
           </div>
       </div>
@@ -462,5 +477,3 @@ const SuggestionSkeleton = () => (
         </div>
     </div>
 );
-
-    

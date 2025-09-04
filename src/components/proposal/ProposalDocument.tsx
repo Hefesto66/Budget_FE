@@ -32,8 +32,6 @@ export function ProposalDocument({
 }: ProposalDocumentProps) {
 
   const formatAddress = (address: string) => {
-    // This function will only be used on the server, so we can't use JSX directly.
-    // We'll return a string and handle line breaks with CSS.
     return address.replace(/\n/g, '<br />');
   };
   
@@ -54,7 +52,7 @@ export function ProposalDocument({
   );
   
   return (
-    <div id="proposal-content" className="bg-white text-black font-sans" style={{ fontFamily: '"PT Sans", sans-serif', fontSize: '10pt', width: '210mm', height: '297mm', padding: '1in' }}>
+    <div id="proposal-content" className="proposal-document bg-white text-black font-sans" style={{ fontFamily: '"PT Sans", sans-serif', fontSize: '10pt' }}>
       {/* Header */}
       <Section>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: '16px', borderBottom: '2px solid #EEE' }}>
@@ -230,8 +228,7 @@ export function ProposalDocument({
                 <h3 style={{ fontWeight: 'bold', fontSize: '14pt', marginBottom: '16px', borderBottom: '1px solid #EEE', paddingBottom: '4px', color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Projeção de Economia em 25 Anos</h3>
                  <p style={{ fontSize: '9pt', color: '#666', marginBottom: '16px' }}>Veja como sua economia acumulada cresce ao longo da vida útil do sistema solar, superando o investimento inicial.</p>
                 <div style={{ width: '100%', height: '22rem', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', border: '1px solid #EEE' }}>
-                   {/* This is a server component, so we can't render the interactive chart directly. */}
-                   <p style={{ color: '#AAA' }}>Gráfico de Economia Acumulada</p>
+                   <SavingsChart annualSavings={results.economia_anual_reais} />
                 </div>
             </Section>
         )}
@@ -251,8 +248,8 @@ export function ProposalDocument({
 
          {/* Footer */}
         {content.showTerms && (
-            <Section pageBreakBefore={true}>
-                <footer style={{ paddingTop: '16px', fontSize: '9pt', color: '#666', textAlign: 'center', borderTop: '2px solid #EEE', position: 'absolute', bottom: '1in', left: '1in', right: '1in' }}>
+            <Section>
+                <footer style={{ paddingTop: '16px', fontSize: '9pt', color: '#666', textAlign: 'center', borderTop: '2px solid #EEE' }}>
                     <p style={{ margin: 0 }}>Esta é uma proposta comercial. Os valores e estimativas de geração são baseados nos dados fornecidos e podem variar.</p>
                     <p style={{ margin: 0 }}>Condições de pagamento a combinar. | {companyData.name} - Todos os direitos reservados &copy; {new Date().getFullYear()}</p>
                 </footer>
@@ -283,7 +280,7 @@ const ImpactCard = ({ iconSVG, value, label }: { iconSVG: string, value: string,
 const TimelineStep = ({ iconSVG, title, description }: { iconSVG: string, title: string, description: string}) => (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
         <div style={{ flexShrink: 0, width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', backgroundColor: '#F9F9F9', color: '#555' }}>
-            <svg xmlns="http://www.w-3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: iconSVG }} />
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: iconSVG }} />
         </div>
         <div>
             <h5 style={{ fontWeight: '600', color: '#333', margin: 0 }}>{title}</h5>
