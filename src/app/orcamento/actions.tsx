@@ -1,45 +1,12 @@
 
 "use server";
 
-import {
-  suggestRefinedPanelConfig,
-  type SuggestRefinedPanelConfigInput,
-} from "@/ai/flows/suggest-refined-panel-config";
-import {
-  calculateSolar,
-} from "@/ai/flows/calculate-solar";
-import { revalidatePath } from "next/cache";
 import type { SolarCalculationInput, SolarCalculationResult, ClientFormData, CustomizationSettings } from "@/types";
 import type { CompanyFormData } from "@/app/minha-empresa/page";
 import puppeteer from 'puppeteer';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ProposalDocument } from '@/components/proposal/ProposalDocument';
 import React from 'react';
-
-export async function getRefinedSuggestions(
-  input: SuggestRefinedPanelConfigInput
-) {
-  try {
-    const suggestion = await suggestRefinedPanelConfig(input);
-    revalidatePath("/orcamento");
-    return { success: true, data: suggestion };
-  } catch (error) {
-    console.error("AI suggestion failed:", error);
-    return { success: false, error: "Falha ao obter sugestão da IA." };
-  }
-}
-
-export async function getCalculation(input: SolarCalculationInput) {
-  try {
-    const result = await calculateSolar(input);
-    return { success: true, data: result };
-  } catch (error: any) {
-    console.error("Calculation failed:", error);
-    const errorMessage =
-      error.cause?.message || "Falha ao calcular. Verifique os dados.";
-    return { success: false, error: errorMessage };
-  }
-}
 
 
 interface PdfGenerationData {
@@ -74,14 +41,41 @@ export async function generatePdfAction(data: PdfGenerationData) {
             <head>
                 <meta charset="UTF-8">
                 <style>
-                    body { font-family: "PT Sans", sans-serif; }
-                    .pdf-section { page-break-inside: avoid !important; }
-                    .pdf-page-break-before { page-break-before: always !important; }
-                     /* You might need to add more specific styles from your app's CSS here if they don't render correctly */
+                    body { 
+                        font-family: "PT Sans", sans-serif;
+                        margin: 0;
+                        padding: 0;
+                        -webkit-print-color-adjust: exact; /* Important for colors in Chrome */
+                        print-color-adjust: exact;
+                    }
+                    @page {
+                        size: A4;
+                        margin: 0;
+                    }
+                    .pdf-page-container {
+                        width: 210mm;
+                        height: 297mm;
+                        padding: 1in;
+                        box-sizing: border-box;
+                        background-color: white;
+                    }
+                    .pdf-section { 
+                        page-break-inside: avoid !important; 
+                        margin-bottom: 32px;
+                    }
+                    .pdf-page-break-before { 
+                        page-break-before: always !important; 
+                    }
                 </style>
+                 <link
+                    href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=PT+Sans:wght@400;700&display=swap"
+                    rel="stylesheet"
+                />
             </head>
             <body>
-                <div id="proposal-content-wrapper">${proposalHtml}</div>
+                <div class="pdf-page-container">
+                 ${proposalHtml}
+                </div>
             </body>
             </html>
         `;
@@ -94,9 +88,7 @@ export async function generatePdfAction(data: PdfGenerationData) {
         
         await page.setContent(fullHtml, { waitUntil: 'networkidle0' });
 
-        // Add fonts from Google Fonts
-        await page.addStyleTag({url: 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=PT+Sans:wght@400;700&display=swap'});
-        // Wait for fonts to load
+        // Wait for fonts to be ready
         await page.evaluateHandle('document.fonts.ready');
         
         const pdfBuffer = await page.pdf({

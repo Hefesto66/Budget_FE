@@ -16,7 +16,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
-import { getRefinedSuggestions, generatePdfAction } from "@/app/orcamento/actions.tsx";
+import { getRefinedSuggestions } from "@/app/orcamento/actions";
+import { generatePdfAction } from "@/app/orcamento/actions.tsx";
 import { useToast } from "@/hooks/use-toast";
 import { Zap, Calendar, DollarSign, BarChart, ArrowLeft, Sparkles, Download, Share2, Wallet, TrendingUp, FilePenLine } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
@@ -426,22 +427,6 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* This hidden div is used for PDF generation */}
-      <div className="hidden">
-          <div id="pdf-content">
-            <ProposalDocument 
-                results={results}
-                formData={formData}
-                companyData={companyData!}
-                clientData={clientData}
-                customization={customization}
-                proposalId={proposalId}
-                proposalDate={proposalDate}
-                proposalValidity={proposalValidity}
-            />
-          </div>
-      </div>
     </>
   );
 }
