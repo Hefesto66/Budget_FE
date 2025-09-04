@@ -54,7 +54,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
   const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
 
   // State for the editable document details
-  const [proposalId, setProposalId] = useState(`PROP-${Date.now()}`);
+  const [proposalId, setProposalId] = useState('FE-S001');
   const [proposalDate, setProposalDate] = useState<Date>(new Date());
   const [proposalValidity, setProposalValidity] = useState<Date>(addDays(new Date(), 20));
 
@@ -445,6 +445,8 @@ const defaultCustomization: CustomizationSettings = {
     showTimeline: false,
   },
 };
+    
+
     
 
     
