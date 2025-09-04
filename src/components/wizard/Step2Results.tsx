@@ -107,70 +107,68 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
 
   const handleExportPdf = async () => {
     setIsGeneratingPdf(true);
-    const pdfContainer = document.getElementById("pdf-container");
+    const proposalElement = document.getElementById("proposal-content");
 
-    if (!pdfContainer || !companyData) {
+    if (!proposalElement || !companyData) {
       toast({
         title: "Erro",
-        description: "Dados da empresa não encontrados. Por favor, cadastre em 'Minha Empresa'.",
+        description: "Dados da empresa não encontrados ou conteúdo da proposta ausente.",
         variant: "destructive",
       });
       setIsGeneratingPdf(false);
       return;
     }
-    
-    // Temporarily make it visible for rendering
-    pdfContainer.style.display = 'block';
-    pdfContainer.style.position = 'absolute';
-    pdfContainer.style.left = '-9999px'; // Position off-screen
-    pdfContainer.style.top = '0';
 
     try {
-      // Give charts a moment to render fully
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const canvas = await html2canvas(pdfContainer, {
-        scale: 2, // Higher scale for better quality
-        useCORS: true,
-        logging: false,
-        allowTaint: true,
-      });
-
       const pdf = new jsPDF({
         orientation: 'portrait',
-        unit: 'pt', // Use points for more consistent sizing
+        unit: 'pt',
         format: 'a4',
       });
-      
+
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       
-      const canvasWidth = canvas.width;
-      const canvasHeight = canvas.height;
-      
-      // Calculate the aspect ratio
-      const canvasAspectRatio = canvasWidth / canvasHeight;
-      const pdfAspectRatio = pdfWidth / pdfHeight;
+      // Get all sections that should be treated as unbreakable blocks
+      const sections = proposalElement.querySelectorAll('.pdf-section') as NodeListOf<HTMLElement>;
+      let yOffset = 0; // Tracks the y position on the current PDF page
 
-      // Calculate the image dimensions to fit the PDF page width
-      const imgWidth = pdfWidth;
-      const imgHeight = imgWidth / canvasAspectRatio;
+      for (let i = 0; i < sections.length; i++) {
+        const section = sections[i];
 
-      let heightLeft = imgHeight;
-      let position = 0;
-      let pageNumber = 1;
+        // Force a new page if the section has the 'pdf-page-break-before' class
+        if (section.classList.contains('pdf-page-break-before') && yOffset > 0) {
+            pdf.addPage();
+            yOffset = 0;
+        }
 
-      // Add the first page
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
+        const canvas = await html2canvas(section, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            allowTaint: true,
+            onclone: (document) => {
+                // Ensure charts are fully rendered before capture
+                const chartElements = document.querySelectorAll('.recharts-surface');
+                chartElements.forEach((chart) => {
+                    chart.setAttribute('width', chart.parentElement?.style.width || '100%');
+                    chart.setAttribute('height', chart.parentElement?.style.height || '100%');
+                });
+            }
+        });
+        
+        const imgData = canvas.toDataURL('image/png');
+        const imgWidth = pdfWidth; // Full width
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        // Check if the section fits on the current page
+        if (yOffset + imgHeight > pdfHeight) {
+          pdf.addPage();
+          yOffset = 0; // Reset y-offset for the new page
+        }
 
-      // Add new pages if content overflows
-      while (heightLeft > 0) {
-        position = -pdfHeight * pageNumber;
-        pdf.addPage();
-        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-        pageNumber++;
+        pdf.addImage(imgData, 'PNG', 0, yOffset, imgWidth, imgHeight);
+        yOffset += imgHeight; // Increment the y position for the next section
       }
 
       pdf.save(`proposta_${proposalId}.pdf`);
@@ -183,10 +181,9 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
         variant: "destructive",
       });
     } finally {
-      pdfContainer.style.display = 'none'; // Hide it again
       setIsGeneratingPdf(false);
     }
-  };
+};
   
   const handleShare = (platform: 'whatsapp' | 'email') => {
     const text = `Confira meu orçamento de energia solar da FE Sistema Solar!\n\nEconomia Anual Estimada: ${formatCurrency(results.economia_anual_reais)}\nRetorno do Investimento: ${paybackText}\n\nFaça sua simulação também!`;
@@ -412,21 +409,22 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
       </div>
 
       {/* Hidden container for PDF rendering */}
-      <div id="pdf-container" style={{ display: 'none' }}>
-        {companyData && (
-          <ProposalDocument
-            results={results}
-            formData={formData}
-            companyData={companyData}
-            clientData={clientData}
-            customization={customization}
-            proposalId={proposalId}
-            proposalDate={proposalDate}
-            proposalValidity={proposalValidity}
-          />
-        )}
+      <div className="fixed left-[-9999px] top-0 z-[-1]">
+        <div id="proposal-container" style={{ width: '8.5in' }}>
+             {companyData && (
+                <ProposalDocument
+                    results={results}
+                    formData={formData}
+                    companyData={companyData}
+                    clientData={clientData}
+                    customization={customization}
+                    proposalId={proposalId}
+                    proposalDate={proposalDate}
+                    proposalValidity={proposalValidity}
+                />
+            )}
+        </div>
       </div>
-
 
       <AlertDialog open={!!refinedSuggestion} onOpenChange={() => setRefinedSuggestion(null)}>
         <AlertDialogContent className="max-w-2xl">
@@ -507,7 +505,3 @@ const SuggestionSkeleton = () => (
         </div>
     </div>
 );
-
-    
-
-    

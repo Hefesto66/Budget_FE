@@ -6,6 +6,7 @@ import { formatCurrency, formatNumber } from '@/lib/utils';
 import { Leaf, Car, Globe, FileSignature, Wrench, Zap as ZapIcon, CheckCircle } from 'lucide-react';
 import { SavingsChart } from '../SavingsChart';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface ProposalDocumentProps {
   results: SolarCalculationResult;
@@ -48,126 +49,137 @@ export function ProposalDocument({
   const co2AvoidedKg = results.geracao.media_mensal_kwh * 12 * 0.475; // 0.475 kg CO2 per kWh
   const treesSaved = Math.round(co2AvoidedKg / 21.77); // 21.77 kg CO2 absorbed by a tree per year
 
+  const Section = ({ children, className, pageBreakBefore = false }: { children: React.ReactNode, className?: string, pageBreakBefore?: boolean }) => (
+    <div className={cn("pdf-section mb-8", className, pageBreakBefore && "pdf-page-break-before")}>
+      {children}
+    </div>
+  );
+  
   return (
-    <div id="proposal-content" className="bg-white text-black font-sans text-sm p-8" style={{ fontFamily: '"PT Sans", sans-serif', width: '8.5in' }}>
+    <div id="proposal-content" className="bg-white text-black font-sans text-sm p-8" style={{ fontFamily: '"PT Sans", sans-serif', width: '100%' }}>
       {/* Header */}
-      <header className="flex justify-between items-start pb-4 border-b-2 border-gray-200">
-        <div className="w-1/3">
-          {companyData.logo && (
-            <Image src={companyData.logo} alt="Company Logo" width={140} height={70} className="object-contain" />
-          )}
-        </div>
-        <div className="w-2/3 text-right text-xs">
-          <h1 className="text-lg font-bold uppercase" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>{companyData.name}</h1>
-          <p>{formatAddress(companyData.address)}</p>
-          <p>CNPJ: {companyData.cnpj}</p>
-          <p>Email: {companyData.email}</p>
-          <p>Telefone: {companyData.phone}</p>
-        </div>
-      </header>
+      <Section>
+        <header className="flex justify-between items-start pb-4 border-b-2 border-gray-200">
+            <div className="w-1/3">
+            {companyData.logo && (
+                <Image src={companyData.logo} alt="Company Logo" width={140} height={70} className="object-contain" />
+            )}
+            </div>
+            <div className="w-2/3 text-right text-xs">
+            <h1 className="text-lg font-bold uppercase" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>{companyData.name}</h1>
+            <p>{formatAddress(companyData.address)}</p>
+            <p>CNPJ: {companyData.cnpj}</p>
+            <p>Email: {companyData.email}</p>
+            <p>Telefone: {companyData.phone}</p>
+            </div>
+        </header>
+      </Section>
 
       <main className="py-8">
         {/* Proposal Title */}
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold uppercase" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Proposta de Sistema Fotovoltaico</h2>
-          <p className="text-gray-500">Documento gerado em: {format(new Date(), 'dd/MM/yyyy')}</p>
-        </div>
+        <Section>
+            <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold uppercase" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Proposta de Sistema Fotovoltaico</h2>
+                <p className="text-gray-500">Documento gerado em: {format(new Date(), 'dd/MM/yyyy')}</p>
+            </div>
+        </Section>
 
         {/* Client Info Placeholder */}
         {clientData && (
-          <section className="mb-8" style={{ pageBreakInside: 'avoid' }}>
+          <Section>
             <div className="border border-gray-200 p-4 rounded-lg">
               <h3 className="font-bold mb-2" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Preparado para:</h3>
               <p className="font-semibold">{clientData.name}</p>
               <p>{clientData.address}</p>
               <p>CPF/CNPJ: {clientData.document}</p>
             </div>
-          </section>
+          </Section>
         )}
 
         {/* Proposal Summary */}
-        <section className="grid grid-cols-3 gap-4 mb-8 text-center" style={{ pageBreakInside: 'avoid' }}>
-            <div className="bg-gray-100 p-3 rounded">
-                <p className="text-xs text-gray-600">ID da Proposta</p>
-                <p className="font-bold">{proposalId}</p>
+        <Section>
+            <div className="grid grid-cols-3 gap-4 mb-8 text-center">
+                <div className="bg-gray-100 p-3 rounded">
+                    <p className="text-xs text-gray-600">ID da Proposta</p>
+                    <p className="font-bold">{proposalId}</p>
+                </div>
+                <div className="bg-gray-100 p-3 rounded">
+                    <p className="text-xs text-gray-600">Data da Proposta</p>
+                    <p className="font-bold">{format(proposalDate, 'dd/MM/yyyy')}</p>
+                </div>
+                <div className="bg-gray-100 p-3 rounded">
+                    <p className="text-xs text-gray-600">Validade</p>
+                    <p className="font-bold">{format(proposalValidity, 'dd/MM/yyyy')}</p>
+                </div>
             </div>
-             <div className="bg-gray-100 p-3 rounded">
-                <p className="text-xs text-gray-600">Data da Proposta</p>
-                <p className="font-bold">{format(proposalDate, 'dd/MM/yyyy')}</p>
-            </div>
-             <div className="bg-gray-100 p-3 rounded">
-                <p className="text-xs text-gray-600">Validade</p>
-                <p className="font-bold">{format(proposalValidity, 'dd/MM/yyyy')}</p>
-            </div>
-        </section>
+        </Section>
 
         {/* System Description */}
         {content.showInvestmentTable && (
-            <section className="mb-8" style={{ pageBreakInside: 'avoid' }}>
-            <h3 className="font-bold text-lg mb-2 border-b border-gray-200 pb-1" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Descrição do Sistema e Investimento</h3>
-            <table className="w-full text-left">
-                <thead>
-                <tr className="border-b border-gray-300">
-                    <th className="py-2 font-semibold">Descrição</th>
-                    <th className="py-2 font-semibold text-center">Qtde.</th>
-                    <th className="py-2 font-semibold text-right">Preço Unit.</th>
-                    <th className="py-2 font-semibold text-right">Preço Total</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr className="border-b border-gray-200">
-                    <td className="py-2">
+            <Section>
+                <h3 className="font-bold text-lg mb-2 border-b border-gray-200 pb-1" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Descrição do Sistema e Investimento</h3>
+                <table className="w-full text-left">
+                    <thead>
+                    <tr className="border-b border-gray-300">
+                        <th className="py-2 font-semibold">Descrição</th>
+                        <th className="py-2 font-semibold text-center">Qtde.</th>
+                        <th className="py-2 font-semibold text-right">Preço Unit.</th>
+                        <th className="py-2 font-semibold text-right">Preço Total</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr className="border-b border-gray-200">
+                        <td className="py-2">
+                            <div className="flex items-center gap-4">
+                                {content.showEquipmentDetails && <Image src="https://picsum.photos/100/100" alt="Painel Solar" width={50} height={50} className="rounded" data-ai-hint="solar panel"/>}
+                                <div>
+                                    <p className="font-semibold">Módulo Fotovoltaico {formData.fabricante_modulo}</p>
+                                    <p className="text-xs text-gray-500">Potência: {formData.potencia_modulo_wp}Wp | Garantia: {formData.garantia_defeito_modulo_anos} anos (produto), {formData.garantia_geracao_modulo_anos} anos (geração)</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td className="py-2 text-center">{results.dimensionamento.quantidade_modulos}</td>
+                        <td className="py-2 text-right">{formatCurrency(formData.preco_modulo_reais)}</td>
+                        <td className="py-2 text-right">{formatCurrency(custoModulos)}</td>
+                    </tr>
+                    <tr className="border-b border-gray-200">
+                        <td className="py-2">
                         <div className="flex items-center gap-4">
-                            {content.showEquipmentDetails && <Image src="https://picsum.photos/100/100" alt="Painel Solar" width={50} height={50} className="rounded" data-ai-hint="solar panel"/>}
+                                {content.showEquipmentDetails && <Image src="https://picsum.photos/100/100" alt="Inversor" width={50} height={50} className="rounded" data-ai-hint="inverter"/>}
                             <div>
-                                <p className="font-semibold">Módulo Fotovoltaico {formData.fabricante_modulo}</p>
-                                <p className="text-xs text-gray-500">Potência: {formData.potencia_modulo_wp}Wp | Garantia: {formData.garantia_defeito_modulo_anos} anos (produto), {formData.garantia_geracao_modulo_anos} anos (geração)</p>
+                                    <p className="font-semibold">Inversor {formData.fabricante_inversor} {formData.modelo_inversor}</p>
+                                    <p className="text-xs text-gray-500">Potência: {formData.potencia_inversor_kw}kW | Tensão: {formData.tensao_inversor_v}V | Garantia: {formData.garantia_inversor_anos} anos</p>
                             </div>
                         </div>
-                    </td>
-                    <td className="py-2 text-center">{results.dimensionamento.quantidade_modulos}</td>
-                    <td className="py-2 text-right">{formatCurrency(formData.preco_modulo_reais)}</td>
-                    <td className="py-2 text-right">{formatCurrency(custoModulos)}</td>
-                </tr>
-                <tr className="border-b border-gray-200">
-                    <td className="py-2">
-                       <div className="flex items-center gap-4">
-                            {content.showEquipmentDetails && <Image src="https://picsum.photos/100/100" alt="Inversor" width={50} height={50} className="rounded" data-ai-hint="inverter"/>}
-                           <div>
-                                <p className="font-semibold">Inversor {formData.fabricante_inversor} {formData.modelo_inversor}</p>
-                                <p className="text-xs text-gray-500">Potência: {formData.potencia_inversor_kw}kW | Tensão: {formData.tensao_inversor_v}V | Garantia: {formData.garantia_inversor_anos} anos</p>
-                           </div>
-                       </div>
-                    </td>
-                    <td className="py-2 text-center">{formData.quantidade_inversores}</td>
-                    <td className="py-2 text-right">{formatCurrency(custoInversor)}</td>
-                    <td className="py-2 text-right">{formatCurrency(custoInversor * formData.quantidade_inversores)}</td>
-                </tr>
-                <tr className="border-b border-gray-200">
-                    <td className="py-2">
-                        <p className="font-semibold">Projeto, Instalação e Homologação</p>
-                        <p className="text-xs text-gray-500">Inclui mão de obra, estruturas, cabos, proteções e documentação.</p>
-                    </td>
-                    <td className="py-2 text-center">1</td>
-                    <td className="py-2 text-right">{formatCurrency(custoInstalacao)}</td>
-                    <td className="py-2 text-right">{formatCurrency(custoInstalacao)}</td>
-                </tr>
-                </tbody>
-            </table>
-            <div className="flex justify-end mt-4">
-                <div className="w-1/3">
-                    <div className="flex justify-between font-bold text-lg p-3 rounded" style={{ backgroundColor: colors.primary, color: colors.textOnPrimary }}>
-                        <span>Total:</span>
-                        <span>{formatCurrency(results.financeiro.custo_sistema_reais)}</span>
+                        </td>
+                        <td className="py-2 text-center">{formData.quantidade_inversores}</td>
+                        <td className="py-2 text-right">{formatCurrency(custoInversor)}</td>
+                        <td className="py-2 text-right">{formatCurrency(custoInversor * formData.quantidade_inversores)}</td>
+                    </tr>
+                    <tr className="border-b border-gray-200">
+                        <td className="py-2">
+                            <p className="font-semibold">Projeto, Instalação e Homologação</p>
+                            <p className="text-xs text-gray-500">Inclui mão de obra, estruturas, cabos, proteções e documentação.</p>
+                        </td>
+                        <td className="py-2 text-center">1</td>
+                        <td className="py-2 text-right">{formatCurrency(custoInstalacao)}</td>
+                        <td className="py-2 text-right">{formatCurrency(custoInstalacao)}</td>
+                    </tr>
+                    </tbody>
+                </table>
+                <div className="flex justify-end mt-4">
+                    <div className="w-1/3">
+                        <div className="flex justify-between font-bold text-lg p-3 rounded" style={{ backgroundColor: colors.primary, color: colors.textOnPrimary }}>
+                            <span>Total:</span>
+                            <span>{formatCurrency(results.financeiro.custo_sistema_reais)}</span>
+                        </div>
                     </div>
                 </div>
-            </div>
-            </section>
+            </Section>
         )}
         
-
-         {/* Financial Summary */}
-        <section className="mb-8" style={{ pageBreakInside: 'avoid' }}>
+         {/* Financial Summary & Performance */}
+        <Section>
              <h3 className="font-bold text-lg mb-2 border-b border-gray-200 pb-1" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Análise Financeira e de Geração</h3>
             <div className="grid grid-cols-2 gap-8">
                  {content.showFinancialSummary && (
@@ -193,45 +205,45 @@ export function ProposalDocument({
                     </div>
                  )}
             </div>
-        </section>
+        </Section>
 
         {/* Environmental Impact */}
         {content.showEnvironmentalImpact && (
-            <section className="mb-8" style={{ pageBreakInside: 'avoid !important' }}>
+            <Section>
                 <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Seu Impacto Positivo no Planeta</h3>
                 <div className="grid grid-cols-3 gap-4 text-center">
                     <ImpactCard icon={<Leaf size={32}/>} value={formatNumber(treesSaved, 0)} label="Árvores Salvas por Ano"/>
                     <ImpactCard icon={<Car size={32}/>} value={`${formatNumber(co2AvoidedKg, 0)} kg`} label="de CO₂ Evitados por Ano"/>
                     <ImpactCard icon={<Globe size={32}/>} value="100%" label="Energia Limpa e Renovável"/>
                 </div>
-            </section>
+            </Section>
         )}
 
         {/* Generation and Savings Charts */}
         {content.showGenerationChart && (
-            <section className="mb-8" style={{ pageBreakBefore: 'always !important' }}>
+            <Section pageBreakBefore={true}>
                 <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Estimativa de Geração Mensal</h3>
                 <p className="text-xs text-gray-500 mb-4">Este gráfico mostra a variação da geração de energia do seu sistema ao longo do ano, com base na irradiação solar local.</p>
                 {/* Placeholder for monthly generation chart */}
                 <div className="w-full h-64 bg-gray-100 flex items-center justify-center rounded-lg">
                     <p className="text-gray-400">Gráfico de Geração Anual (Placeholder)</p>
                 </div>
-            </section>
+            </Section>
         )}
 
         {content.showSavingsChart && (
-             <section className="mb-8" style={{ pageBreakBefore: 'always !important' }}>
+             <Section pageBreakBefore={true}>
                 <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Projeção de Economia em 25 Anos</h3>
                  <p className="text-xs text-gray-500 mb-4">Veja como sua economia acumulada cresce ao longo da vida útil do sistema solar, superando o investimento inicial.</p>
                 <div className="w-full h-[22rem] bg-white flex items-center justify-center rounded-lg border">
                    <SavingsChart annualSavings={results.economia_anual_reais} />
                 </div>
-            </section>
+            </Section>
         )}
 
         {/* Timeline */}
         {content.showTimeline && (
-            <section className="mb-8" style={{ pageBreakInside: 'avoid !important' }}>
+            <Section>
                 <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Nossas Próximas Etapas</h3>
                 <div className="flex flex-col space-y-4">
                     <TimelineStep icon={<FileSignature />} title="Assinatura do Contrato" description="Formalização da nossa parceria para um futuro mais sustentável." />
@@ -239,17 +251,19 @@ export function ProposalDocument({
                     <TimelineStep icon={<ZapIcon />} title="Instalação do Sistema" description="Nossa equipe especializada realiza a instalação completa (Prazo: 2-4 dias)." />
                     <TimelineStep icon={<CheckCircle />} title="Ativação pela Concessionária" description="Após a vistoria, a concessionária ativa seu sistema e você começa a economizar." />
                 </div>
-            </section>
+            </Section>
+        )}
+
+         {/* Footer */}
+        {content.showTerms && (
+            <Section pageBreakBefore={true}>
+                <footer className="pt-4 text-xs text-gray-500 text-center border-t-2 border-gray-200 mt-auto">
+                    <p>Esta é uma proposta comercial. Os valores e estimativas de geração são baseados nos dados fornecidos e podem variar.</p>
+                    <p>Condições de pagamento a combinar. | {companyData.name} - Todos os direitos reservados &copy; {new Date().getFullYear()}</p>
+                </footer>
+            </Section>
         )}
       </main>
-
-       {/* Footer */}
-       {content.showTerms && (
-            <footer className="pt-4 text-xs text-gray-500 text-center border-t-2 border-gray-200 mt-auto" style={{ pageBreakBefore: 'always !important' }}>
-                <p>Esta é uma proposta comercial. Os valores e estimativas de geração são baseados nos dados fornecidos e podem variar.</p>
-                <p>Condições de pagamento a combinar. | {companyData.name} - Todos os direitos reservados &copy; {new Date().getFullYear()}</p>
-            </footer>
-       )}
     </div>
   );
 }
