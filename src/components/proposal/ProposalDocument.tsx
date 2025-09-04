@@ -49,7 +49,7 @@ export function ProposalDocument({
   const treesSaved = Math.round(co2AvoidedKg / 21.77); // 21.77 kg CO2 absorbed by a tree per year
 
   return (
-    <div className="bg-white text-black font-sans text-sm p-8" style={{ fontFamily: '"PT Sans", sans-serif', width: '8.5in' }}>
+    <div id="proposal-content" className="bg-white text-black font-sans text-sm p-8" style={{ fontFamily: '"PT Sans", sans-serif', width: '8.5in' }}>
       {/* Header */}
       <header className="flex justify-between items-start pb-4 border-b-2 border-gray-200">
         <div className="w-1/3">
@@ -197,7 +197,7 @@ export function ProposalDocument({
 
         {/* Environmental Impact */}
         {content.showEnvironmentalImpact && (
-            <section className="mb-8" style={{ pageBreakInside: 'avoid' }}>
+            <section className="mb-8" style={{ pageBreakInside: 'avoid !important' }}>
                 <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Seu Impacto Positivo no Planeta</h3>
                 <div className="grid grid-cols-3 gap-4 text-center">
                     <ImpactCard icon={<Leaf size={32}/>} value={formatNumber(treesSaved, 0)} label="Árvores Salvas por Ano"/>
@@ -209,7 +209,7 @@ export function ProposalDocument({
 
         {/* Generation and Savings Charts */}
         {content.showGenerationChart && (
-            <section className="mb-8" style={{ pageBreakBefore: 'always' }}>
+            <section className="mb-8" style={{ pageBreakBefore: 'always !important' }}>
                 <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Estimativa de Geração Mensal</h3>
                 <p className="text-xs text-gray-500 mb-4">Este gráfico mostra a variação da geração de energia do seu sistema ao longo do ano, com base na irradiação solar local.</p>
                 {/* Placeholder for monthly generation chart */}
@@ -220,7 +220,7 @@ export function ProposalDocument({
         )}
 
         {content.showSavingsChart && (
-             <section className="mb-8" style={{ pageBreakBefore: 'always' }}>
+             <section className="mb-8" style={{ pageBreakBefore: 'always !important' }}>
                 <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Projeção de Economia em 25 Anos</h3>
                  <p className="text-xs text-gray-500 mb-4">Veja como sua economia acumulada cresce ao longo da vida útil do sistema solar, superando o investimento inicial.</p>
                 <div className="w-full h-[22rem] bg-white flex items-center justify-center rounded-lg border">
@@ -231,7 +231,7 @@ export function ProposalDocument({
 
         {/* Timeline */}
         {content.showTimeline && (
-            <section className="mb-8" style={{ pageBreakInside: 'avoid' }}>
+            <section className="mb-8" style={{ pageBreakInside: 'avoid !important' }}>
                 <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Nossas Próximas Etapas</h3>
                 <div className="flex flex-col space-y-4">
                     <TimelineStep icon={<FileSignature />} title="Assinatura do Contrato" description="Formalização da nossa parceria para um futuro mais sustentável." />
@@ -245,7 +245,7 @@ export function ProposalDocument({
 
        {/* Footer */}
        {content.showTerms && (
-            <footer className="pt-4 text-xs text-gray-500 text-center border-t-2 border-gray-200 mt-auto" style={{ pageBreakBefore: 'always' }}>
+            <footer className="pt-4 text-xs text-gray-500 text-center border-t-2 border-gray-200 mt-auto" style={{ pageBreakBefore: 'always !important' }}>
                 <p>Esta é uma proposta comercial. Os valores e estimativas de geração são baseados nos dados fornecidos e podem variar.</p>
                 <p>Condições de pagamento a combinar. | {companyData.name} - Todos os direitos reservados &copy; {new Date().getFullYear()}</p>
             </footer>
@@ -280,5 +280,3 @@ const TimelineStep = ({ icon, title, description }: { icon: React.ReactNode, tit
         </div>
     </div>
 )
-
-    
