@@ -45,7 +45,7 @@ export function ProposalDocument({
   );
   
   return (
-    <div id="proposal-content" className="proposal-document bg-white text-black font-sans" style={{ fontFamily: '"PT Sans", sans-serif', fontSize: '10pt', padding: '40px', width: '800px' }}>
+    <div id="proposal-content" className="proposal-document bg-white text-black font-sans" style={{ fontFamily: '"Inter", sans-serif', fontSize: '10pt', padding: '40px', width: '800px' }}>
       {/* Header */}
       <Section>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: '16px', borderBottom: '2px solid #EEE' }}>
@@ -55,7 +55,7 @@ export function ProposalDocument({
             )}
             </div>
             <div style={{ width: '66.66%', textAlign: 'right', fontSize: '9pt', lineHeight: '1.4' }}>
-            <h1 style={{ fontSize: '14pt', fontWeight: 'bold', textTransform: 'uppercase', color: colors.primary, fontFamily: '"Playfair Display", serif', margin: 0 }}>{companyData.name}</h1>
+            <h1 style={{ fontSize: '14pt', fontWeight: 'bold', textTransform: 'uppercase', color: colors.primary, fontFamily: '"Poppins", sans-serif', margin: 0 }}>{companyData.name}</h1>
             <p style={{ margin: 0 }}>{companyData.address}</p>
             <p style={{ margin: 0 }}>CNPJ: {companyData.cnpj}</p>
             <p style={{ margin: 0 }}>Email: {companyData.email}</p>
@@ -68,7 +68,7 @@ export function ProposalDocument({
         {/* Proposal Title */}
         <Section>
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-                <h2 style={{ fontSize: '20pt', fontWeight: 'bold', textTransform: 'uppercase', color: colors.primary, fontFamily: '"Playfair Display", serif', margin: 0, marginBottom: '24px' }}>Proposta de Sistema Fotovoltaico</h2>
+                <h2 style={{ fontSize: '20pt', fontWeight: 'bold', textTransform: 'uppercase', color: colors.primary, fontFamily: '"Poppins", sans-serif', margin: 0, marginBottom: '24px' }}>Proposta de Sistema Fotovoltaico</h2>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', textAlign: 'center' }}>
                     <div style={{ flex: 1, backgroundColor: '#F9F9F9', padding: '12px', borderRadius: '4px', border: '1px solid #EEE' }}>
                         <p style={{ fontSize: '9pt', color: '#555', margin: 0, marginBottom: '4px' }}>ID da Proposta</p>
@@ -90,7 +90,7 @@ export function ProposalDocument({
         {clientData && (
           <Section>
             <div style={{ border: '1px solid #EEE', padding: '16px', borderRadius: '8px' }}>
-              <h3 style={{ fontWeight: 'bold', marginBottom: '8px', color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Preparado para:</h3>
+              <h3 style={{ fontWeight: 'bold', marginBottom: '8px', color: colors.primary, fontFamily: '"Poppins", sans-serif' }}>Preparado para:</h3>
               <p style={{ fontWeight: '600', margin: 0 }}>{clientData.name}</p>
               <p style={{ margin: 0 }}>{clientData.address}</p>
               <p style={{ margin: 0 }}>CPF/CNPJ: {clientData.document}</p>
@@ -101,7 +101,7 @@ export function ProposalDocument({
         {/* System Description */}
         {content.showInvestmentTable && (
             <Section>
-                <h3 style={{ fontWeight: 'bold', fontSize: '14pt', marginBottom: '8px', borderBottom: '1px solid #EEE', paddingBottom: '4px', color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Descrição do Sistema e Investimento</h3>
+                <h3 style={{ fontWeight: 'bold', fontSize: '14pt', marginBottom: '8px', borderBottom: '1px solid #EEE', paddingBottom: '4px', color: colors.primary, fontFamily: '"Poppins", sans-serif' }}>Descrição do Sistema e Investimento</h3>
                 <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
                     <thead>
                     <tr style={{ borderBottom: '1px solid #CCC' }}>
@@ -154,11 +154,11 @@ export function ProposalDocument({
         
          {/* Financial Summary & Performance */}
         <Section>
-             <h3 style={{ fontWeight: 'bold', fontSize: '14pt', marginBottom: '16px', borderBottom: '1px solid #EEE', paddingBottom: '4px', color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Análise Financeira e de Geração</h3>
+             <h3 style={{ fontWeight: 'bold', fontSize: '14pt', marginBottom: '16px', borderBottom: '1px solid #EEE', paddingBottom: '4px', color: colors.primary, fontFamily: '"Poppins", sans-serif' }}>Análise Financeira e de Geração</h3>
             <div style={{ display: 'flex', gap: '32px' }}>
                  {content.showFinancialSummary && (
                     <div style={{ flex: '1' }}>
-                        <h4 style={{ fontWeight: 'bold', marginBottom: '8px' }}>Resumo Financeiro</h4>
+                        <h4 style={{ fontWeight: 'bold', marginBottom: '8px', fontFamily: '"Poppins", sans-serif' }}>Resumo Financeiro</h4>
                         <div style={{ fontSize: '10pt', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             <InfoRow label="Conta de Luz Média Atual" value={formatCurrency(results.conta_media_mensal_reais.antes)} />
                             <InfoRow label="Conta de Luz Média Estimada" value={formatCurrency(results.conta_media_mensal_reais.depois)} highlightColor={colors.primary} />
@@ -170,7 +170,7 @@ export function ProposalDocument({
                  )}
                  {content.showSystemPerformance && (
                     <div style={{ flex: '1' }}>
-                        <h4 style={{ fontWeight: 'bold', marginBottom: '8px' }}>Desempenho do Sistema</h4>
+                        <h4 style={{ fontWeight: 'bold', marginBottom: '8px', fontFamily: '"Poppins", sans-serif' }}>Desempenho do Sistema</h4>
                          <div style={{ fontSize: '10pt', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             <InfoRow label="Potência do Sistema" value={`${formatNumber(results.dimensionamento.potencia_sistema_kwp, 2)} kWp`} />
                             <InfoRow label="Geração Média Mensal" value={`${formatNumber(results.geracao.media_mensal_kwh, 0)} kWh`} />
