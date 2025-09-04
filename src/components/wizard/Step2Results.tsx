@@ -472,5 +472,3 @@ const SuggestionSkeleton = () => (
         </div>
     </div>
 );
-
-    
