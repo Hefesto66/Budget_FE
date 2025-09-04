@@ -6,6 +6,7 @@ import { formatCurrency, formatNumber } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { Leaf, Car, Globe, FileSignature, Wrench, Zap as ZapIcon, CheckCircle } from 'lucide-react';
 import { SavingsChart } from '../SavingsChart';
+import { format } from 'date-fns';
 
 interface ProposalDocumentProps {
   results: SolarCalculationResult;
@@ -13,12 +14,21 @@ interface ProposalDocumentProps {
   companyData: CompanyFormData;
   clientData: ClientFormData | null;
   customization: CustomizationSettings;
+  proposalId: string;
+  proposalDate: Date;
+  proposalValidity: Date;
 }
 
-export function ProposalDocument({ results, formData, companyData, clientData, customization }: ProposalDocumentProps) {
-  const today = new Date();
-  const validityDate = new Date();
-  validityDate.setDate(today.getDate() + 15); // Proposal valid for 15 days
+export function ProposalDocument({ 
+    results, 
+    formData, 
+    companyData, 
+    clientData, 
+    customization,
+    proposalId,
+    proposalDate,
+    proposalValidity
+}: ProposalDocumentProps) {
 
   const formatAddress = (address: string) => {
     return address.split('\n').map((line, index) => (
@@ -61,7 +71,7 @@ export function ProposalDocument({ results, formData, companyData, clientData, c
         {/* Proposal Title */}
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold uppercase" style={{ color: colors.primary }}>Proposta de Sistema Fotovoltaico</h2>
-          <p className="text-gray-500">Documento gerado em: {today.toLocaleDateString('pt-BR')}</p>
+          <p className="text-gray-500">Documento gerado em: {format(new Date(), 'dd/MM/yyyy')}</p>
         </div>
 
         {/* Client Info Placeholder */}
@@ -80,15 +90,15 @@ export function ProposalDocument({ results, formData, companyData, clientData, c
         <section className="grid grid-cols-3 gap-4 mb-8 text-center">
             <div className="bg-gray-100 p-3 rounded">
                 <p className="text-xs text-gray-600">ID da Proposta</p>
-                <p className="font-bold">FE-S001</p>
+                <p className="font-bold">{proposalId}</p>
             </div>
              <div className="bg-gray-100 p-3 rounded">
                 <p className="text-xs text-gray-600">Data da Proposta</p>
-                <p className="font-bold">{today.toLocaleDateString('pt-BR')}</p>
+                <p className="font-bold">{format(proposalDate, 'dd/MM/yyyy')}</p>
             </div>
              <div className="bg-gray-100 p-3 rounded">
                 <p className="text-xs text-gray-600">Validade</p>
-                <p className="font-bold">{validityDate.toLocaleDateString('pt-BR')}</p>
+                <p className="font-bold">{format(proposalValidity, 'dd/MM/yyyy')}</p>
             </div>
         </section>
 
@@ -238,7 +248,7 @@ export function ProposalDocument({ results, formData, companyData, clientData, c
        {content.showTerms && (
             <footer className="pt-8 text-xs text-gray-500 text-center border-t-2 border-gray-200 mt-auto">
                 <p>Esta é uma proposta comercial. Os valores e estimativas de geração são baseados nos dados fornecidos e podem variar.</p>
-                <p>Condições de pagamento a combinar. | {companyData.name} - Todos os direitos reservados &copy; {today.getFullYear()}</p>
+                <p>Condições de pagamento a combinar. | {companyData.name} - Todos os direitos reservados &copy; {new Date().getFullYear()}</p>
             </footer>
        )}
     </div>

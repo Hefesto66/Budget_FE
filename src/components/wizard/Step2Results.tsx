@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings } from "@/types";
@@ -20,12 +20,19 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { getRefinedSuggestions } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
-import { Zap, Calendar, DollarSign, BarChart, ArrowLeft, Sparkles, Download, Share2, Wallet, TrendingUp } from "lucide-react";
+import { Zap, Calendar, DollarSign, BarChart, ArrowLeft, Sparkles, Download, Share2, Wallet, TrendingUp, FilePenLine } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import type { CompanyFormData } from "@/app/minha-empresa/page";
 import { ProposalDocument } from "../proposal/ProposalDocument";
+import { addDays, format } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarComponent } from "../ui/calendar";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { cn } from "@/lib/utils";
 
 interface Step2ResultsProps {
   results: SolarCalculationResult;
@@ -47,6 +54,11 @@ const defaultCustomization: CustomizationSettings = {
     showFinancialSummary: true,
     showSystemPerformance: true,
     showTerms: true,
+    showGenerationChart: false,
+    showSavingsChart: true,
+    showEnvironmentalImpact: true,
+    showEquipmentDetails: false,
+    showTimeline: true,
   },
 };
 
@@ -58,6 +70,11 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
   const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
   const [companyData, setCompanyData] = useState<CompanyFormData | null>(null);
   const [customization, setCustomization] = useState<CustomizationSettings>(defaultCustomization);
+
+  // State for new editable proposal details
+  const [proposalId, setProposalId] = useState("FE-S001");
+  const [proposalDate, setProposalDate] = useState<Date>(new Date());
+  const [proposalValidity, setProposalValidity] = useState<Date>(addDays(new Date(), 15));
 
   useEffect(() => {
     try {
@@ -73,6 +90,11 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
       console.error("Failed to load data from localStorage", error);
     }
   }, []);
+
+  useEffect(() => {
+    // Auto-update validity when proposal date changes
+    setProposalValidity(addDays(proposalDate, 15));
+  }, [proposalDate]);
 
   const paybackYears = results.payback_simples_anos;
   const paybackText = isFinite(paybackYears) ? `${formatNumber(paybackYears, 1)} anos` : "N/A";
@@ -190,6 +212,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
   return (
     <>
       <div className="space-y-8 bg-background p-4 sm:p-0">
+        {/* Financial Analysis */}
         <Card>
            <CardHeader>
             <CardTitle className="font-headline text-2xl">Sua Análise Financeira</CardTitle>
@@ -246,6 +269,77 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
           </CardContent>
         </Card>
         
+        {/* Proposal Details */}
+        <Card>
+            <CardHeader>
+                <CardTitle className="font-headline text-2xl flex items-center gap-2">
+                    <FilePenLine />
+                    Detalhes da Proposta
+                </CardTitle>
+                <CardDescription>
+                    Revise e ajuste as informações de identificação e validade para este orçamento.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                <div className="space-y-2">
+                    <Label htmlFor="proposalId">ID da Proposta</Label>
+                    <Input id="proposalId" value={proposalId} onChange={(e) => setProposalId(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                    <Label>Data da Proposta</Label>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <Button
+                            variant={"outline"}
+                            className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !proposalDate && "text-muted-foreground"
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {proposalDate ? format(proposalDate, "dd/MM/yyyy") : <span>Escolha uma data</span>}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                        <CalendarComponent
+                            mode="single"
+                            selected={proposalDate}
+                            onSelect={(date) => date && setProposalDate(date)}
+                            initialFocus
+                        />
+                        </PopoverContent>
+                    </Popover>
+                </div>
+                 <div className="space-y-2">
+                    <Label>Validade</Label>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <Button
+                            variant={"outline"}
+                            className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !proposalValidity && "text-muted-foreground"
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {proposalValidity ? format(proposalValidity, "dd/MM/yyyy") : <span>Escolha uma data</span>}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                        <CalendarComponent
+                            mode="single"
+                            selected={proposalValidity}
+                            onSelect={(date) => date && setProposalValidity(date)}
+                            initialFocus
+                        />
+                        </PopoverContent>
+                    </Popover>
+                </div>
+            </CardContent>
+        </Card>
+
+
+        {/* Savings Projection */}
         <Card>
           <CardHeader>
             <CardTitle className="font-headline text-2xl">Projeção de Economia (25 anos)</CardTitle>
@@ -288,6 +382,9 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
             companyData={companyData}
             clientData={clientData}
             customization={customization}
+            proposalId={proposalId}
+            proposalDate={proposalDate}
+            proposalValidity={proposalValidity}
           />
         )}
       </div>
