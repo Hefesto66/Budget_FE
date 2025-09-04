@@ -109,7 +109,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
   const paybackYears = results.payback_simples_anos;
   const paybackText = isFinite(paybackYears) ? `${formatNumber(paybackYears, 1)} anos` : "N/A";
 
-  const handleExportPdf = async () => {
+  const handleExportPdf = () => {
     setIsPreparingPdf(true);
 
     if (!companyData) {
@@ -137,15 +137,18 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
         // Save the data to localStorage for the print page to access
         localStorage.setItem("proposalPrintData", JSON.stringify(pdfData));
 
-        // Open the print page in a new tab
-        const printWindow = window.open('/orcamento/imprimir', '_blank');
-        if (!printWindow) {
-             toast({
-                title: "Bloqueador de Pop-up Ativado",
-                description: "Por favor, desative o bloqueador de pop-ups para este site para gerar o PDF.",
-                variant: "destructive",
-            });
-        }
+        // Add a small delay to ensure localStorage has saved before opening the new tab
+        setTimeout(() => {
+            const printWindow = window.open('/orcamento/imprimir', '_blank');
+            if (!printWindow) {
+                toast({
+                    title: "Bloqueador de Pop-up Ativado",
+                    description: "Por favor, desative o bloqueador de pop-ups para este site para gerar o PDF.",
+                    variant: "destructive",
+                });
+            }
+            setIsPreparingPdf(false);
+        }, 50); // 50ms delay
         
     } catch (error) {
       console.error("PDF preparation failed:", error);
@@ -154,7 +157,6 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
         description: error instanceof Error ? error.message : "Houve um problema ao preparar o documento. Tente novamente.",
         variant: "destructive",
       });
-    } finally {
       setIsPreparingPdf(false);
     }
 };
@@ -478,4 +480,5 @@ const SuggestionSkeleton = () => (
     </div>
 );
 
+    
     
