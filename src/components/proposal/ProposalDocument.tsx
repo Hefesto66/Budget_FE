@@ -1,5 +1,4 @@
 
-import Image from 'next/image';
 import type { SolarCalculationInput, SolarCalculationResult, ClientFormData, CustomizationSettings } from '@/types';
 import type { CompanyFormData } from '@/app/minha-empresa/page';
 import { formatCurrency, formatNumber } from '@/lib/utils';
@@ -227,8 +226,8 @@ export function ProposalDocument({
              <Section pageBreakBefore={true}>
                 <h3 style={{ fontWeight: 'bold', fontSize: '14pt', marginBottom: '16px', borderBottom: '1px solid #EEE', paddingBottom: '4px', color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Projeção de Economia em 25 Anos</h3>
                  <p style={{ fontSize: '9pt', color: '#666', marginBottom: '16px' }}>Veja como sua economia acumulada cresce ao longo da vida útil do sistema solar, superando o investimento inicial.</p>
-                <div style={{ width: '100%', height: '22rem', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', border: '1px solid #EEE' }}>
-                   <SavingsChart annualSavings={results.economia_anual_reais} />
+                <div style={{ width: '100%', height: '22rem', backgroundColor: '#F9F9F9', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', border: '1px solid #EEE' }}>
+                   <p style={{ color: '#AAA' }}>O gráfico de economia é gerado dinamicamente e não pode ser exibido neste PDF estático.</p>
                 </div>
             </Section>
         )}
