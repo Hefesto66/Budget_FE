@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import ReactDOMServer from "react-dom/server";
+import { useState } from "react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings, SolarCalculationInput } from "@/types";
@@ -96,9 +95,13 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
   
   const handleExportPdf = async () => {
     setIsExporting(true);
+    const ReactDOMServer = (await import('react-dom/server')).default;
+    
     try {
       const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
-      const customization: CustomizationSettings | null = JSON.parse(localStorage.getItem(CUSTOMIZATION_KEY) || 'null');
+      const customizationData = localStorage.getItem(CUSTOMIZATION_KEY);
+      const customization: CustomizationSettings | null = customizationData ? JSON.parse(customizationData) : null;
+
 
       if (!companyData) {
         toast({
@@ -135,9 +138,23 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
       container.style.width = '800px'; 
       container.innerHTML = htmlString;
       document.body.appendChild(container);
+      
+      // We need to temporarily load images
+      const images = Array.from(container.querySelectorAll('img'));
+      const imagePromises = images.map(img => new Promise(resolve => {
+        if (img.complete) {
+            resolve(true);
+        } else {
+            img.onload = () => resolve(true);
+            img.onerror = () => resolve(false);
+        }
+      }));
+
+      await Promise.all(imagePromises);
+
 
       const canvas = await html2canvas(container, {
-          scale: 2, // Aumenta a resolução para melhor qualidade
+          scale: 2, 
           useCORS: true,
           logging: false,
       });
@@ -332,3 +349,5 @@ const SuggestionSkeleton = () => (
         </div>
     </div>
 );
+
+    
