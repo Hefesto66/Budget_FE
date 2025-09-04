@@ -8,11 +8,12 @@ import type { z } from "zod";
 import { Step1DataInput } from "./Step1DataInput";
 import { Step2Results } from "./Step2Results";
 import { StepIndicator } from "./StepIndicator";
-import type { SolarCalculationResult, SolarCalculationInput } from "@/types";
+import type { SolarCalculationResult, SolarCalculationInput, ClientFormData } from "@/types";
 import { getCalculation } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { solarCalculationSchema } from "@/types";
+import { ClientRegistrationDialog } from "./ClientRegistrationDialog";
 
 const steps = [
   { id: "01", name: "Dados de Consumo" },
@@ -24,6 +25,10 @@ export function Wizard() {
   const [results, setResults] = useState<SolarCalculationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  
+  const [clientData, setClientData] = useState<ClientFormData | null>(null);
+  const [isClientDialogOpen, setIsClientDialogOpen] = useState(true);
+
 
   const methods = useForm<z.infer<typeof solarCalculationSchema>>({
     resolver: zodResolver(solarCalculationSchema),
@@ -57,6 +62,16 @@ export function Wizard() {
       meta_compensacao_percent: 100,
     },
   });
+
+  const handleClientDataSave = (data: ClientFormData) => {
+    setClientData(data);
+    setIsClientDialogOpen(false);
+  };
+  
+  const handleSkipClient = () => {
+    setClientData(null);
+    setIsClientDialogOpen(false);
+  }
 
   const processForm = async (data: SolarCalculationInput) => {
     setIsLoading(true);
@@ -108,43 +123,54 @@ export function Wizard() {
   const goBack = () => {
     setCurrentStep(0);
     setResults(null);
+    setIsClientDialogOpen(true);
   }
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-12 sm:py-16">
-      <StepIndicator currentStep={currentStep} steps={steps} />
-      <FormProvider {...methods}>
-        <form onSubmit={methods.handleSubmit(processForm)} className="mt-12">
-          <AnimatePresence mode="wait">
-            {currentStep === 0 && (
-              <motion.div
-                key="step1"
-                initial={{ opacity: 0, x: -50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 50 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Step1DataInput isLoading={isLoading} />
-              </motion.div>
-            )}
-            {currentStep === 1 && results && (
-               <motion.div
-                key="step2"
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -50 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Step2Results 
-                  results={results}
-                  onBack={goBack}
-                  formData={methods.getValues()}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </form>
-      </FormProvider>
+      <ClientRegistrationDialog
+        isOpen={isClientDialogOpen}
+        onSave={handleClientDataSave}
+        onSkip={handleSkipClient}
+      />
+      {!isClientDialogOpen && (
+        <>
+          <StepIndicator currentStep={currentStep} steps={steps} />
+          <FormProvider {...methods}>
+            <form onSubmit={methods.handleSubmit(processForm)} className="mt-12">
+              <AnimatePresence mode="wait">
+                {currentStep === 0 && (
+                  <motion.div
+                    key="step1"
+                    initial={{ opacity: 0, x: -50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 50 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Step1DataInput isLoading={isLoading} />
+                  </motion.div>
+                )}
+                {currentStep === 1 && results && (
+                   <motion.div
+                    key="step2"
+                    initial={{ opacity: 0, x: 50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -50 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Step2Results 
+                      results={results}
+                      onBack={goBack}
+                      formData={methods.getValues()}
+                      clientData={clientData}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </form>
+          </FormProvider>
+        </>
+      )}
     </div>
   );
 }

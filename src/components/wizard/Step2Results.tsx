@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import type { SolarCalculationResult } from "@/types";
+import type { SolarCalculationResult, ClientFormData } from "@/types";
 import { ResultCard } from "@/components/ResultCard";
 import { SavingsChart } from "@/components/SavingsChart";
 import { Button } from "@/components/ui/button";
@@ -31,12 +31,13 @@ interface Step2ResultsProps {
   results: SolarCalculationResult;
   onBack: () => void;
   formData: any;
+  clientData: ClientFormData | null;
 }
 
 const COMPANY_DATA_KEY = "companyData";
 
 
-export function Step2Results({ results, onBack, formData }: Step2ResultsProps) {
+export function Step2Results({ results, onBack, formData, clientData }: Step2ResultsProps) {
   const { toast } = useToast();
   const reportRef = useRef<HTMLDivElement>(null);
   
@@ -268,6 +269,7 @@ export function Step2Results({ results, onBack, formData }: Step2ResultsProps) {
             results={results}
             formData={formData}
             companyData={companyData}
+            clientData={clientData}
           />
         )}
       </div>

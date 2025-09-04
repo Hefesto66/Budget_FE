@@ -23,8 +23,17 @@ export const solarCalculationSchema = z.object({
   potencia_modulo_wp: z.number().positive({ message: "A potência do módulo deve ser maior que zero." }),
   preco_modulo_reais: z.number().positive({ message: "O preço do módulo deve ser maior que zero." }),
   quantidade_modulos: z.number().int().positive().optional(),
+  fabricante_modulo: z.string().default(""),
+  garantia_defeito_modulo_anos: z.number().int().positive().default(10),
+  garantia_geracao_modulo_anos: z.number().int().positive().default(25),
   
   // Inversor
+  modelo_inversor: z.string().default(""),
+  fabricante_inversor: z.string().default(""),
+  potencia_inversor_kw: z.number().positive(),
+  tensao_inversor_v: z.number().positive(),
+  quantidade_inversores: z.number().int().positive().default(1),
+  garantia_inversor_anos: z.number().int().positive().default(5),
   eficiencia_inversor_percent: z.number().min(80).max(99, { message: "Eficiência do inversor deve estar entre 80% e 99%." }),
   custo_inversor_reais: z.number().positive({ message: "O custo do inversor deve ser maior que zero." }),
 
@@ -50,5 +59,13 @@ export type SavingsDataPoint = {
   year: number;
   "Economia Acumulada": number;
 };
+
+export const clientSchema = z.object({
+  name: z.string().min(1, "O nome do cliente é obrigatório."),
+  document: z.string().min(1, "O CPF ou CNPJ é obrigatório."),
+  address: z.string().min(1, "O endereço é obrigatório."),
+});
+
+export type ClientFormData = z.infer<typeof clientSchema>;
 
 export type { SuggestRefinedPanelConfigOutput };

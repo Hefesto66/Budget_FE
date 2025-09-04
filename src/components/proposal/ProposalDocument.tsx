@@ -1,6 +1,6 @@
 
 import Image from 'next/image';
-import type { SolarCalculationInput, SolarCalculationResult } from '@/types';
+import type { SolarCalculationInput, SolarCalculationResult, ClientFormData } from '@/types';
 import type { CompanyFormData } from '@/app/minha-empresa/page';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import { Separator } from '../ui/separator';
@@ -9,9 +9,10 @@ interface ProposalDocumentProps {
   results: SolarCalculationResult;
   formData: SolarCalculationInput;
   companyData: CompanyFormData;
+  clientData: ClientFormData | null;
 }
 
-export function ProposalDocument({ results, formData, companyData }: ProposalDocumentProps) {
+export function ProposalDocument({ results, formData, companyData, clientData }: ProposalDocumentProps) {
   const today = new Date();
   const validityDate = new Date();
   validityDate.setDate(today.getDate() + 15); // Proposal valid for 15 days
@@ -55,15 +56,16 @@ export function ProposalDocument({ results, formData, companyData }: ProposalDoc
         </div>
 
         {/* Client Info Placeholder */}
-        <section className="mb-8">
-          <div className="border border-gray-200 p-4 rounded-lg">
-            <h3 className="font-bold text-gray-700 mb-2">Preparado para:</h3>
-            <p className="font-semibold">Cliente Final (Nome)</p>
-            <p>Endereço da Instalação (Rua, Número, Bairro)</p>
-            <p>Cidade - Estado, CEP</p>
-            <p>CPF/CNPJ: 000.000.000-00</p>
-          </div>
-        </section>
+        {clientData && (
+          <section className="mb-8">
+            <div className="border border-gray-200 p-4 rounded-lg">
+              <h3 className="font-bold text-gray-700 mb-2">Preparado para:</h3>
+              <p className="font-semibold">{clientData.name}</p>
+              <p>{clientData.address}</p>
+              <p>CPF/CNPJ: {clientData.document}</p>
+            </div>
+          </section>
+        )}
 
         {/* Proposal Summary */}
         <section className="grid grid-cols-3 gap-4 mb-8 text-center">
