@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,9 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Header } from "@/components/layout/Header";
 import { Save } from "lucide-react";
-import Image from "next/image";
 import type { CustomizationSettings } from "@/types";
-import { Separator } from "@/components/ui/separator";
 
 const CUSTOMIZATION_KEY = "proposalCustomization";
 
@@ -35,12 +32,11 @@ const defaultSettings: CustomizationSettings = {
     showFinancialSummary: true,
     showSystemPerformance: true,
     showTerms: true,
-    // advanced options removed
-    showGenerationChart: false,
-    showSavingsChart: false,
-    showEnvironmentalImpact: false,
-    showEquipmentDetails: false,
-    showTimeline: false,
+    showGenerationChart: false, // advanced
+    showSavingsChart: true, // important for user
+    showEnvironmentalImpact: false, // advanced
+    showEquipmentDetails: false, // advanced
+    showTimeline: false, // advanced
   },
 };
 
@@ -173,18 +169,18 @@ export default function PersonalizarPropostaPage() {
                         <Label>Preview do Cabeçalho</Label>
                         <div className="mt-2 rounded-lg border p-4">
                             <div className="flex items-center justify-between">
-                                <p className="font-bold text-lg">AX BUDGET</p>
+                                <p className="font-bold text-lg">NOME DA SUA EMPRESA</p>
                                 <div 
                                     className="px-4 py-2 rounded-md" 
                                     style={{ backgroundColor: settings.colors.primary }}
                                 >
                                     <p className="font-extrabold text-2xl" style={{ color: settings.colors.textOnPrimary }}>
-                                        AX
+                                        LOGO
                                     </p>
                                 </div>
                             </div>
                         </div>
-                         <p className="mt-2 text-xs text-muted-foreground">O logo da sua empresa será usado no lugar de "AX BUDGET".</p>
+                         <p className="mt-2 text-xs text-muted-foreground">O logo e nome da sua empresa substituirão este exemplo.</p>
                     </div>
                   </div>
                 </CardContent>
@@ -195,7 +191,7 @@ export default function PersonalizarPropostaPage() {
                 <CardHeader>
                   <CardTitle>Seções da Proposta</CardTitle>
                   <CardDescription>
-                    Ative ou desative as seções que você deseja exibir na proposta final.
+                    Ative ou desative as seções que você deseja exibir no PDF final.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -219,6 +215,13 @@ export default function PersonalizarPropostaPage() {
                         description="Mostra o card com a potência do sistema e a geração média mensal de energia."
                         checked={settings.content.showSystemPerformance}
                         onCheckedChange={(val) => handleContentToggle('showSystemPerformance', val)}
+                    />
+                     <ContentSwitch
+                        id="showSavingsChart"
+                        label="Exibir Gráfico de Economia Acumulada"
+                        description="Mostra a projeção da economia ao longo de 25 anos. (Não interativo no PDF)"
+                        checked={settings.content.showSavingsChart}
+                        onCheckedChange={(val) => handleContentToggle('showSavingsChart', val)}
                     />
                     <ContentSwitch
                         id="showTerms"

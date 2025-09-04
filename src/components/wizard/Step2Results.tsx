@@ -17,11 +17,16 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { getRefinedSuggestions } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
-import { Zap, Calendar, DollarSign, BarChart, ArrowLeft, Sparkles, Wallet, TrendingUp } from "lucide-react";
+import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, BarChart, Zap, Calendar, FileDown } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
 import { formatCurrency, formatNumber } from "@/lib/utils";
+import { SavingsChart } from "@/components/SavingsChart";
+import LZString from 'lz-string';
+import type { CompanyFormData } from "@/app/minha-empresa/page";
 
+const COMPANY_DATA_KEY = "companyData";
+const CUSTOMIZATION_KEY = "proposalCustomization";
 
 interface Step2ResultsProps {
   results: SolarCalculationResult;
@@ -29,7 +34,6 @@ interface Step2ResultsProps {
   formData: SolarCalculationInput;
   clientData: ClientFormData | null;
 }
-
 
 export function Step2Results({ results, onBack, formData, clientData }: Step2ResultsProps) {
   const { toast } = useToast();
@@ -39,7 +43,6 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
 
   const paybackYears = results.payback_simples_anos;
   const paybackText = isFinite(paybackYears) ? `${formatNumber(paybackYears, 1)} anos` : "N/A";
-
 
   const handleAiRefinement = async () => {
     setIsRefining(true);
@@ -84,10 +87,69 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
         variant: "destructive",
       });
     }
-
     setIsRefining(false);
   };
+  
+  const handleExportPdf = () => {
+    try {
+      const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
+      const customization: CustomizationSettings | null = JSON.parse(localStorage.getItem(CUSTOMIZATION_KEY) || 'null');
 
+      if (!companyData) {
+        toast({
+          title: "Empresa não configurada",
+          description: "Por favor, configure os dados da sua empresa na página 'Minha Empresa' antes de exportar.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const now = new Date();
+      const validityDate = new Date();
+      validityDate.setDate(now.getDate() + 15); // Proposal valid for 15 days
+
+      // Prepare only the necessary data to keep the URL small
+      const dataToPrint = {
+        results,
+        formData: { // Send only what ProposalDocument needs
+            fabricante_modulo: formData.fabricante_modulo,
+            potencia_modulo_wp: formData.potencia_modulo_wp,
+            garantia_defeito_modulo_anos: formData.garantia_defeito_modulo_anos,
+            garantia_geracao_modulo_anos: formData.garantia_geracao_modulo_anos,
+            preco_modulo_reais: formData.preco_modulo_reais,
+            fabricante_inversor: formData.fabricante_inversor,
+            modelo_inversor: formData.modelo_inversor,
+            potencia_inversor_kw: formData.potencia_inversor_kw,
+            tensao_inversor_v: formData.tensao_inversor_v,
+            garantia_inversor_anos: formData.garantia_inversor_anos,
+            quantidade_inversores: formData.quantidade_inversores,
+            custo_inversor_reais: formData.custo_inversor_reais,
+            custo_fixo_instalacao_reais: formData.custo_fixo_instalacao_reais,
+            consumo_mensal_kwh: formData.consumo_mensal_kwh,
+        },
+        companyData,
+        clientData,
+        customization,
+        proposalId: `PROP-${Date.now()}`,
+        proposalDate: now.toISOString(),
+        proposalValidity: validityDate.toISOString(),
+      };
+
+      const jsonString = JSON.stringify(dataToPrint);
+      const compressedData = LZString.compressToEncodedURIComponent(jsonString);
+
+      const url = `/orcamento/imprimir?data=${compressedData}`;
+      window.open(url, '_blank');
+
+    } catch (error) {
+      console.error("Failed to prepare data for printing:", error);
+      toast({
+        title: "Erro ao Exportar",
+        description: "Não foi possível preparar os dados para impressão. Verifique o console para mais detalhes.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <>
@@ -148,6 +210,16 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
           </CardContent>
         </Card>
         
+        <Card>
+            <CardHeader>
+                <CardTitle className="font-headline text-2xl">Projeção de Economia Acumulada</CardTitle>
+                <CardDescription>Este gráfico mostra como sua economia cresce ao longo de 25 anos.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <SavingsChart annualSavings={results.economia_anual_reais} />
+            </CardContent>
+        </Card>
+
       </div>
 
       <div className="mt-8 flex flex-col-reverse gap-4 sm:flex-row sm:justify-between">
@@ -159,6 +231,10 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
             <Button type="button" variant="secondary" onClick={handleAiRefinement} disabled={isRefining}>
                 <Sparkles className={`mr-2 h-4 w-4 ${isRefining ? 'animate-spin' : ''}`} />
                 {isRefining ? "Analisando..." : "Refinar com IA"}
+            </Button>
+            <Button type="button" onClick={handleExportPdf}>
+                <FileDown className="mr-2 h-4 w-4" />
+                Exportar PDF
             </Button>
           </div>
       </div>
@@ -217,7 +293,6 @@ const ComparisonItem = ({ label, value, highlight = false }: { label: string, va
         <p className={`font-bold ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
     </div>
 )
-
 
 const SuggestionSkeleton = () => (
     <div className="space-y-6">
