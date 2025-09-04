@@ -392,7 +392,7 @@ export function Step2Results({ results, onBack, onRecalculate }: Step2ResultsPro
                             <h5 className="font-medium text-muted-foreground">Configuração Atual</h5>
                              <ComparisonItem label="Painéis" value={`${results.dimensionamento.quantidade_modulos} de ${formMethods.getValues().potencia_modulo_wp}Wp`} />
                              <ComparisonItem label="Custo Total" value={formatCurrency(results.financeiro.custo_sistema_reais)} />
-                             <ComparisonrItem label="Payback" value={paybackText} />
+                             <ComparisonItem label="Payback" value={paybackText} />
                         </div>
                         <div className="space-y-3 rounded-md border border-primary bg-primary/5 p-4">
                              <h5 className="font-medium text-primary">Sugestão Otimizada</h5>
