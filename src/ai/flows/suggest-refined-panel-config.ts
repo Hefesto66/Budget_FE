@@ -15,7 +15,7 @@ import {z} from 'genkit';
 import { solarCalculationSchema } from '@/types';
 
 // O input agora é o mesmo objeto do cálculo solar, para uma análise completa.
-export const SuggestRefinedPanelConfigInputSchema = solarCalculationSchema;
+const SuggestRefinedPanelConfigInputSchema = solarCalculationSchema;
 
 export type SuggestRefinedPanelConfigInput = z.infer<
   typeof SuggestRefinedPanelConfigInputSchema
