@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -33,7 +33,9 @@ const companySchema = z.object({
   address: z.string().min(1, "O endereço é obrigatório."),
 })
 
-type CompanyFormData = z.infer<typeof companySchema>
+export type CompanyFormData = z.infer<typeof companySchema>
+
+const COMPANY_DATA_KEY = "companyData";
 
 export default function MinhaEmpresaPage() {
   const { toast } = useToast()
@@ -43,15 +45,36 @@ export default function MinhaEmpresaPage() {
 
   const form = useForm<CompanyFormData>({
     resolver: zodResolver(companySchema),
-    // TODO: Load saved data in the future
     defaultValues: {
       name: "",
       cnpj: "",
       email: "",
       phone: "",
       address: "",
+      logo: "",
     },
   })
+
+  useEffect(() => {
+    try {
+      const savedData = localStorage.getItem(COMPANY_DATA_KEY);
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        form.reset(parsedData);
+        if (parsedData.logo) {
+          setLogoPreview(parsedData.logo);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load company data from localStorage", error);
+      toast({
+        title: "Aviso",
+        description: "Não foi possível carregar os dados da empresa salvos anteriormente.",
+        variant: "destructive",
+      });
+    }
+  }, [form, toast]);
+  
 
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -66,9 +89,9 @@ export default function MinhaEmpresaPage() {
       }
       const reader = new FileReader()
       reader.onloadend = () => {
-        setLogoPreview(reader.result as string)
-        // In a real app, you'd upload this and get a URL
-        // For now, we'll just use the data URL
+        const result = reader.result as string;
+        setLogoPreview(result);
+        form.setValue("logo", result);
       }
       reader.readAsDataURL(file)
     }
@@ -77,16 +100,24 @@ export default function MinhaEmpresaPage() {
   const onSubmit = async (data: CompanyFormData) => {
     setIsSaving(true)
     
-    const dataToSave = { ...data, logo: logoPreview || "" };
-
-    const result = await saveCompanyData(dataToSave)
+    // Simulate saving
+    const result = await saveCompanyData(data)
 
     if (result.success) {
-      toast({
-        title: "Sucesso!",
-        description: "Os dados da sua empresa foram salvos.",
-      })
-      router.push("/")
+      try {
+        localStorage.setItem(COMPANY_DATA_KEY, JSON.stringify(data));
+        toast({
+          title: "Sucesso!",
+          description: "Os dados da sua empresa foram salvos.",
+        })
+        router.push("/")
+      } catch (error) {
+         toast({
+          title: "Erro ao Salvar Localmente",
+          description: "Não foi possível salvar os dados no seu navegador.",
+          variant: "destructive",
+        })
+      }
     } else {
       toast({
         title: "Erro ao Salvar",

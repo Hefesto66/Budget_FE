@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import type { SolarCalculationResult } from "@/types";
@@ -24,12 +24,17 @@ import { Zap, Calendar, DollarSign, BarChart, ArrowLeft, Sparkles, Download, Sha
 import { Skeleton } from "../ui/skeleton";
 import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
 import { formatCurrency, formatNumber } from "@/lib/utils";
+import type { CompanyFormData } from "@/app/minha-empresa/page";
+import { ProposalDocument } from "../proposal/ProposalDocument";
 
 interface Step2ResultsProps {
   results: SolarCalculationResult;
   onBack: () => void;
   formData: any;
 }
+
+const COMPANY_DATA_KEY = "companyData";
+
 
 export function Step2Results({ results, onBack, formData }: Step2ResultsProps) {
   const { toast } = useToast();
@@ -38,16 +43,34 @@ export function Step2Results({ results, onBack, formData }: Step2ResultsProps) {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
+  const [companyData, setCompanyData] = useState<CompanyFormData | null>(null);
+
+  useEffect(() => {
+    try {
+      const savedData = localStorage.getItem(COMPANY_DATA_KEY);
+      if (savedData) {
+        setCompanyData(JSON.parse(savedData));
+      }
+    } catch (error) {
+      console.error("Failed to load company data from localStorage", error);
+    }
+  }, []);
 
   const paybackYears = results.payback_simples_anos;
   const paybackText = isFinite(paybackYears) ? `${formatNumber(paybackYears, 1)} anos` : "N/A";
 
   const handleExportPdf = async () => {
     setIsGeneratingPdf(true);
-    const input = reportRef.current;
-    if (input) {
+    const pdfContainer = document.getElementById("pdf-container");
+    
+    if (pdfContainer) {
+       // Temporarily make it visible for rendering
+      pdfContainer.style.display = 'block';
+      pdfContainer.style.position = 'absolute';
+      pdfContainer.style.left = '-9999px'; // Move off-screen
+      
       try {
-        const canvas = await html2canvas(input, { scale: 2 });
+        const canvas = await html2canvas(pdfContainer, { scale: 2, useCORS: true });
         const imgData = canvas.toDataURL("image/png");
         const pdf = new jsPDF({
           orientation: "portrait",
@@ -59,14 +82,18 @@ export function Step2Results({ results, onBack, formData }: Step2ResultsProps) {
         const canvasWidth = canvas.width;
         const canvasHeight = canvas.height;
         const ratio = canvasWidth / canvasHeight;
-        const width = pdfWidth - 40; // with margin
+        let width = pdfWidth;
         let height = width / ratio;
+
         if (height > pdfHeight) {
-          height = pdfHeight - 40;
+          height = pdfHeight;
+          width = height * ratio;
         }
+        
+        const xOffset = (pdfWidth - width) / 2;
+        const yOffset = (pdfHeight - height) / 2;
 
-
-        pdf.addImage(imgData, "PNG", 20, 20, width, height);
+        pdf.addImage(imgData, "PNG", xOffset, yOffset, width, height);
         pdf.save("orcamento_solar_fe.pdf");
       } catch (error) {
         toast({
@@ -75,6 +102,9 @@ export function Step2Results({ results, onBack, formData }: Step2ResultsProps) {
           variant: "destructive",
         });
         console.error(error);
+      } finally {
+         // Hide it again
+        pdfContainer.style.display = 'none';
       }
     }
     setIsGeneratingPdf(false);
@@ -141,7 +171,7 @@ export function Step2Results({ results, onBack, formData }: Step2ResultsProps) {
 
   return (
     <>
-      <div ref={reportRef} className="space-y-8 bg-background p-4 sm:p-0">
+      <div className="space-y-8 bg-background p-4 sm:p-0">
         <Card>
            <CardHeader>
             <CardTitle className="font-headline text-2xl">Sua Análise Financeira</CardTitle>
@@ -223,13 +253,25 @@ export function Step2Results({ results, onBack, formData }: Step2ResultsProps) {
             </Button>
             <div className="flex gap-4">
                 <Button type="button" onClick={() => handleShare('whatsapp')} variant="outline"><Share2 className="mr-2 h-4 w-4" /> Compartilhar</Button>
-                <Button type="button" onClick={handleExportPdf} disabled={isGeneratingPdf}>
+                <Button type="button" onClick={handleExportPdf} disabled={isGeneratingPdf || !companyData}>
                     <Download className={`mr-2 h-4 w-4 ${isGeneratingPdf ? 'animate-pulse' : ''}`} />
                     {isGeneratingPdf ? "Gerando..." : "Exportar PDF"}
                 </Button>
             </div>
           </div>
       </div>
+
+      {/* Hidden container for PDF rendering */}
+      <div id="pdf-container" style={{ display: 'none' }}>
+        {companyData && (
+          <ProposalDocument
+            results={results}
+            formData={formData}
+            companyData={companyData}
+          />
+        )}
+      </div>
+
 
       <AlertDialog open={!!refinedSuggestion} onOpenChange={() => setRefinedSuggestion(null)}>
         <AlertDialogContent className="max-w-2xl">
