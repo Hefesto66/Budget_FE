@@ -2,8 +2,7 @@
 import type { SolarCalculationInput, SolarCalculationResult, ClientFormData, CustomizationSettings } from '@/types';
 import type { CompanyFormData } from '@/app/minha-empresa/page';
 import { formatCurrency, formatNumber } from '@/lib/utils';
-import { Leaf, Car, Globe, FileSignature, Wrench, Zap as ZapIcon, CheckCircle } from 'lucide-react';
-import { SavingsChart } from '../SavingsChart';
+import { Leaf, Car, Globe, FileSignature, Wrench, Zap, CheckCircle, Package, Settings, PenLine, Power } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import React from 'react';
@@ -203,9 +202,9 @@ export function ProposalDocument({
             <Section>
                 <h3 style={{ fontWeight: 'bold', fontSize: '14pt', marginBottom: '16px', borderBottom: '1px solid #EEE', paddingBottom: '4px', color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Seu Impacto Positivo no Planeta</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', textAlign: 'center' }}>
-                    <ImpactCard iconSVG='<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.59a2 2 0 0 1-2.83-2.83l8.49-8.48"/>' value={formatNumber(treesSaved, 0)} label="Árvores Salvas por Ano"/>
-                    <ImpactCard iconSVG='<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1 .4-1 1v3c0 .6.4 1 1 1h3v3c0 .6.4 1 1 1h1"/>' value={`${formatNumber(co2AvoidedKg, 0)} kg`} label="de CO₂ Evitados por Ano"/>
-                    <ImpactCard iconSVG='<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20z"/>' value="100%" label="Energia Limpa e Renovável"/>
+                    <ImpactCard icon={<Leaf size={32} />} value={formatNumber(treesSaved, 0)} label="Árvores Salvas por Ano"/>
+                    <ImpactCard icon={<Car size={32} />} value={`${formatNumber(co2AvoidedKg, 0)} kg`} label="de CO₂ Evitados por Ano"/>
+                    <ImpactCard icon={<Globe size={32} />} value="100%" label="Energia Limpa e Renovável"/>
                 </div>
             </Section>
         )}
@@ -237,10 +236,10 @@ export function ProposalDocument({
             <Section>
                 <h3 style={{ fontWeight: 'bold', fontSize: '14pt', marginBottom: '16px', borderBottom: '1px solid #EEE', paddingBottom: '4px', color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Nossas Próximas Etapas</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <TimelineStep iconSVG='<path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.71.71a5.4 5.4 0 0 0 0 7.65l.71.71a5.4 5.4 0 0 0 7.65 0l4.24-4.24a5.4 5.4 0 0 0 0-7.65l-4.24-4.24Z"/><path d="m14.5 18.5-4-4"/>' title="Assinatura do Contrato" description="Formalização da nossa parceria para um futuro mais sustentável." />
-                    <TimelineStep iconSVG='<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 S 5.27 10 5.27 10h1.46a2 2 0 0 1 1.73 1l.25.43a2 2 0 0 1 0 2l-.25.43a2 2 0 0 1-1.73 1H5.27s-.86.66-1.02.73l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-2-2l-.25-.43a2 2 0 0 1 0-2l.25-.43a2 2 0 0 1 1.73-1h1.46a2 2 0 0 1 1.73-1l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>' title="Elaboração do Projeto e Homologação" description="Nossa engenharia cuida de toda a burocracia com a concessionária (Prazo: 15-30 dias)." />
-                    <TimelineStep iconSVG='<path d="m13.2 2.9-3.2 3.2 3.2 3.2"/>' title="Instalação do Sistema" description="Nossa equipe especializada realiza a instalação completa (Prazo: 2-4 dias)." />
-                    <TimelineStep iconSVG='<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>' title="Ativação pela Concessionária" description="Após a vistoria, a concessionária ativa seu sistema e você começa a economizar." />
+                    <TimelineStep icon={<PenLine size={20} />} title="Assinatura do Contrato" description="Formalização da nossa parceria para um futuro mais sustentável." />
+                    <TimelineStep icon={<Settings size={20} />} title="Elaboração do Projeto e Homologação" description="Nossa engenharia cuida de toda a burocracia com a concessionária (Prazo: 15-30 dias)." />
+                    <TimelineStep icon={<Wrench size={20} />} title="Instalação do Sistema" description="Nossa equipe especializada realiza a instalação completa (Prazo: 2-4 dias)." />
+                    <TimelineStep icon={<Power size={20} />} title="Ativação pela Concessionária" description="Após a vistoria, a concessionária ativa seu sistema e você começa a economizar." />
                 </div>
             </Section>
         )}
@@ -266,20 +265,20 @@ const InfoRow = ({ label, value, highlightColor }: { label: string; value: strin
     </div>
 )
 
-const ImpactCard = ({ iconSVG, value, label }: { iconSVG: string, value: string, label: string }) => (
+const ImpactCard = ({ icon, value, label }: { icon: React.ReactNode, value: string, label: string }) => (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px', backgroundColor: '#FAFAFA', borderRadius: '8px' }}>
         <div style={{ color: '#10B981', marginBottom: '8px' }}>
-             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: iconSVG }} />
+             {icon}
         </div>
         <p style={{ fontWeight: 'bold', fontSize: '16pt', color: '#333', margin: 0 }}>{value}</p>
         <p style={{ fontSize: '9pt', color: '#666', margin: 0 }}>{label}</p>
     </div>
 )
 
-const TimelineStep = ({ iconSVG, title, description }: { iconSVG: string, title: string, description: string}) => (
+const TimelineStep = ({ icon, title, description }: { icon: React.ReactNode, title: string, description: string}) => (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
         <div style={{ flexShrink: 0, width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', backgroundColor: '#F9F9F9', color: '#555' }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: iconSVG }} />
+            {icon}
         </div>
         <div>
             <h5 style={{ fontWeight: '600', color: '#333', margin: 0 }}>{title}</h5>

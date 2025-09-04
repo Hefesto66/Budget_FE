@@ -157,6 +157,29 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
             .proposal-document {
               font-family: "PT Sans", sans-serif;
             }
+             @page {
+                size: A4;
+                margin: 2cm;
+              }
+              
+              .proposal-document {
+                box-shadow: none !important;
+                border: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                max-width: 100% !important;
+                width: 100% !important;
+              }
+
+              .pdf-section {
+                page-break-inside: avoid !important;
+                break-inside: avoid-page !important;
+              }
+
+              .pdf-page-break-before {
+                page-break-before: always !important;
+                break-before: page !important;
+              }
           </style>
         </head>
         <body>
