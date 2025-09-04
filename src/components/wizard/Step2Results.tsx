@@ -19,9 +19,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
-import { getRefinedSuggestions } from "@/app/orcamento/actions";
+import { getRefinedSuggestions, getCalculation } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, BarChart, Zap, Calendar, FileDown, Loader2, Info, FileSignature } from "lucide-react";
+import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, BarChart, Zap, Calendar, FileDown, Loader2, FileSignature, CheckCircle } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
 import { formatCurrency, formatNumber } from "@/lib/utils";
@@ -36,6 +36,7 @@ import { Calendar as CalendarIcon } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { useFormContext } from "react-hook-form";
 
 
 const COMPANY_DATA_KEY = "companyData";
@@ -44,12 +45,12 @@ const CUSTOMIZATION_KEY = "proposalCustomization";
 interface Step2ResultsProps {
   results: SolarCalculationResult;
   onBack: () => void;
-  formData: SolarCalculationInput;
-  clientData: ClientFormData | null;
+  onRecalculate: (newResults: SolarCalculationResult) => void;
 }
 
-export function Step2Results({ results, onBack, formData, clientData }: Step2ResultsProps) {
+export function Step2Results({ results, onBack, onRecalculate }: Step2ResultsProps) {
   const { toast } = useToast();
+  const formMethods = useFormContext<SolarCalculationInput>();
   
   const [isRefining, setIsRefining] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -72,18 +73,8 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
     setIsRefining(true);
     setRefinedSuggestion(null);
 
-    const inputForAI = {
-      consumption: formData.consumo_mensal_kwh,
-      bill: results.conta_media_mensal_reais.antes,
-      location: `${formData.concessionaria}`,
-      initialPanelQuantity: results.dimensionamento.quantidade_modulos,
-      panelModel: `${formData.potencia_modulo_wp}W`,
-      totalCostEstimate: results.financeiro.custo_sistema_reais,
-      estimatedAnnualSavings: results.economia_anual_reais,
-      paybackPeriod: results.payback_simples_anos,
-    };
-
-    const response = await getRefinedSuggestions(inputForAI);
+    const formData = formMethods.getValues();
+    const response = await getRefinedSuggestions(formData);
 
     if (response.success && response.data) {
       setRefinedSuggestion(response.data);
@@ -98,6 +89,42 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
     setIsRefining(false);
   };
   
+  const handleApplySuggestion = async () => {
+    if (!refinedSuggestion) return;
+  
+    const { quantidade_modulos } = refinedSuggestion.configuracao_otimizada;
+    formMethods.setValue("quantidade_modulos", quantidade_modulos);
+  
+    const currentFormData = formMethods.getValues();
+    
+    // Mostra um toast de carregamento
+    const { id: toastId } = toast({
+      title: "Aplicando Sugestão...",
+      description: "Recalculando o orçamento com a nova configuração.",
+    });
+
+    const result = await getCalculation(currentFormData);
+
+    if (result.success && result.data) {
+      onRecalculate(result.data);
+      toast({
+        id: toastId,
+        title: "Sucesso!",
+        description: "Orçamento atualizado com a sugestão da IA.",
+      });
+    } else {
+      toast({
+        id: toastId,
+        title: "Erro ao Recalcular",
+        description: result.error || "Não foi possível aplicar a sugestão.",
+        variant: "destructive",
+      });
+    }
+  
+    setRefinedSuggestion(null); // Fecha o dialog
+  };
+
+
   const handleExportPdf = async () => {
     setIsExporting(true);
     
@@ -105,6 +132,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
       const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
       const customizationData = localStorage.getItem(CUSTOMIZATION_KEY);
       const customization: CustomizationSettings | null = customizationData ? JSON.parse(customizationData) : defaultCustomization;
+      const formData = formMethods.getValues();
 
       if (!companyData) {
         toast({
@@ -121,7 +149,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
           results={results}
           formData={formData}
           companyData={companyData}
-          clientData={clientData}
+          clientData={null} // TODO: Pass client data if available
           customization={customization!}
           proposalId={proposalId}
           proposalDate={proposalDate}
@@ -218,7 +246,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
                     icon={<Zap />}
                     title="Sistema Sugerido"
                     value={`${results.dimensionamento.quantidade_modulos} painéis`}
-                    description={`${formData.potencia_modulo_wp}Wp | ${formatNumber(results.geracao.media_mensal_kwh, 0)} kWh/mês`}
+                    description={`${formMethods.getValues().potencia_modulo_wp}Wp | ${formatNumber(results.geracao.media_mensal_kwh, 0)} kWh/mês`}
                 />
                 <ResultCard
                   icon={<Calendar />}
@@ -274,7 +302,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
                             )}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {proposalDate ? format(proposalDate, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                            {proposalDate ? format(proposalDate, "P", { locale: ptBR }) : <span>Selecione uma data</span>}
                         </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
@@ -300,7 +328,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
                             )}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {proposalValidity ? format(proposalValidity, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                            {proposalValidity ? format(proposalValidity, "P", { locale: ptBR }) : <span>Selecione uma data</span>}
                         </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
@@ -336,7 +364,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
           </div>
       </div>
       
-      <AlertDialog open={!!refinedSuggestion} onOpenChange={() => setRefinedSuggestion(null)}>
+      <AlertDialog open={!!refinedSuggestion} onOpenChange={(isOpen) => !isOpen && setRefinedSuggestion(null)}>
         <AlertDialogContent className="max-w-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="font-headline text-2xl flex items-center gap-2">
@@ -352,31 +380,38 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
               <div className="space-y-6 text-sm">
                 <div>
                     <h3 className="font-semibold mb-2 text-foreground">Análise da IA</h3>
-                    <p className="text-muted-foreground bg-secondary/50 p-4 rounded-md border">{refinedSuggestion.reasoning}</p>
+                    <p className="text-muted-foreground bg-secondary/50 p-4 rounded-md border">{refinedSuggestion.analise_texto}</p>
                 </div>
                 
                 <Separator />
                 
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                  <div className="space-y-4">
-                      <h4 className="font-semibold text-foreground">Configuração Inicial</h4>
-                      <ComparisonItem label="Painéis" value={`${results.dimensionamento.quantidade_modulos} de ${formData.potencia_modulo_wp}Wp`} />
-                      <ComparisonItem label="Custo Total" value={formatCurrency(results.financeiro.custo_sistema_reais)} />
-                      <ComparisonItem label="Payback" value={paybackText} />
-                  </div>
-                  <div className="space-y-4 rounded-md border border-primary bg-primary/5 p-4">
-                      <h4 className="font-semibold text-primary">Configuração Otimizada</h4>
-                      <ComparisonItem label="Painéis" value={`${refinedSuggestion.refinedPanelQuantity} de ${refinedSuggestion.refinedPanelModel}`} highlight />
-                      <ComparisonItem label="Custo Total" value={formatCurrency(refinedSuggestion.refinedTotalCostEstimate)} highlight />
-                      <ComparisonItem label="Payback" value={`${formatNumber(refinedSuggestion.refinedPaybackPeriod, 1)} anos`} highlight />
-                  </div>
+                <div>
+                    <h4 className="font-semibold text-foreground mb-4">Comparativo da Configuração</h4>
+                    <div className="grid grid-cols-2 gap-x-6">
+                        <div className="space-y-3">
+                            <h5 className="font-medium text-muted-foreground">Configuração Atual</h5>
+                             <ComparisonItem label="Painéis" value={`${results.dimensionamento.quantidade_modulos} de ${formMethods.getValues().potencia_modulo_wp}Wp`} />
+                             <ComparisonItem label="Custo Total" value={formatCurrency(results.financeiro.custo_sistema_reais)} />
+                             <ComparisonrItem label="Payback" value={paybackText} />
+                        </div>
+                        <div className="space-y-3 rounded-md border border-primary bg-primary/5 p-4">
+                             <h5 className="font-medium text-primary">Sugestão Otimizada</h5>
+                             <ComparisonItem label="Painéis" value={`${refinedSuggestion.configuracao_otimizada.quantidade_modulos} de ${formMethods.getValues().potencia_modulo_wp}Wp`} highlight />
+                             <ComparisonItem label="Custo Total" value={formatCurrency(refinedSuggestion.configuracao_otimizada.custo_total)} highlight />
+                             <ComparisonItem label="Payback" value={`${formatNumber(refinedSuggestion.configuracao_otimizada.payback, 1)} anos`} highlight />
+                        </div>
+                    </div>
                 </div>
 
               </div>
             )}
           </div>
           <AlertDialogFooter>
-            <AlertDialogAction>Entendido</AlertDialogAction>
+            <Button variant="ghost" onClick={() => setRefinedSuggestion(null)}>Cancelar</Button>
+            <Button onClick={handleApplySuggestion} disabled={isRefining}>
+                <CheckCircle className="mr-2" />
+                Aplicar Sugestão
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -387,7 +422,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
 const ComparisonItem = ({ label, value, highlight = false }: { label: string, value: string, highlight?: boolean }) => (
     <div>
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className={`font-bold ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
+        <p className={`font-semibold text-base ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
     </div>
 )
 
@@ -433,12 +468,3 @@ const defaultCustomization: CustomizationSettings = {
     showTimeline: false,
   },
 };
-    
-
-    
-
-    
-
-    
-
-    

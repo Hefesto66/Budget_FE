@@ -60,6 +60,7 @@ export function Wizard() {
       custo_fixo_instalacao_reais: 2500,
       custo_om_anual_reais: 150,
       meta_compensacao_percent: 100,
+      quantidade_modulos: 7, // Default initial quantity
     },
   });
 
@@ -126,6 +127,10 @@ export function Wizard() {
     setIsClientDialogOpen(true);
   }
 
+  const handleRecalculate = (newResults: SolarCalculationResult) => {
+    setResults(newResults);
+  }
+
   return (
     <div className="container mx-auto max-w-4xl px-4 py-12 sm:py-16">
       <ClientRegistrationDialog
@@ -161,8 +166,7 @@ export function Wizard() {
                     <Step2Results 
                       results={results}
                       onBack={goBack}
-                      formData={methods.getValues()}
-                      clientData={clientData}
+                      onRecalculate={handleRecalculate}
                     />
                   </motion.div>
                 )}

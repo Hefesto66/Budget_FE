@@ -20,7 +20,7 @@ export async function getRefinedSuggestions(
     return { success: true, data: suggestion };
   } catch (error) {
     console.error("AI suggestion failed:", error);
-    return { success: false, error: "Falha ao obter sugestão da IA." };
+    return { success: false, error: "Falha ao obter sugestão da IA. A resposta pode ter sido bloqueada por filtros de segurança." };
   }
 }
 
