@@ -69,8 +69,21 @@ export function ProposalDocument({
         {/* Proposal Title */}
         <Section>
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-                <h2 style={{ fontSize: '20pt', fontWeight: 'bold', textTransform: 'uppercase', color: colors.primary, fontFamily: '"Playfair Display", serif', margin: 0 }}>Proposta de Sistema Fotovoltaico</h2>
-                <p style={{ color: '#666', margin: 0 }}>Documento gerado em: {format(new Date(), 'dd/MM/yyyy')}</p>
+                <h2 style={{ fontSize: '20pt', fontWeight: 'bold', textTransform: 'uppercase', color: colors.primary, fontFamily: '"Playfair Display", serif', margin: 0, marginBottom: '24px' }}>Proposta de Sistema Fotovoltaico</h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', textAlign: 'center' }}>
+                    <div style={{ flex: 1, backgroundColor: '#F9F9F9', padding: '12px', borderRadius: '4px', border: '1px solid #EEE' }}>
+                        <p style={{ fontSize: '9pt', color: '#555', margin: 0, marginBottom: '4px' }}>ID da Proposta</p>
+                        <p style={{ fontWeight: 'bold', margin: 0 }}>{proposalId}</p>
+                    </div>
+                    <div style={{ flex: 1, backgroundColor: '#F9F9F9', padding: '12px', borderRadius: '4px', border: '1px solid #EEE' }}>
+                        <p style={{ fontSize: '9pt', color: '#555', margin: 0, marginBottom: '4px' }}>Data da Proposta</p>
+                        <p style={{ fontWeight: 'bold', margin: 0 }}>{format(proposalDate, 'dd/MM/yyyy')}</p>
+                    </div>
+                    <div style={{ flex: 1, backgroundColor: '#F9F9F9', padding: '12px', borderRadius: '4px', border: '1px solid #EEE' }}>
+                        <p style={{ fontSize: '9pt', color: '#555', margin: 0, marginBottom: '4px' }}>Validade</p>
+                        <p style={{ fontWeight: 'bold', margin: 0 }}>{format(proposalValidity, 'dd/MM/yyyy')}</p>
+                    </div>
+                </div>
             </div>
         </Section>
 
@@ -85,24 +98,6 @@ export function ProposalDocument({
             </div>
           </Section>
         )}
-
-        {/* Proposal Summary */}
-        <Section>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '32px', textAlign: 'center' }}>
-                <div style={{ flex: 1, backgroundColor: '#F9F9F9', padding: '12px', borderRadius: '4px' }}>
-                    <p style={{ fontSize: '9pt', color: '#555', margin: 0, marginBottom: '4px' }}>ID da Proposta</p>
-                    <p style={{ fontWeight: 'bold', margin: 0 }}>{proposalId}</p>
-                </div>
-                <div style={{ flex: 1, backgroundColor: '#F9F9F9', padding: '12px', borderRadius: '4px' }}>
-                    <p style={{ fontSize: '9pt', color: '#555', margin: 0, marginBottom: '4px' }}>Data da Proposta</p>
-                    <p style={{ fontWeight: 'bold', margin: 0 }}>{format(proposalDate, 'dd/MM/yyyy')}</p>
-                </div>
-                <div style={{ flex: 1, backgroundColor: '#F9F9F9', padding: '12px', borderRadius: '4px' }}>
-                    <p style={{ fontSize: '9pt', color: '#555', margin: 0, marginBottom: '4px' }}>Validade</p>
-                    <p style={{ fontWeight: 'bold', margin: 0 }}>{format(proposalValidity, 'dd/MM/yyyy')}</p>
-                </div>
-            </div>
-        </Section>
 
         {/* System Description */}
         {content.showInvestmentTable && (
@@ -197,3 +192,5 @@ const InfoRow = ({ label, value, highlightColor }: { label: string; value: strin
         <span style={{ color: highlightColor || 'inherit' }}>{value}</span>
     </div>
 )
+
+    
