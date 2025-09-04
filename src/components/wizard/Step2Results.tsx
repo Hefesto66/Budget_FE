@@ -147,7 +147,7 @@ export function Step2Results({ results, onBack, formData, clientData }: Step2Res
             throw new Error(response.error || "A geração do PDF falhou no servidor.");
         }
     } catch (error) {
-      console.error("PDF Generation Error:", error);
+      console.error("Puppeteer PDF generation failed:", error);
       toast({
         title: "Erro ao Gerar PDF",
         description: error instanceof Error ? error.message : "Houve um problema ao criar o documento. Tente novamente.",
@@ -462,3 +462,5 @@ const SuggestionSkeleton = () => (
         </div>
     </div>
 );
+
+    
