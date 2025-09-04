@@ -236,7 +236,8 @@ export function ProposalDocument({
                 <h3 className="font-bold text-lg mb-4 border-b border-gray-200 pb-1" style={{ color: colors.primary, fontFamily: '"Playfair Display", serif' }}>Projeção de Economia em 25 Anos</h3>
                  <p className="text-xs text-gray-500 mb-4">Veja como sua economia acumulada cresce ao longo da vida útil do sistema solar, superando o investimento inicial.</p>
                 <div className="w-full h-[22rem] bg-white flex items-center justify-center rounded-lg border">
-                   <SavingsChart annualSavings={results.economia_anual_reais} />
+                   {/* <SavingsChart annualSavings={results.economia_anual_reais} /> */}
+                   <p className="text-gray-400">Gráfico de Economia Acumulada (Temporariamente desabilitado)</p>
                 </div>
             </Section>
         )}
