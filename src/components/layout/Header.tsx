@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
+import { Building } from 'lucide-react';
 
 export function Header() {
   return (
@@ -9,9 +10,14 @@ export function Header() {
         <Link href="/">
           <Logo />
         </Link>
-        <Button asChild>
-          <Link href="/orcamento">Novo Orçamento</Link>
-        </Button>
+        <div className="flex items-center gap-4">
+          <Button asChild variant="ghost">
+            <Link href="/minha-empresa"><Building className="mr-2 h-4 w-4"/> Minha Empresa</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/orcamento">Novo Orçamento</Link>
+          </Button>
+        </div>
       </div>
     </header>
   );
