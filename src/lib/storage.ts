@@ -16,12 +16,15 @@ export interface Client {
   zip?: string;
   country?: string;
   tags?: string[];
+  salespersonId?: string;
+  paymentTermId?: string;
+  priceListId?: string;
 }
 
 export interface Lead {
   id: string;
   title: string;
-  clientId: string; // Added clientId
+  clientId: string; 
   clientName: string;
   value: number;
   stage: string;
@@ -42,6 +45,21 @@ export interface Stage {
   isWon?: boolean;
 }
 
+export interface Salesperson {
+  id: string;
+  name: string;
+}
+
+export interface PaymentTerm {
+  id: string;
+  name: string;
+}
+
+export interface PriceList {
+  id: string;
+  name: string;
+}
+
 
 // ====== CONSTANTS ====== //
 const LEADS_STORAGE_KEY = 'fe-solar-leads';
@@ -49,6 +67,9 @@ const QUOTES_STORAGE_KEY = 'fe-solar-quotes';
 const QUOTE_COUNTER_KEY = 'fe-solar-quote-counter';
 const STAGES_STORAGE_KEY = 'fe-solar-stages';
 const CLIENTS_STORAGE_KEY = 'fe-solar-clients';
+const SALESPERSON_STORAGE_KEY = 'fe-solar-salespersons';
+const PAYMENT_TERMS_STORAGE_KEY = 'fe-solar-payment-terms';
+const PRICE_LISTS_STORAGE_KEY = 'fe-solar-pricelists';
 
 
 // ====== HELPERS ====== //
@@ -201,3 +222,52 @@ export const saveClient = (newClient: Client): void => {
   }
   saveToStorage(CLIENTS_STORAGE_KEY, clients);
 };
+
+
+// ====== SALES CONFIG FUNCTIONS ====== //
+
+const DEFAULT_SALESPERSONS: Salesperson[] = [
+  { id: 'sp-1', name: 'Vendedor Padrão' },
+  { id: 'sp-2', name: 'Ana Costa' },
+  { id: 'sp-3', name: 'Ricardo Alves' }
+];
+
+const DEFAULT_PAYMENT_TERMS: PaymentTerm[] = [
+  { id: 'pt-1', name: '30 Dias' },
+  { id: 'pt-2', name: '50% Adiantado, 50% na Entrega' },
+  { id: 'pt-3', name: 'Pagamento à Vista' }
+];
+
+const DEFAULT_PRICELISTS: PriceList[] = [
+  { id: 'pl-1', name: 'Tabela de Preços Padrão' },
+  { id: 'pl-2', name: 'Tabela de Revenda' },
+];
+
+export const getSalespersons = (): Salesperson[] => {
+  const data = getFromStorage<Salesperson[]>(SALESPERSON_STORAGE_KEY);
+  if (!data) {
+    saveToStorage(SALESPERSON_STORAGE_KEY, DEFAULT_SALESPERSONS);
+    return DEFAULT_SALESPERSONS;
+  }
+  return data;
+}
+
+export const getPaymentTerms = (): PaymentTerm[] => {
+  const data = getFromStorage<PaymentTerm[]>(PAYMENT_TERMS_STORAGE_KEY);
+  if (!data) {
+    saveToStorage(PAYMENT_TERMS_STORAGE_KEY, DEFAULT_PAYMENT_TERMS);
+    return DEFAULT_PAYMENT_TERMS;
+  }
+  return data;
+}
+
+export const getPriceLists = (): PriceList[] => {
+  const data = getFromStorage<PriceList[]>(PRICE_LISTS_STORAGE_KEY);
+  if (!data) {
+    saveToStorage(PRICE_LISTS_STORAGE_KEY, DEFAULT_PRICELISTS);
+    return DEFAULT_PRICELISTS;
+  }
+  return data;
+}
+
+    

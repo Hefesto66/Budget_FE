@@ -45,6 +45,11 @@ export const solarCalculationSchema = z.object({
   // Advanced/Optional Fields
   meta_compensacao_percent: z.number().min(0).max(100).default(100),
   custo_sistema_reais: z.number().gte(0).optional(),
+  
+  // Sales Fields
+  salespersonId: z.string().optional(),
+  paymentTermId: z.string().optional(),
+  priceListId: z.string().optional(),
 });
 
 
@@ -95,6 +100,9 @@ export interface Client {
   cityState?: string;
   zip?: string;
   country?: string;
+  salespersonId?: string;
+  paymentTermId?: string;
+  priceListId?: string;
 }
 
 
@@ -117,3 +125,5 @@ export interface CustomizationSettings {
     showTimeline: boolean;
   };
 }
+
+    

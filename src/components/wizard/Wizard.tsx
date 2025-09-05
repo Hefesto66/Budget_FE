@@ -52,6 +52,10 @@ const defaultValues: SolarCalculationInput = {
     custo_om_anual_reais: 150,
     meta_compensacao_percent: 100,
     quantidade_modulos: 7,
+    // Vendas
+    salespersonId: "",
+    paymentTermId: "",
+    priceListId: ""
 }
 
 export function Wizard() {
@@ -78,6 +82,7 @@ export function Wizard() {
   useEffect(() => {
     const initialize = async () => {
       let initialData = { ...defaultValues };
+      let clientToSet: any = null;
 
       if (quoteId) {
         setProposalId(quoteId);
@@ -91,19 +96,27 @@ export function Wizard() {
           }
         }
       }
-      methods.reset(initialData);
       
       if (clienteId) {
           const foundClient = getClientById(clienteId);
           if(foundClient) {
-              setClientData({
+              clientToSet = {
                   name: foundClient.name,
                   document: foundClient.cnpj || '',
                   address: foundClient.street || '',
-              });
+              };
+              // Pre-fill form with client's sales data
+              if (foundClient.salespersonId) initialData.salespersonId = foundClient.salespersonId;
+              if (foundClient.paymentTermId) initialData.paymentTermId = foundClient.paymentTermId;
+              if (foundClient.priceListId) initialData.priceListId = foundClient.priceListId;
           }
       }
       
+      methods.reset(initialData);
+      if(clientToSet) {
+        setClientData(clientToSet);
+      }
+
       setIsReady(true);
     };
 
@@ -280,5 +293,7 @@ export function Wizard() {
     </div>
   );
 }
+
+    
 
     
