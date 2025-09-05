@@ -20,6 +20,7 @@ export interface Client {
 export interface Lead {
   id: string;
   title: string;
+  clientId: string; // Added clientId
   clientName: string;
   value: number;
   stage: string;
@@ -193,4 +194,3 @@ export const saveClient = (newClient: Client): void => {
   }
   saveToStorage(CLIENTS_STORAGE_KEY, clients);
 };
-

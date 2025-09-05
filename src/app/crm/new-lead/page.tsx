@@ -107,6 +107,7 @@ export default function NewLeadPage() {
       title: data.title,
       value: data.value,
       stage: data.stage,
+      clientId: selectedClient.id, // Save client id
       clientName: selectedClient.name, // Save client name for display
     };
     
@@ -309,5 +310,3 @@ export default function NewLeadPage() {
     </div>
   )
 }
-
-    

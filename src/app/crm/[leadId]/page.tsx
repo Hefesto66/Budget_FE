@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from "next/navigation";
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -43,11 +44,11 @@ export default function LeadDetailPage() {
 
   const handleNewQuote = () => {
     if (!lead) return;
-    router.push(`/orcamento?leadId=${lead.id}`);
+    router.push(`/orcamento?leadId=${lead.id}&clienteId=${lead.clientId}`);
   };
 
   const handleQuoteClick = (quoteId: string) => {
-    router.push(`/orcamento?leadId=${leadId}&quoteId=${quoteId}`);
+    router.push(`/orcamento?leadId=${leadId}&quoteId=${quoteId}&clienteId=${lead?.clientId}`);
   };
 
   if (!isClient) {
@@ -147,7 +148,13 @@ export default function LeadDetailPage() {
                                     <User className="h-5 w-5 text-secondary-foreground" />
                                 </div>
                                 <div>
-                                    <p className="font-semibold text-foreground">{lead.clientName}</p>
+                                    {lead.clientId ? (
+                                        <Link href={`/clientes/${lead.clientId}`} className="font-semibold text-foreground hover:underline hover:text-primary">
+                                            {lead.clientName}
+                                        </Link>
+                                    ) : (
+                                        <p className="font-semibold text-foreground">{lead.clientName}</p>
+                                    )}
                                 </div>
                             </div>
                         </CardContent>
@@ -158,5 +165,3 @@ export default function LeadDetailPage() {
     </div>
   );
 }
-
-    
