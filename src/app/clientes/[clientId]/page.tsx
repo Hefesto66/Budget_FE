@@ -53,7 +53,7 @@ export default function ClientForm() {
   
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isClient, setIsClient] = useState(false);
+  const [isClientLoaded, setIsClientLoaded] = useState(false);
 
   const form = useForm<ClientFormData>({
     resolver: zodResolver(clientFormSchema),
@@ -68,12 +68,11 @@ export default function ClientForm() {
       street: "",
       cityState: "",
       zip: "",
-      country: "",
+      country: "Brasil", // Default to Brasil
     },
   });
 
   useEffect(() => {
-    setIsClient(true);
     if (isEditing) {
       const existingClient = getClientById(clientId);
       if (existingClient) {
@@ -84,8 +83,10 @@ export default function ClientForm() {
       } else {
           toast({ title: "Erro", description: "Cliente não encontrado.", variant: "destructive" });
           router.push('/clientes');
+          return; // Stop execution if client not found
       }
     }
+    setIsClientLoaded(true); // Mark that loading is complete
   }, [clientId, isEditing, form, router, toast]);
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,7 +130,7 @@ export default function ClientForm() {
     setIsSaving(false);
   };
   
-  if (!isClient) return null; // Or a skeleton loader
+  if (!isClientLoaded) return null; // Or a skeleton loader
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -256,3 +257,5 @@ export default function ClientForm() {
     </div>
   );
 }
+
+    
