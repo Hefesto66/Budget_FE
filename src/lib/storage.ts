@@ -9,6 +9,11 @@ export interface HistoryEntry {
   type: 'note' | 'log' | 'log-lead' | 'log-quote' | 'log-stage';
   text: string;
   author?: string; // Optional: to track which user made the change
+  refId?: string; // Optional: ID of the related entity (e.g., leadId, quoteId)
+  quoteInfo?: { // Extra info needed to construct the quote URL
+      leadId: string;
+      clientId: string;
+  }
 }
 
 export interface Client {
@@ -233,16 +238,29 @@ export const saveClient = (newClient: Client): void => {
   saveToStorage(CLIENTS_STORAGE_KEY, clients);
 };
 
-export const addHistoryEntry = (clientId: string, text: string, type: HistoryEntry['type']) => {
-    const client = getClientById(clientId);
+interface AddHistoryEntryParams {
+    clientId: string;
+    text: string;
+    type: HistoryEntry['type'];
+    refId?: string;
+    quoteInfo?: {
+        leadId: string;
+        clientId: string;
+    };
+}
+
+export const addHistoryEntry = (params: AddHistoryEntryParams) => {
+    const client = getClientById(params.clientId);
     if (!client) return;
 
     const newEntry: HistoryEntry = {
         id: `hist-${Date.now()}`,
         timestamp: new Date().toISOString(),
-        text,
-        type,
-        author: type === 'note' ? 'Usuário' : 'Sistema'
+        text: params.text,
+        type: params.type,
+        refId: params.refId,
+        quoteInfo: params.quoteInfo,
+        author: params.type === 'note' ? 'Usuário' : 'Sistema'
     };
     
     const updatedHistory = [newEntry, ...(client.history || [])];

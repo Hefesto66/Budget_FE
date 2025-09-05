@@ -216,7 +216,16 @@ export function Wizard() {
       ? `Cotação ${proposalId} foi atualizada.`
       : `Nova cotação ${proposalId} foi criada.`;
 
-    addHistoryEntry(clienteId, historyMessage, 'log-quote');
+    addHistoryEntry({ 
+        clientId: clienteId, 
+        text: historyMessage, 
+        type: 'log-quote',
+        refId: proposalId,
+        quoteInfo: {
+            leadId: leadId,
+            clientId: clienteId,
+        }
+    });
 
     toast({
       title: quoteId ? "Cotação Atualizada!" : "Cotação Salva!",

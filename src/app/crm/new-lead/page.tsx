@@ -112,7 +112,12 @@ export default function NewLeadPage() {
     };
     
     saveLead(newLead);
-    addHistoryEntry(selectedClient.id, `Novo lead criado: "${data.title}"`, 'log-lead');
+    addHistoryEntry({ 
+      clientId: selectedClient.id, 
+      text: `Novo lead criado: "${data.title}"`, 
+      type: 'log-lead',
+      refId: newLeadId,
+    });
 
     await new Promise(resolve => setTimeout(resolve, 500)); 
 
@@ -139,7 +144,7 @@ export default function NewLeadPage() {
     };
     
     saveClient(newClient);
-    addHistoryEntry(newClient.id, 'Cliente criado através do formulário de novo lead.', 'log');
+    addHistoryEntry({ clientId: newClient.id, text: 'Cliente criado através do formulário de novo lead.', type: 'log' });
     
     const updatedClients = [...clients, newClient];
     setClients(updatedClients);

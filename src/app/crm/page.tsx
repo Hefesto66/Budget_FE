@@ -253,7 +253,12 @@ export default function CrmPage() {
 
       const destStage = stages.find(s => s.id === destStageId);
       if(destStage) {
-        addHistoryEntry(movedLead.clientId, `Lead "${movedLead.title}" movido para a etapa "${destStage.title}".`, 'log-stage');
+        addHistoryEntry({ 
+            clientId: movedLead.clientId, 
+            text: `Lead "${movedLead.title}" movido para a etapa "${destStage.title}".`, 
+            type: 'log-stage',
+            refId: movedLead.id
+        });
       }
 
       setLeadsByStage(prev => ({

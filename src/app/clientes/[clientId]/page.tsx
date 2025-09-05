@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import Link from 'next/link';
 import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -73,6 +74,42 @@ const HistoryIcon = ({ type }: { type: HistoryEntry['type'] }) => {
         default: return <Bot className="h-5 w-5 text-gray-500" />;
     }
 }
+
+const HistoryItem = ({ entry }: { entry: HistoryEntry }) => {
+    const renderText = () => {
+        const textElement = <p className="text-sm text-foreground">{entry.text}</p>;
+
+        if (!entry.refId) {
+            return textElement;
+        }
+
+        let href = '';
+        if (entry.type === 'log-lead' || entry.type === 'log-stage') {
+            href = `/crm/${entry.refId}`;
+        } else if (entry.type === 'log-quote' && entry.quoteInfo) {
+            href = `/orcamento?leadId=${entry.quoteInfo.leadId}&quoteId=${entry.refId}&clienteId=${entry.quoteInfo.clientId}`;
+        }
+
+        if (href) {
+            return <Link href={href} className="hover:underline hover:text-primary">{textElement}</Link>;
+        }
+
+        return textElement;
+    };
+
+    return (
+        <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-1">
+                <HistoryIcon type={entry.type} />
+            </div>
+            <div>
+                {renderText()}
+                <p className="text-xs text-muted-foreground">{formatDate(new Date(entry.timestamp), "dd/MM/yyyy HH:mm")}</p>
+            </div>
+        </div>
+    );
+};
+
 
 export default function ClientForm() {
   const { toast } = useToast();
@@ -196,7 +233,7 @@ export default function ClientForm() {
     saveClient(clientToSave);
     
     if(changesLog) {
-        addHistoryEntry(clientToSave.id, changesLog, 'log');
+        addHistoryEntry({ clientId: clientToSave.id, text: changesLog, type: 'log' });
     }
     
     toast({
@@ -215,7 +252,7 @@ export default function ClientForm() {
   
   const handleAddNote = () => {
     if (!newNote.trim() || !isEditing) return;
-    addHistoryEntry(clientId, newNote, 'note');
+    addHistoryEntry({ clientId: clientId, text: newNote, type: 'note' });
     setNewNote("");
     fetchClientData(); // Refresh history
   };
@@ -486,15 +523,7 @@ export default function ClientForm() {
                                 <div className="flex-grow overflow-y-auto pr-2 space-y-4">
                                   {clientHistory.length > 0 ? (
                                     clientHistory.map((entry) => (
-                                        <div key={entry.id} className="flex items-start gap-3">
-                                            <div className="flex-shrink-0 mt-1">
-                                                <HistoryIcon type={entry.type} />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm text-foreground">{entry.text}</p>
-                                                <p className="text-xs text-muted-foreground">{formatDate(new Date(entry.timestamp), "dd/MM/yyyy HH:mm")}</p>
-                                            </div>
-                                        </div>
+                                       <HistoryItem key={entry.id} entry={entry} />
                                     ))
                                   ) : (
                                     <div className="text-center text-sm text-muted-foreground py-8">
