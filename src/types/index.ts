@@ -77,6 +77,11 @@ export interface Quote {
     results: SolarCalculationResult;
 }
 
+export interface Stage {
+  id: string;
+  title: string;
+}
+
 
 export type { SuggestRefinedPanelConfigOutput };
 

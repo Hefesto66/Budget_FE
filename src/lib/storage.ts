@@ -18,11 +18,17 @@ export interface Quote {
     results: SolarCalculationResult;
 }
 
+export interface Stage {
+  id: string;
+  title: string;
+}
+
 
 // ====== CONSTANTS ====== //
 const LEADS_STORAGE_KEY = 'fe-solar-leads';
 const QUOTES_STORAGE_KEY = 'fe-solar-quotes';
 const QUOTE_COUNTER_KEY = 'fe-solar-quote-counter';
+const STAGES_STORAGE_KEY = 'fe-solar-stages';
 
 
 // ====== HELPERS ====== //
@@ -49,6 +55,30 @@ const saveToStorage = <T>(key: string, data: T): void => {
     console.error(`Error writing to localStorage key “${key}”:`, error);
   }
 };
+
+
+// ====== STAGE FUNCTIONS ====== //
+const DEFAULT_STAGES: Stage[] = [
+  { id: 'qualificacao', title: 'Qualificação' },
+  { id: 'proposta', title: 'Proposta Enviada' },
+  { id: 'negociacao', title: 'Negociação' },
+  { id: 'ganho', title: 'Ganho' },
+  { id: 'perdido', title: 'Perdido' },
+];
+
+export const getStages = (): Stage[] => {
+  const stages = getFromStorage<Stage[]>(STAGES_STORAGE_KEY);
+  // If no stages are in storage (e.g., first visit), set and return defaults.
+  if (!stages || stages.length === 0) {
+    saveToStorage(STAGES_STORAGE_KEY, DEFAULT_STAGES);
+    return DEFAULT_STAGES;
+  }
+  return stages;
+}
+
+export const saveStages = (stages: Stage[]): void => {
+  saveToStorage(STAGES_STORAGE_KEY, stages);
+}
 
 
 // ====== LEAD FUNCTIONS ====== //
