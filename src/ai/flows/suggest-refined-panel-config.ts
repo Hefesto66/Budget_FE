@@ -13,9 +13,24 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { solarCalculationSchema } from '@/types';
+import { Product } from '@/lib/storage';
+
+const productSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+  salePrice: z.number(),
+  technicalSpecifications: z.record(z.string()).optional(),
+});
+
 
 // O input agora é o mesmo objeto do cálculo solar, para uma análise completa.
-const SuggestRefinedPanelConfigInputSchema = solarCalculationSchema;
+const SuggestRefinedPanelConfigInputSchema = solarCalculationSchema.extend({
+    inventory: z.object({
+        panels: z.array(productSchema).describe("Lista de painéis solares disponíveis no inventário."),
+        inverters: z.array(productSchema).describe("Lista de inversores disponíveis no inventário."),
+    })
+});
 
 export type SuggestRefinedPanelConfigInput = z.infer<
   typeof SuggestRefinedPanelConfigInputSchema
@@ -26,9 +41,11 @@ const SuggestRefinedPanelConfigOutputSchema = z.object({
     .string()
     .describe('A análise detalhada em texto, explicando a sugestão. Deve ser em Português-BR.'),
   configuracao_otimizada: z.object({
-    quantidade_modulos: z
-      .number()
-      .describe('O número otimizado de módulos.'),
+    itens: z.array(z.object({
+      produtoId: z.string().describe("O ID do produto selecionado do inventário."),
+      nomeProduto: z.string().describe("O nome do produto selecionado."),
+      quantidade: z.number().int().positive().describe("A quantidade necessária para este item."),
+    })),
     custo_total: z
       .number()
       .describe('O novo custo total estimado para a configuração otimizada.'),
@@ -52,50 +69,52 @@ const prompt = ai.definePrompt({
   name: 'suggestRefinedPanelConfigPrompt',
   input: {schema: SuggestRefinedPanelConfigInputSchema},
   output: {schema: SuggestRefinedPanelConfigOutputSchema},
-  prompt: `Você é um engenheiro especialista em sistemas de energia solar. Sua tarefa é analisar a configuração de orçamento fornecida e sugerir a otimização ideal, focando no melhor custo-benefício.
+  prompt: `Você é um engenheiro especialista em sistemas de energia solar. Sua tarefa é analisar a necessidade de um cliente e, usando os produtos disponíveis no inventário, montar a configuração ideal com o melhor custo-benefício.
 
 **Responda sempre em Português do Brasil (PT-BR).**
 
 **Princípio Fundamental:** Seu objetivo é encontrar o melhor equilíbrio para cobrir 100% do consumo mensal do cliente, com uma margem de segurança de geração entre 5% e 15%.
 
-**Objeto de Entrada (Configuração Atual):**
+**Dados do Cliente e Local:**
 - Consumo Mensal: {{{consumo_mensal_kwh}}} kWh
 - Irradiação Solar Local: {{{irradiacao_psh_kwh_m2_dia}}} PSH
-- Potência do Módulo: {{{potencia_modulo_wp}}} Wp
-- Quantidade de Módulos: {{{quantidade_modulos}}}
-- Eficiência do Inversor: {{{eficiencia_inversor_percent}}}%
-- Fator de Perdas: {{{fator_perdas_percent}}}%
-- Preço por Módulo: R$ {{{preco_modulo_reais}}}
-- Custo do Inversor: R$ {{{custo_inversor_reais}}}
-- Custo Fixo de Instalação: R$ {{{custo_fixo_instalacao_reais}}}
+- Eficiência Padrão do Inversor: 97% (use este valor se o produto não especificar)
+- Fator de Perdas Padrão: 20%
+
+**Produtos Disponíveis no Inventário:**
+- Painéis:
+{{#each inventory.panels}}
+  - ID: {{id}}, Nome: {{name}}, Preço: R$ {{salePrice}}, Especificações: {{json technicalSpecifications}}
+{{/each}}
+- Inversores:
+{{#each inventory.inverters}}
+  - ID: {{id}}, Nome: {{name}}, Preço: R$ {{salePrice}}, Especificações: {{json technicalSpecifications}}
+{{/each}}
 
 **Sua Cadeia de Pensamento (Obrigatória):**
 
-1.  **Calcular Geração Real da Configuração ATUAL:**
-    - Eficiência Efetiva do Sistema = (eficiencia_inversor_percent / 100) * (1 - (fator_perdas_percent / 100))
-    - Geração por Módulo (kWh/mês) = (potencia_modulo_wp / 1000) * irradiacao_psh_kwh_m2_dia * 30 * Eficiência Efetiva
-    - Geração Total ATUAL (kWh/mês) = Geração por Módulo * quantidade_modulos
+1.  **Calcular a Geração Necessária:**
+    - Geração Alvo (kWh/mês) = consumo_mensal_kwh * 1.10 (use uma margem de segurança de 10% como alvo).
 
-2.  **Determinar a Configuração ÓTIMA:**
-    - Meta de Geração Mínima = consumo_mensal_kwh * 1.05 (margem de 5%)
-    - Meta de Geração Máxima = consumo_mensal_kwh * 1.15 (margem de 15%)
-    - Quantidade Ótima de Módulos = Arredonde para o inteiro mais próximo o resultado de (Meta de Geração Mínima / Geração por Módulo).
+2.  **Selecionar o Melhor Painel:**
+    - Para cada painel no inventário, calcule a "Geração por Módulo (kWh/mês)". Use as especificações do painel (como 'Potência') e os dados do local.
+      - Geração por Módulo = (Potência Wp / 1000) * irradiacao_psh_kwh_m2_dia * 30 * (eficiencia_inversor_percent / 100) * (1 - (fator_perdas_percent / 100))
+    - Escolha o painel que oferece o melhor custo por kWh gerado ou o que melhor se adapta. Justifique sua escolha.
 
-3.  **Comparar e Decidir:**
-    - Compare a 'Geração Total ATUAL' com a 'Meta de Geração Mínima/Máxima'.
-    - **Se a configuração ATUAL for a ótima:** Valide a escolha do usuário. No campo 'analise_texto', explique que a configuração dele já é excelente, mostrando a geração calculada e a margem de segurança.
-    - **Se a configuração ATUAL NÃO for a ótima:** Sugira a 'Quantidade Ótima de Módulos'. No campo 'analise_texto', justifique a mudança, explicando como a nova configuração atinge a meta de geração ideal e melhora a economia a longo prazo.
+3.  **Dimensionar a Quantidade de Painéis:**
+    - Quantidade de Painéis = Arredonde para o inteiro de CIMA (Math.ceil) o resultado de (Geração Alvo / Geração por Módulo do painel escolhido).
 
-4.  **Calcular Custos da Configuração OTIMIZADA:**
-    - Se você sugerir uma nova quantidade de módulos, recalcule o custo total e o payback SIMPLES para essa nova configuração. Use os mesmos custos de equipamento e instalação fornecidos.
-    - Custo Total Otimizado = (Quantidade Ótima de Módulos * preco_modulo_reais) + custo_inversor_reais + custo_fixo_instalacao_reais.
-    - Economia Mensal = (valor_medio_fatura_reais - (custo_disponibilidade_kwh * tarifa_final)) -> Simplifique assumindo uma economia de 90% da fatura média para o cálculo do payback.
-    - Payback Otimizado (anos) = Custo Total Otimizado / (Economia Mensal * 12)
+4.  **Selecionar o Melhor Inversor:**
+    - Potência Total dos Painéis (kWp) = (Quantidade de Painéis * Potência Wp do painel escolhido) / 1000.
+    - Analise os inversores disponíveis. Escolha um cuja potência seja compatível e ligeiramente superior à potência total dos painéis. Considere o custo. Justifique sua escolha.
+
+5.  **Montar a Resposta:**
+    - No campo 'analise_texto', escreva uma justificativa técnica clara, explicando por que você escolheu esses componentes e como eles atendem às necessidades do cliente.
+    - No campo 'configuracao_otimizada.itens', liste os produtos selecionados (o painel e o inversor) com seus IDs e as quantidades calculadas.
+    - Calcule o 'custo_total' e o 'payback' para a configuração que você montou. Para o payback, pode usar uma estimativa simplificada: Custo Total / (Valor da Fatura Média Mensal * 0.9 * 12).
 
 **Formato da Resposta (JSON Obrigatório):**
-Sua resposta DEVE ser um JSON válido com a seguinte estrutura:
-- analise_texto: Sua justificativa técnica e clara.
-- configuracao_otimizada: Um objeto com 'quantidade_modulos', 'custo_total' e 'payback' para a configuração que você determinou como ideal. Se a configuração do usuário já era a ideal, retorne os valores originais aqui.
+Sua resposta DEVE ser um JSON válido com a estrutura definida. Certifique-se de que `configuracao_otimizada.itens` seja um array contendo os produtos que você selecionou.
 `,
 });
 
