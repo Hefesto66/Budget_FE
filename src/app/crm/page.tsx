@@ -9,7 +9,7 @@ import { PlusCircle, Trash2, Plus, Pencil } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { Header } from '@/components/layout/Header';
 import { useEffect, useState, useRef } from 'react';
-import { getLeads, type Lead, getStages, saveStages, type Stage, saveLead } from '@/lib/storage';
+import { getLeads, type Lead, getStages, saveStages, type Stage, saveLead, deleteLead } from '@/lib/storage';
 import type { DropResult } from "@hello-pangea/dnd";
 import {
   AlertDialog,
@@ -54,27 +54,45 @@ const Draggable = dynamic(
 );
 
 
-const LeadCard = ({ lead, index }: { lead: Lead, index: number }) => (
+const LeadCard = ({ lead, index, onDelete }: { lead: Lead, index: number, onDelete: (leadId: string) => void }) => (
   <Draggable draggableId={lead.id} index={index}>
     {(provided, snapshot) => (
       <div
         ref={provided.innerRef}
         {...provided.draggableProps}
         {...provided.dragHandleProps}
-        className="mb-4"
+        className={`group relative mb-4 rounded-lg border bg-card p-4 shadow-sm transition-shadow hover:shadow-md ${snapshot.isDragging ? 'shadow-xl scale-105' : ''}`}
       >
-        <Link 
-          href={`/crm/${lead.id}`}
-          className={`block rounded-lg border bg-card p-4 shadow-sm transition-shadow hover:shadow-md cursor-pointer ${snapshot.isDragging ? 'shadow-xl scale-105' : ''}`}
-        >
+        {/* Link principal que envolve o conteúdo */}
+        <Link href={`/crm/${lead.id}`} className="block">
           <CardContent className="p-0">
-            <div className="flex justify-between items-start">
-                <p className="font-semibold text-card-foreground">{lead.title}</p>
-            </div>
+            <p className="font-semibold text-card-foreground">{lead.title}</p>
             <p className="text-sm text-muted-foreground">{lead.clientName}</p>
             <p className="mt-2 text-lg font-bold text-primary">{formatCurrency(lead.value)}</p>
           </CardContent>
         </Link>
+        {/* Barra de ferramentas que aparece ao passar o mouse */}
+        <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir Lead?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Esta ação não pode ser desfeita. Isto irá apagar permanentemente o lead "{lead.title}".
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => onDelete(lead.id)}>Confirmar Exclusão</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </div>
       </div>
     )}
   </Draggable>
@@ -174,6 +192,19 @@ export default function CrmPage() {
     });
 
     toast({ title: "Sucesso!", description: `A etapa foi excluída.` });
+  };
+
+  const handleDeleteLead = (leadId: string) => {
+    deleteLead(leadId); // Deleta do storage
+    
+    // Atualiza o estado para remover o lead da UI
+    const newLeadsByStage = { ...leadsByStage };
+    for (const stageId in newLeadsByStage) {
+        newLeadsByStage[stageId] = newLeadsByStage[stageId].filter(lead => lead.id !== leadId);
+    }
+    setLeadsByStage(newLeadsByStage);
+
+    toast({ title: "Lead Excluído", description: "O lead foi removido com sucesso." });
   };
   
   const handleEditStage = (stage: Stage) => {
@@ -301,7 +332,7 @@ export default function CrmPage() {
                             </div>
                               <div className="flex-1 min-h-[100px]">
                                 {(leadsByStage[stage.id] && leadsByStage[stage.id].length > 0) ? (
-                                  leadsByStage[stage.id].map((lead, index) => <LeadCard key={lead.id} lead={lead} index={index} />)
+                                  leadsByStage[stage.id].map((lead, index) => <LeadCard key={lead.id} lead={lead} index={index} onDelete={handleDeleteLead} />)
                                 ) : (
                                   !snapshot.isDraggingOver && (
                                     <div className="flex items-center justify-center h-full rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 text-sm text-muted-foreground p-4 text-center">
@@ -381,5 +412,3 @@ export default function CrmPage() {
     </DragDropContext>
   );
 }
-
-    

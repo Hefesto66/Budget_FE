@@ -124,6 +124,12 @@ export const saveLead = (newLead: Lead): void => {
   saveToStorage(LEADS_STORAGE_KEY, leads);
 };
 
+export const deleteLead = (leadId: string): void => {
+    let leads = getLeads();
+    leads = leads.filter(lead => lead.id !== leadId);
+    saveToStorage(LEADS_STORAGE_KEY, leads);
+};
+
 
 // ====== QUOTE FUNCTIONS ====== //
 
