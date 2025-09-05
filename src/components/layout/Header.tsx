@@ -38,6 +38,13 @@ export function Header() {
     if (pathname === '/personalizar-proposta') {
       return { title: 'Personalizar Proposta', showQuickQuote: false };
     }
+    if (pathname === '/inventario') {
+        return { title: 'Inventário', showQuickQuote: false };
+    }
+     if (pathname.startsWith('/inventario/')) {
+        const isNew = pathname.endsWith('/novo');
+        return { title: isNew ? 'Novo Produto' : 'Editar Produto', showQuickQuote: false };
+    }
     // Default state for home page
     return { title: null, showQuickQuote: true };
   }, [pathname]);

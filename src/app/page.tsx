@@ -73,11 +73,10 @@ export default function Home() {
               description="Centralize as informações e o histórico de todos os seus clientes."
             />
             <AppCard
-              href="#"
+              href="/inventario"
               icon={<Building2 className="h-10 w-10 text-primary" />}
               name="Inventário"
               description="Controle seus produtos, painéis, inversores e outros equipamentos."
-              disabled
             />
             <AppCard
               href="/definicoes"

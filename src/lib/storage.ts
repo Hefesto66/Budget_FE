@@ -75,6 +75,28 @@ export interface PriceList {
   name: string;
 }
 
+export const PRODUCT_TYPES = {
+  PAINEL_SOLAR: 'Painel Solar',
+  INVERSOR: 'Inversor',
+  ESTRUTURA: 'Estrutura',
+  SERVICO: 'Serviço',
+  OUTRO: 'Outro',
+} as const;
+
+export type ProductType = keyof typeof PRODUCT_TYPES;
+
+
+export interface Product {
+    id: string;
+    name: string;
+    type: ProductType;
+    salePrice: number;
+    unit: string; // UN, m², etc.
+    description?: string;
+    technicalSpecifications?: Record<string, string>;
+    internalNotes?: string;
+}
+
 
 // ====== CONSTANTS ====== //
 const LEADS_STORAGE_KEY = 'fe-solar-leads';
@@ -85,6 +107,7 @@ const CLIENTS_STORAGE_KEY = 'fe-solar-clients';
 const SALESPERSON_STORAGE_KEY = 'fe-solar-salespersons';
 const PAYMENT_TERMS_STORAGE_KEY = 'fe-solar-payment-terms';
 const PRICE_LISTS_STORAGE_KEY = 'fe-solar-pricelists';
+const PRODUCTS_STORAGE_KEY = 'fe-solar-products';
 
 
 // ====== HELPERS ====== //
@@ -315,4 +338,38 @@ export const getPriceLists = (): PriceList[] => {
   return data;
 }
 
-    
+// ====== PRODUCT FUNCTIONS ====== //
+
+const DEFAULT_PRODUCTS: Product[] = [
+    { id: 'prod-1', name: 'Painel Solar Tongwei 550W', type: 'PAINEL_SOLAR', salePrice: 750, unit: 'UN' },
+    { id: 'prod-2', name: 'Inversor Growatt 5kW', type: 'INVERSOR', salePrice: 4200, unit: 'UN' },
+    { id: 'prod-3', name: 'Estrutura de Montagem para Telhado Cerâmico', type: 'ESTRUTURA', salePrice: 120, unit: 'UN' },
+    { id: 'prod-4', name: 'Projeto e Homologação', type: 'SERVICO', salePrice: 1500, unit: 'UN' },
+];
+
+
+export const getProducts = (): Product[] => {
+  const products = getFromStorage<Product[]>(PRODUCTS_STORAGE_KEY);
+  if (!products) {
+    saveToStorage(PRODUCTS_STORAGE_KEY, DEFAULT_PRODUCTS);
+    return DEFAULT_PRODUCTS;
+  }
+  return products;
+};
+
+export const getProductById = (id: string): Product | undefined => {
+  const products = getProducts();
+  return products.find(product => product.id === id);
+};
+
+export const saveProduct = (newProduct: Product): void => {
+  const products = getProducts();
+  const existingIndex = products.findIndex(product => product.id === newProduct.id);
+
+  if (existingIndex > -1) {
+    products[existingIndex] = newProduct;
+  } else {
+    products.push(newProduct);
+  }
+  saveToStorage(PRODUCTS_STORAGE_KEY, products);
+};
