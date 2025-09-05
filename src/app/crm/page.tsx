@@ -58,18 +58,17 @@ const LeadCard = ({ lead, index }: { lead: Lead, index: number }) => (
         {...provided.dragHandleProps}
         className="mb-4"
       >
-        <Link href={`/crm/${lead.id}`} legacyBehavior>
-          <a
-             className={`block rounded-lg border bg-card p-4 shadow-sm transition-shadow hover:shadow-md cursor-pointer ${snapshot.isDragging ? 'shadow-xl scale-105' : ''}`}
-          >
-            <CardContent className="p-0">
-              <div className="flex justify-between items-start">
-                  <p className="font-semibold text-card-foreground">{lead.title}</p>
-              </div>
-              <p className="text-sm text-muted-foreground">{lead.clientName}</p>
-              <p className="mt-2 text-lg font-bold text-primary">{formatCurrency(lead.value)}</p>
-            </CardContent>
-          </a>
+        <Link 
+          href={`/crm/${lead.id}`}
+          className={`block rounded-lg border bg-card p-4 shadow-sm transition-shadow hover:shadow-md cursor-pointer ${snapshot.isDragging ? 'shadow-xl scale-105' : ''}`}
+        >
+          <CardContent className="p-0">
+            <div className="flex justify-between items-start">
+                <p className="font-semibold text-card-foreground">{lead.title}</p>
+            </div>
+            <p className="text-sm text-muted-foreground">{lead.clientName}</p>
+            <p className="mt-2 text-lg font-bold text-primary">{formatCurrency(lead.value)}</p>
+          </CardContent>
         </Link>
       </div>
     )}
@@ -284,5 +283,3 @@ export default function CrmPage() {
     </DragDropContext>
   );
 }
-
-    
