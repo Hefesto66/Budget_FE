@@ -431,9 +431,8 @@ export default function ClientForm() {
                                                             />
                                                             <CommandList>
                                                                 <CommandEmpty>
-                                                                    <Button
-                                                                    variant="ghost"
-                                                                    className="w-full justify-start"
+                                                                    <button
+                                                                    className="relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none"
                                                                     onClick={(e) => {
                                                                         e.preventDefault();
                                                                         const newTag = tagInput.trim().toLowerCase().replace(/\s+/g, '-');
@@ -444,7 +443,7 @@ export default function ClientForm() {
                                                                     }}
                                                                     >
                                                                         Criar etiqueta: "{tagInput}"
-                                                                    </Button>
+                                                                    </button>
                                                                 </CommandEmpty>
                                                                 <CommandGroup>
                                                                     {filteredTags.map((tag) => (
