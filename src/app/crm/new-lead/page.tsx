@@ -296,15 +296,15 @@ export default function NewLeadPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="new-client-name" className="text-right">
+            <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+              <Label htmlFor="new-client-name" className="sm:text-right">
                 Nome
               </Label>
               <Input
                 id="new-client-name"
                 value={newClientName}
                 onChange={(e) => setNewClientName(e.target.value)}
-                className="col-span-3"
+                className="col-span-1 sm:col-span-3"
                 placeholder="Nome completo do cliente"
               />
             </div>
@@ -318,5 +318,3 @@ export default function NewLeadPage() {
     </div>
   )
 }
-
-    

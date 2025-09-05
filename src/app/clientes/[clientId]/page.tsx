@@ -270,7 +270,7 @@ export default function ClientForm() {
       <Header />
       <main className="flex-1 bg-gray-100 dark:bg-gray-950">
         <form onSubmit={form.handleSubmit(onSubmit)} className="container mx-auto max-w-7xl px-4 py-8">
-            <div className="mb-6 flex items-center justify-between">
+            <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <Button type="button" variant="ghost" onClick={() => router.back()}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Voltar

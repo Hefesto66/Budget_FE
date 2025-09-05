@@ -50,8 +50,8 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
         {/* Seção de Consumo e Fatura */}
         <AccordionItem value="item-1">
           <AccordionTrigger className="text-lg font-semibold">1. Consumo e Fatura</AccordionTrigger>
-          <AccordionContent className="space-y-6 pt-4">
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <AccordionContent className="pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
                     name="consumo_mensal_kwh"
@@ -80,8 +80,6 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                       </FormItem>
                     )}
                   />
-              </div>
-               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="cip_iluminacao_publica_reais"
@@ -117,8 +115,8 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
         {/* Seção de Detalhes Técnicos */}
         <AccordionItem value="item-2">
           <AccordionTrigger className="text-lg font-semibold">2. Detalhes Técnicos</AccordionTrigger>
-          <AccordionContent className="space-y-6 pt-4">
-               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <AccordionContent className="pt-4">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                       control={form.control}
                       name="concessionaria"
@@ -167,8 +165,6 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                           </FormItem>
                       )}
                   />
-               </div>
-               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="irradiacao_psh_kwh_m2_dia"
@@ -193,7 +189,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
             <AccordionContent className="space-y-6 pt-4">
                 {/* Módulos */}
                 <h4 className="font-medium text-foreground">Módulos Fotovoltaicos</h4>
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField control={form.control} name="potencia_modulo_wp" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Potência do Módulo (Wp) *</FormLabel>
@@ -211,7 +207,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                      <FormField control={form.control} name="quantidade_modulos" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Quantidade de Módulos</FormLabel>
-                            <FormControl><Input type="number" placeholder="Automático" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))} /></FormControl>
+                            <FormControl><Input type="number" placeholder="Automático" {...field} onChange={e => field.onChange(e.target.value ? parseInt(e.target.value, 10) : undefined)} /></FormControl>
                             <FormDescription>Deixe em branco para cálculo automático.</FormDescription>
                             <FormMessage />
                         </FormItem>
@@ -219,7 +215,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                 </div>
                 {/* Inversor */}
                 <h4 className="font-medium text-foreground">Inversor</h4>
-                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField control={form.control} name="eficiencia_inversor_percent" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Eficiência do Inversor (%) *</FormLabel>
@@ -237,7 +233,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                 </div>
                 {/* Custos Adicionais e Perdas */}
                 <h4 className="font-medium text-foreground">Custos Adicionais e Perdas</h4>
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField control={form.control} name="fator_perdas_percent" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Fator de Perdas do Sistema (%) *</FormLabel>

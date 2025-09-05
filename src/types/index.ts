@@ -82,32 +82,6 @@ export interface Quote {
     results: SolarCalculationResult;
 }
 
-export interface Stage {
-  id: string;
-  title: string;
-}
-
-export interface Client {
-  id: string;
-  name: string;
-  type: 'individual' | 'company';
-  photo?: string | null;
-  cnpj?: string;
-  phone?: string;
-  email?: string;
-  website?: string;
-  street?: string;
-  cityState?: string;
-  zip?: string;
-  country?: string;
-  salespersonId?: string;
-  paymentTermId?: string;
-  priceListId?: string;
-}
-
-
-export type { SuggestRefinedPanelConfigOutput };
-
 export interface CustomizationSettings {
   colors: {
     primary: string;
@@ -125,5 +99,3 @@ export interface CustomizationSettings {
     showTimeline: boolean;
   };
 }
-
-    
