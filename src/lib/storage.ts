@@ -15,6 +15,7 @@ export interface Client {
   cityState?: string;
   zip?: string;
   country?: string;
+  tags?: string[];
 }
 
 export interface Lead {

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { PlusCircle, Search, User, Building } from 'lucide-react';
 import { getClients, type Client } from '@/lib/storage';
 import Image from 'next/image';
+import { Badge } from '@/components/ui/badge';
 
 const ClientCard = ({ client }: { client: Client }) => (
   <Link href={`/clientes/${client.id}`}>
@@ -27,7 +28,11 @@ const ClientCard = ({ client }: { client: Client }) => (
                 )}
             </div>
         </div>
-        <p className="text-xs text-muted-foreground mt-auto">{client.email || 'Email não informado'}</p>
+         <div className="flex flex-wrap gap-1 mt-auto">
+            {client.tags?.map(tag => (
+                <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+            ))}
+        </div>
     </div>
   </Link>
 );

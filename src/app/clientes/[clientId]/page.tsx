@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save, ArrowLeft, Building, User, Upload, Trash2 } from "lucide-react";
+import { Loader2, Save, ArrowLeft, Building, User, Upload, Trash2, X, ChevronsUpDown } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import {
   RadioGroup,
@@ -26,6 +26,10 @@ import {
 } from "@/components/ui/radio-group";
 import Image from 'next/image';
 import { getClientById, saveClient, type Client } from '@/lib/storage';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 const clientFormSchema = z.object({
   name: z.string().min(1, "O nome do cliente é obrigatório."),
@@ -39,10 +43,19 @@ const clientFormSchema = z.object({
   cityState: z.string().optional(),
   zip: z.string().optional(),
   country: z.string().optional(),
+  tags: z.array(z.string()).optional(),
 });
 
 type ClientFormData = z.infer<typeof clientFormSchema>;
 
+// Predefined tags for suggestion
+const ALL_TAGS = [
+    { value: "cliente-premium", label: "Cliente Premium" },
+    { value: "fornecedor", label: "Fornecedor" },
+    { value: "parceiro", label: "Parceiro" },
+    { value: "revenda", label: "Revenda" },
+    { value: "grande-potencial", label: "Grande Potencial" },
+];
 
 export default function ClientForm() {
   const { toast } = useToast();
@@ -54,7 +67,10 @@ export default function ClientForm() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isClientLoaded, setIsClientLoaded] = useState(false);
-
+  
+  const [tagInput, setTagInput] = useState("");
+  const [open, setOpen] = useState(false);
+  
   const form = useForm<ClientFormData>({
     resolver: zodResolver(clientFormSchema),
     defaultValues: {
@@ -68,11 +84,17 @@ export default function ClientForm() {
       street: "",
       cityState: "",
       zip: "",
-      country: "Brasil", // Default to Brasil
+      country: "Brasil",
+      tags: [],
     },
   });
 
   const clientType = form.watch("type");
+  const selectedTags = form.watch("tags") || [];
+  
+  const handleSetTags = (newTags: string[]) => {
+    form.setValue("tags", newTags);
+  };
 
   useEffect(() => {
     if (isEditing) {
@@ -85,10 +107,10 @@ export default function ClientForm() {
       } else {
           toast({ title: "Erro", description: "Cliente não encontrado.", variant: "destructive" });
           router.push('/clientes');
-          return; // Stop execution if client not found
+          return;
       }
     }
-    setIsClientLoaded(true); // Mark that loading is complete
+    setIsClientLoaded(true);
   }, [clientId, isEditing, form, router, toast]);
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,7 +140,8 @@ export default function ClientForm() {
     
     const clientToSave: Client = {
       id: isEditing ? clientId : `client-${Date.now()}`,
-      ...data
+      ...data,
+      tags: selectedTags,
     };
     
     saveClient(clientToSave);
@@ -132,7 +155,13 @@ export default function ClientForm() {
     setIsSaving(false);
   };
   
-  if (!isClientLoaded) return null; // Or a skeleton loader
+  const filteredTags = useMemo(() => {
+    return ALL_TAGS.filter(
+      (tag) => !selectedTags.includes(tag.value)
+    );
+  }, [selectedTags]);
+
+  if (!isClientLoaded) return null;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -216,6 +245,75 @@ export default function ClientForm() {
                                     <Label htmlFor="website">Website</Label>
                                     <Input id="website" type="url" placeholder="https://www.meusite.com" {...form.register("website")} />
                                      {form.formState.errors.website && <p className="text-sm text-destructive">{form.formState.errors.website.message}</p>}
+                                </div>
+                                <div className="md:col-span-2 space-y-1">
+                                    <Label>Etiquetas</Label>
+                                    <Popover open={open} onOpenChange={setOpen}>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline" className="w-full justify-start font-normal h-auto min-h-10">
+                                                <div className="flex gap-1 flex-wrap">
+                                                    {selectedTags.length > 0 ? (
+                                                        selectedTags.map(tag => (
+                                                            <Badge key={tag} variant="secondary">
+                                                                {ALL_TAGS.find(t => t.value === tag)?.label || tag}
+                                                                <button
+                                                                    className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        handleSetTags(selectedTags.filter(t => t !== tag));
+                                                                    }}
+                                                                >
+                                                                    <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                                                </button>
+                                                            </Badge>
+                                                        ))
+                                                    ) : (
+                                                        <span className="text-muted-foreground">Selecione as etiquetas...</span>
+                                                    )}
+                                                </div>
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                            <Command>
+                                                <CommandInput
+                                                    placeholder="Pesquisar ou criar etiqueta..."
+                                                    value={tagInput}
+                                                    onValueChange={setTagInput}
+                                                />
+                                                <CommandList>
+                                                    <CommandEmpty>
+                                                        <Button
+                                                          variant="ghost"
+                                                          className="w-full justify-start"
+                                                          onClick={(e) => {
+                                                              e.preventDefault();
+                                                              const newTag = tagInput.trim().toLowerCase().replace(/\s+/g, '-');
+                                                              if (newTag && !selectedTags.includes(newTag)) {
+                                                                  handleSetTags([...selectedTags, newTag]);
+                                                              }
+                                                              setTagInput("");
+                                                          }}
+                                                        >
+                                                            Criar etiqueta: "{tagInput}"
+                                                        </Button>
+                                                    </CommandEmpty>
+                                                    <CommandGroup>
+                                                        {filteredTags.map((tag) => (
+                                                            <CommandItem
+                                                                key={tag.value}
+                                                                onSelect={() => {
+                                                                    handleSetTags([...selectedTags, tag.value]);
+                                                                    setTagInput("");
+                                                                }}
+                                                            >
+                                                                {tag.label}
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
                                 </div>
                             </div>
                         </div>
