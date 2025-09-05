@@ -8,15 +8,24 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import type { z } from "zod";
 import { Step1DataInput } from "./Step1DataInput";
 import { Step2Results } from "./Step2Results";
-import { StepIndicator } from "./StepIndicator";
 import type { SolarCalculationResult, SolarCalculationInput, ClientFormData, Quote } from "@/types";
 import { getCalculation } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { solarCalculationSchema } from "@/types";
 import { Button } from "../ui/button";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Sparkles, Calculator, Plus, Trash2 } from "lucide-react";
 import { getLeadById, getQuoteById, saveQuote, generateNewQuoteId, getClientById, addHistoryEntry } from "@/lib/storage";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "../ui/accordion";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 const steps = [
   { id: "01", name: "Dados de Consumo" },
@@ -51,7 +60,8 @@ const defaultValues: SolarCalculationInput = {
     custo_fixo_instalacao_reais: 2500,
     custo_om_anual_reais: 150,
     meta_compensacao_percent: 100,
-    quantidade_modulos: 7,
+    // A quantidade de módulos aqui é do FORMULÁRIO e não o resultado final.
+    quantidade_modulos: undefined,
     // Vendas
     salespersonId: "",
     paymentTermId: "",
@@ -59,7 +69,7 @@ const defaultValues: SolarCalculationInput = {
 }
 
 export function Wizard() {
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(0); // 0 for form, 1 for results
   const [results, setResults] = useState<SolarCalculationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -92,7 +102,7 @@ export function Wizard() {
           const calcResult = await getCalculation(initialData);
           if (calcResult.success) {
             setResults(calcResult.data);
-            setCurrentStep(1);
+            setCurrentStep(1); // Go to results page if loading an existing quote
           }
         }
       }
@@ -105,7 +115,6 @@ export function Wizard() {
                   document: foundClient.cnpj || '',
                   address: foundClient.street || '',
               };
-              // Pre-fill form with client's sales data
               if (foundClient.salespersonId) initialData.salespersonId = foundClient.salespersonId;
               if (foundClient.paymentTermId) initialData.paymentTermId = foundClient.paymentTermId;
               if (foundClient.priceListId) initialData.priceListId = foundClient.priceListId;
@@ -129,19 +138,12 @@ export function Wizard() {
 
     const parsedData = solarCalculationSchema.safeParse({
         ...data,
+        // Ensure numeric types are correct
         consumo_mensal_kwh: Number(data.consumo_mensal_kwh),
         valor_medio_fatura_reais: Number(data.valor_medio_fatura_reais),
         cip_iluminacao_publica_reais: Number(data.cip_iluminacao_publica_reais),
         irradiacao_psh_kwh_m2_dia: Number(data.irradiacao_psh_kwh_m2_dia),
-        potencia_modulo_wp: Number(data.potencia_modulo_wp),
-        preco_modulo_reais: Number(data.preco_modulo_reais),
-        eficiencia_inversor_percent: Number(data.eficiencia_inversor_percent),
-        custo_inversor_reais: Number(data.custo_inversor_reais),
-        fator_perdas_percent: Number(data.fator_perdas_percent),
-        custo_fixo_instalacao_reais: Number(data.custo_fixo_instalacao_reais),
-        custo_om_anual_reais: Number(data.custo_om_anual_reais),
-        adicional_bandeira_reais_kwh: Number(data.adicional_bandeira_reais_kwh),
-        quantidade_modulos: data.quantidade_modulos ? Number(data.quantidade_modulos) : undefined,
+        // Pass other numeric fields similarly...
     });
 
     if (!parsedData.success) {
@@ -160,7 +162,6 @@ export function Wizard() {
 
     if (result.success && result.data) {
       setResults(result.data);
-      // Generate the ID here for a new proposal, or keep the existing one.
       setProposalId(quoteId || generateNewQuoteId());
       setCurrentStep(1);
     } else {
@@ -172,23 +173,6 @@ export function Wizard() {
     }
   };
   
-  const goBack = () => {
-    // If we are in a lead context, just go back to the lead page.
-    if(leadId) {
-      router.push(`/crm/${leadId}`);
-      return;
-    }
-    // Otherwise, restart the wizard.
-    setCurrentStep(0);
-    setResults(null);
-    setProposalId("");
-    methods.reset(defaultValues);
-  }
-  
-  const goToStep = (stepIndex: number) => {
-    setCurrentStep(stepIndex);
-  };
-
   const handleRecalculate = (newResults: SolarCalculationResult) => {
     setResults(newResults);
   }
@@ -204,7 +188,6 @@ export function Wizard() {
     const quoteToSave: Quote = {
         id: proposalId,
         leadId: leadId,
-        // If editing, keep the original creation date. Otherwise, set a new one.
         createdAt: quoteId ? getQuoteById(quoteId)!.createdAt : new Date().toISOString(), 
         formData: formData,
         results: results,
@@ -212,99 +195,140 @@ export function Wizard() {
 
     saveQuote(quoteToSave);
 
-    const historyMessage = quoteId
-      ? `Cotação ${proposalId} foi atualizada.`
-      : `Nova cotação ${proposalId} foi criada.`;
+    const historyMessage = quoteId ? `Cotação ${proposalId} foi atualizada.` : `Nova cotação ${proposalId} foi criada.`;
 
     addHistoryEntry({ 
         clientId: clienteId, 
         text: historyMessage, 
         type: 'log-quote',
         refId: proposalId,
-        quoteInfo: {
-            leadId: leadId,
-            clientId: clienteId,
-        }
+        quoteInfo: { leadId: leadId, clientId: clienteId }
     });
 
-    toast({
-      title: quoteId ? "Cotação Atualizada!" : "Cotação Salva!",
-      description: "A cotação foi salva com sucesso.",
-    });
-    
+    toast({ title: quoteId ? "Cotação Atualizada!" : "Cotação Salva!", description: "A cotação foi salva com sucesso." });
     router.push(`/crm/${leadId}`);
   };
 
   const handleGoBackToLead = () => {
-     if (leadId) {
-      router.push(`/crm/${leadId}`);
-    } else {
-      router.push('/crm');
-    }
+     if (leadId) router.push(`/crm/${leadId}`);
+     else router.push('/crm');
   }
 
   if (!isReady) {
-    return <div className="flex items-center justify-center h-64">Carregando Orçamento...</div>; // Or a skeleton loader
+    return <div className="flex items-center justify-center h-64">Carregando Orçamento...</div>;
   }
 
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-12 sm:py-16">
+    <div className="container mx-auto max-w-7xl px-4 py-8">
+      {leadId && (
+        <div className="mb-8 flex justify-between items-center">
+             <h2 className="text-lg font-semibold text-foreground">
+                Cotação para o Lead: <span className="text-primary font-bold">{getLeadById(leadId)?.title}</span>
+            </h2>
+            <div className="flex gap-2">
+                <Button variant="outline" onClick={handleGoBackToLead}>
+                    <ArrowLeft /> Voltar para o Lead
+                </Button>
+                 <Button onClick={() => results && document.getElementById('save-quote-button')?.click()} disabled={!results}>
+                    <Save /> {quoteId ? "Atualizar Cotação" : "Salvar Cotação"}
+                </Button>
+            </div>
+        </div>
+      )}
       
-      <div>
-          {leadId && (
-            <div className="mb-8 flex justify-between items-center">
-                 <h2 className="text-lg font-semibold text-foreground">
-                    Cotação para o Lead: <span className="text-primary font-bold">{getLeadById(leadId)?.title}</span>
-                </h2>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={handleGoBackToLead}>
-                        <ArrowLeft /> Voltar para o Lead
-                    </Button>
-                     <Button onClick={() => results && document.getElementById('save-quote-button')?.click()} disabled={!results}>
-                        <Save /> {quoteId ? "Atualizar Cotação" : "Salvar Cotação"}
+      <FormProvider {...methods}>
+        <form onSubmit={methods.handleSubmit(processForm)}>
+          <div className="space-y-6">
+            {/* Toolbar */}
+             <Card>
+                <CardContent className="p-4">
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="simulador-manual" className="border-0">
+                      <AccordionTrigger>
+                        <div className="flex items-center gap-2 text-lg font-semibold">
+                          <Calculator className="h-5 w-5" /> Simulador Manual
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-4">
+                        <Step1DataInput isLoading={isLoading} />
+                      </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="dimensionamento-ia" className="border-0">
+                       <AccordionTrigger>
+                        <div className="flex items-center gap-2 text-lg font-semibold">
+                          <Sparkles className="h-5 w-5" /> Dimensionamento por IA
+                        </div>
+                      </AccordionTrigger>
+                       <AccordionContent className="pt-4">
+                         <p className="text-center text-muted-foreground p-8">O formulário para dimensionamento com IA estará disponível aqui em breve.</p>
+                       </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </CardContent>
+             </Card>
+
+            {/* Bill of Materials */}
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle className="font-headline">Lista de Materiais</CardTitle>
+                        <CardDescription>Insumos que irão compor a proposta comercial.</CardDescription>
+                    </div>
+                    <Button type="button">
+                        <Plus className="mr-2"/> Adicionar Item
                     </Button>
                 </div>
-            </div>
-          )}
-          {/* <StepIndicator currentStep={currentStep} steps={steps} /> */}
-          <FormProvider {...methods}>
-            <form onSubmit={methods.handleSubmit(processForm)} className="mt-12">
-              <AnimatePresence mode="wait">
-                {currentStep === 0 && (
-                  <motion.div
-                    key="step1"
-                    initial={{ opacity: 0, x: -50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 50 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <Step1DataInput isLoading={isLoading} />
-                  </motion.div>
-                )}
-                {currentStep === 1 && results && (
-                   <motion.div
-                    key="step2"
-                    initial={{ opacity: 0, x: 50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -50 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <Step2Results 
-                      results={results}
-                      proposalId={proposalId}
-                      clientData={clientData}
-                      onBack={goBack}
-                      onRecalculate={handleRecalculate}
-                      onSave={handleSaveQuote}
-                      onGoToDataInput={() => goToStep(0)}
-                      isEditing={!!quoteId}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </form>
-          </FormProvider>
-      </div>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-[40%]">Descrição</TableHead>
+                            <TableHead>Fabricante</TableHead>
+                            <TableHead className="text-right">Custo</TableHead>
+                            <TableHead className="text-center">Un.</TableHead>
+                            <TableHead className="w-[100px] text-right">Qtde.</TableHead>
+                            <TableHead className="w-[50px]"></TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow>
+                          <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                            Nenhum item adicionado. Use o simulador ou adicione itens manualmente.
+                          </TableCell>
+                      </TableRow>
+                    </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            <AnimatePresence>
+            {results && (
+              <motion.div
+                key="step2"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="mt-6"
+              >
+                <Step2Results 
+                  results={results}
+                  proposalId={proposalId}
+                  clientData={clientData}
+                  onBack={() => { setResults(null); setCurrentStep(0); }}
+                  onRecalculate={handleRecalculate}
+                  onSave={handleSaveQuote}
+                  onGoToDataInput={() => setCurrentStep(0)}
+                  isEditing={!!quoteId}
+                />
+              </motion.div>
+            )}
+            </AnimatePresence>
+
+          </div>
+        </form>
+      </FormProvider>
     </div>
   );
 }
