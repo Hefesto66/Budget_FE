@@ -59,25 +59,22 @@ export default function ClientesPage() {
       <Header />
       <main className="flex-1 p-6">
         <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <h1 className="text-3xl font-bold font-headline text-foreground">Meus Clientes</h1>
-          <div className="flex w-full sm:w-auto items-center gap-4">
-            <div className="relative flex-1 sm:flex-initial">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Pesquisar clientes..."
-                className="w-full sm:w-64 pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Button size="lg" asChild>
-              <Link href="/clientes/novo">
-                <PlusCircle className="mr-2 h-5 w-5" />
-                Novo Cliente
-              </Link>
-            </Button>
+          <div className="relative flex-1 sm:flex-initial w-full sm:w-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Pesquisar clientes..."
+              className="w-full sm:w-64 pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
+          <Button size="lg" asChild>
+            <Link href="/clientes/novo">
+              <PlusCircle className="mr-2 h-5 w-5" />
+              Novo Cliente
+            </Link>
+          </Button>
         </div>
         
         {filteredClients.length > 0 ? (
