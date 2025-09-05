@@ -138,9 +138,9 @@ export default function ClientForm() {
       <main className="flex-1 bg-gray-100 dark:bg-gray-950">
         <form onSubmit={form.handleSubmit(onSubmit)} className="container mx-auto max-w-5xl px-4 py-8">
             <div className="mb-6 flex items-center justify-between">
-                <Button type="button" variant="ghost" onClick={() => router.push('/clientes')}>
+                <Button type="button" variant="ghost" onClick={() => router.back()}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    Voltar para Clientes
+                    Voltar
                 </Button>
                 <Button type="submit" disabled={isSaving} size="lg">
                 {isSaving ? (
@@ -257,5 +257,3 @@ export default function ClientForm() {
     </div>
   );
 }
-
-    

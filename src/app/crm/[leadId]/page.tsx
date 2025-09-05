@@ -73,9 +73,9 @@ export default function LeadDetailPage() {
         <Header />
         <main className="flex-1 p-6">
             <div className="mb-6">
-                <Button variant="ghost" onClick={() => router.push('/crm')}>
+                <Button variant="ghost" onClick={() => router.back()}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    Voltar para o Funil
+                    Voltar
                 </Button>
             </div>
             
