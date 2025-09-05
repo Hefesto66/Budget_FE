@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
-import { Building, Palette, LayoutDashboard, PlusCircle } from 'lucide-react';
+import { Settings, PlusCircle } from 'lucide-react';
 
 export function Header() {
   return (
@@ -13,10 +13,7 @@ export function Header() {
         </Link>
         <div className="flex items-center gap-4">
            <Button asChild variant="ghost" className="text-white hover:bg-white/10 hover:text-white">
-            <Link href="/personalizar-proposta"><Palette className="mr-2 h-4 w-4"/> Personalizar</Link>
-          </Button>
-          <Button asChild variant="ghost" className="text-white hover:bg-white/10 hover:text-white">
-            <Link href="/minha-empresa"><Building className="mr-2 h-4 w-4"/> Minha Empresa</Link>
+            <Link href="/definicoes"><Settings className="mr-2 h-4 w-4"/> Definições</Link>
           </Button>
           <Button asChild>
             <Link href="/orcamento"><PlusCircle /> Cotação Rápida</Link>

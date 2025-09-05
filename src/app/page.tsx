@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { Header } from "@/components/layout/Header";
-import { ArrowRight, BookUser, Briefcase, Building2, Users } from "lucide-react";
+import { ArrowRight, BookUser, Briefcase, Building2, Users, Settings } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -59,7 +59,7 @@ export default function Home() {
         </section>
 
         <section className="container mx-auto px-4 pb-20">
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
             <AppCard
               href="/crm"
               icon={<Briefcase className="h-10 w-10 text-primary" />}
@@ -78,6 +78,12 @@ export default function Home() {
               name="Inventário"
               description="Controle seus produtos, painéis, inversores e outros equipamentos."
               disabled
+            />
+            <AppCard
+              href="/definicoes"
+              icon={<Settings className="h-10 w-10 text-primary" />}
+              name="Definições"
+              description="Configure os dados da sua empresa e personalize a aparência dos documentos."
             />
           </div>
         </section>
