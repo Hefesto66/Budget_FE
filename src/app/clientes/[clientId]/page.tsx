@@ -358,16 +358,20 @@ export default function ClientForm() {
                                                 <Label>Etiquetas</Label>
                                                 <Popover open={open} onOpenChange={setOpen}>
                                                     <PopoverTrigger asChild>
-                                                        <Button variant="outline" className="w-full justify-start font-normal h-auto min-h-10">
+                                                        <div className={cn(
+                                                            "flex min-h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background", 
+                                                            "justify-start font-normal cursor-text"
+                                                        )}>
                                                             <div className="flex gap-1 flex-wrap">
                                                                 {selectedTags.length > 0 ? (
                                                                     selectedTags.map(tag => (
                                                                         <Badge key={tag} variant="secondary">
                                                                             {ALL_TAGS.find(t => t.value === tag)?.label || tag}
                                                                             <button
+                                                                                type="button"
                                                                                 className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
                                                                                 onClick={(e) => {
-                                                                                    e.preventDefault();
+                                                                                    e.stopPropagation(); // Evita abrir o popover
                                                                                     handleSetTags(selectedTags.filter(t => t !== tag));
                                                                                 }}
                                                                             >
@@ -379,7 +383,7 @@ export default function ClientForm() {
                                                                     <span className="text-muted-foreground">Selecione as etiquetas...</span>
                                                                 )}
                                                             </div>
-                                                        </Button>
+                                                        </div>
                                                     </PopoverTrigger>
                                                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                                                         <Command>
@@ -525,5 +529,3 @@ export default function ClientForm() {
     </div>
   );
 }
-
-    
