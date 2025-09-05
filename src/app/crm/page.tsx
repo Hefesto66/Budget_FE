@@ -287,9 +287,9 @@ export default function CrmPage() {
                           <div 
                             ref={provided.innerRef}
                             {...provided.droppableProps}
-                            className={`w-80 flex-shrink-0 flex flex-col rounded-xl p-4 transition-colors group ${snapshot.isDraggingOver ? 'bg-primary/10' : 'bg-gray-200/50 dark:bg-gray-800/50'}`}
+                            className={`w-80 flex-shrink-0 flex flex-col rounded-xl p-4 transition-colors ${snapshot.isDraggingOver ? 'bg-primary/10' : 'bg-gray-200/50 dark:bg-gray-800/50'}`}
                           >
-                            <div className="mb-4 flex justify-between items-center">
+                            <div className="mb-4 flex justify-between items-center group">
                                 <TooltipProvider delayDuration={100}>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
@@ -347,7 +347,7 @@ export default function CrmPage() {
                     </Droppable>
                   ))}
                   <div className="w-72 flex-shrink-0">
-                      <Card className="bg-gray-200/50 dark:bg-gray-800/50 border-2 border-dashed hover:border-primary transition-colors">
+                      <Card className="bg-gray-200/50 dark:bg-gray-800/ ৫০ border-2 border-dashed hover:border-primary transition-colors">
                           <CardContent className="p-4">
                               <div className="flex items-center gap-2">
                                   <Input 
