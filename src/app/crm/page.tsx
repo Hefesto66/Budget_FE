@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { PlusCircle, MoreHorizontal, Trash2, Plus } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { Header } from '@/components/layout/Header';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { getLeads, type Lead, getStages, saveStages, type Stage, saveLead } from '@/lib/storage';
 import type { DropResult } from "@hello-pangea/dnd";
 import {
@@ -52,7 +52,7 @@ const Draggable = dynamic(
 const LeadCard = ({ lead, index }: { lead: Lead, index: number }) => (
   <Draggable draggableId={lead.id} index={index}>
     {(provided, snapshot) => (
-      <div
+       <div
         ref={provided.innerRef}
         {...provided.draggableProps}
         {...provided.dragHandleProps}
@@ -82,6 +82,7 @@ export default function CrmPage() {
   const [isClient, setIsClient] = useState(false);
   const [newStageName, setNewStageName] = useState("");
   const { toast } = useToast();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -106,6 +107,24 @@ export default function CrmPage() {
 
     setLeadsByStage(leadsGrouped);
   }, []);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        container.scrollLeft += e.deltaY;
+      }
+    };
+
+    container.addEventListener('wheel', handleWheel);
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
+
 
   const handleAddStage = () => {
     if (!newStageName.trim()) {
@@ -200,7 +219,7 @@ export default function CrmPage() {
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-950">
           <Header />
-          <main className="flex-1 p-6">
+          <main className="flex-1 p-6 flex flex-col">
               <div className="mb-6 flex items-center justify-between">
                   <h1 className="text-3xl font-bold font-headline text-foreground">Meu Funil de Vendas</h1>
                   <Button size="lg" asChild>
@@ -210,7 +229,7 @@ export default function CrmPage() {
                       </Link>
                   </Button>
               </div>
-              <div className="flex gap-6 overflow-x-auto pb-4">
+              <div ref={scrollContainerRef} className="flex gap-6 overflow-x-auto pb-4 custom-scrollbar flex-grow">
                   {stages.map((stage) => (
                     <Droppable droppableId={stage.id} key={stage.id}>
                       {(provided, snapshot) => (
