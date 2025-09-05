@@ -2,15 +2,15 @@
 "use client";
 
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { PlusCircle, MoreHorizontal, Trash2, Plus } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
-import { motion } from 'framer-motion';
 import { Header } from '@/components/layout/Header';
 import { useEffect, useState } from 'react';
 import { getLeads, type Lead, getStages, saveStages, type Stage, saveLead } from '@/lib/storage';
-import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
+import type { DropResult } from "@hello-pangea/dnd";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +24,30 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+
+// Importa o DragDropContext dinamicamente para evitar problemas de SSR
+const DragDropContext = dynamic(
+  () =>
+    import("@hello-pangea/dnd").then((mod) => {
+      return mod.DragDropContext;
+    }),
+  { ssr: false }
+);
+const Droppable = dynamic(
+  () =>
+    import("@hello-pangea/dnd").then((mod) => {
+      return mod.Droppable;
+    }),
+  { ssr: false }
+);
+const Draggable = dynamic(
+  () =>
+    import("@hello-pangea/dnd").then((mod) => {
+      return mod.Draggable;
+    }),
+  { ssr: false }
+);
+
 
 const LeadCard = ({ lead, index }: { lead: Lead, index: number }) => (
   <Draggable draggableId={lead.id} index={index}>
@@ -75,6 +99,9 @@ export default function CrmPage() {
     allLeads.forEach(lead => {
         if (leadsGrouped[lead.stage]) {
             leadsGrouped[lead.stage].push(lead);
+        } else if(allStages.length > 0){ // If lead stage doesn't exist, put it in the first stage
+            leadsGrouped[allStages[0].id].push(lead);
+            saveLead({...lead, stage: allStages[0].id});
         }
     });
 
@@ -257,3 +284,5 @@ export default function CrmPage() {
     </DragDropContext>
   );
 }
+
+    
