@@ -17,7 +17,7 @@ import { solarCalculationSchema } from "@/types";
 import { ClientRegistrationDialog } from "./ClientRegistrationDialog";
 import { Button } from "../ui/button";
 import { ArrowLeft, Save } from "lucide-react";
-import { getLeadById, getQuoteById, saveQuote } from "@/lib/storage";
+import { getLeadById, getQuoteById, saveQuote, generateNewQuoteId } from "@/lib/storage";
 
 const steps = [
   { id: "01", name: "Dados de Consumo" },
@@ -172,6 +172,10 @@ export function Wizard() {
         setIsClientDialogOpen(true);
     }
   }
+  
+  const goToStep = (stepIndex: number) => {
+    setCurrentStep(stepIndex);
+  };
 
   const handleRecalculate = (newResults: SolarCalculationResult) => {
     setResults(newResults);
@@ -268,6 +272,7 @@ export function Wizard() {
                       onBack={goBack}
                       onRecalculate={handleRecalculate}
                       onSave={handleSaveQuote}
+                      onGoToDataInput={() => goToStep(0)}
                       isEditing={!!quoteId}
                     />
                   </motion.div>

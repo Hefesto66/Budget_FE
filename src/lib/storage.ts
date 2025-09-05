@@ -22,23 +22,24 @@ export interface Quote {
 // ====== CONSTANTS ====== //
 const LEADS_STORAGE_KEY = 'fe-solar-leads';
 const QUOTES_STORAGE_KEY = 'fe-solar-quotes';
+const QUOTE_COUNTER_KEY = 'fe-solar-quote-counter';
 
 
 // ====== HELPERS ====== //
-const getFromStorage = <T>(key: string): T[] => {
+const getFromStorage = <T>(key: string): T | null => {
   if (typeof window === 'undefined') {
-    return [];
+    return null;
   }
   try {
     const data = window.localStorage.getItem(key);
-    return data ? JSON.parse(data) : [];
+    return data ? JSON.parse(data) : null;
   } catch (error) {
     console.error(`Error reading from localStorage key “${key}”:`, error);
-    return [];
+    return null;
   }
 };
 
-const saveToStorage = <T>(key: string, data: T[]): void => {
+const saveToStorage = <T>(key: string, data: T): void => {
   if (typeof window === 'undefined') {
     return;
   }
@@ -53,7 +54,7 @@ const saveToStorage = <T>(key: string, data: T[]): void => {
 // ====== LEAD FUNCTIONS ====== //
 
 export const getLeads = (): Lead[] => {
-  return getFromStorage<Lead>(LEADS_STORAGE_KEY);
+  return (getFromStorage<Lead[]>(LEADS_STORAGE_KEY)) || [];
 };
 
 export const getLeadById = (id: string): Lead | undefined => {
@@ -79,7 +80,7 @@ export const saveLead = (newLead: Lead): void => {
 // ====== QUOTE FUNCTIONS ====== //
 
 export const getQuotes = (): Quote[] => {
-    return getFromStorage<Quote>(QUOTES_STORAGE_KEY);
+    return (getFromStorage<Quote[]>(QUOTES_STORAGE_KEY)) || [];
 }
 
 export const getQuoteById = (id: string): Quote | undefined => {
@@ -104,4 +105,19 @@ export const saveQuote = (newQuote: Quote): void => {
         quotes.push(newQuote);
     }
     saveToStorage(QUOTES_STORAGE_KEY, quotes);
+}
+
+// ====== QUOTE COUNTER FUNCTIONS ====== //
+
+export const getNextQuoteNumber = (): number => {
+    const currentCounter = getFromStorage<number>(QUOTE_COUNTER_KEY) || 0;
+    const nextCounter = currentCounter + 1;
+    saveToStorage(QUOTE_COUNTER_KEY, nextCounter);
+    return nextCounter;
+};
+
+export const generateNewQuoteId = (): string => {
+    const number = getNextQuoteNumber();
+    const paddedNumber = String(number).padStart(4, '0'); // Formats to 0001, 0002, etc.
+    return `NX-S${paddedNumber}`;
 }
