@@ -1,10 +1,11 @@
+
 import type { Metadata } from "next";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FE Sistema Solar",
+  title: "Solaris",
   description: "Calcule a economia e o retorno do seu investimento em energia solar.",
 };
 
