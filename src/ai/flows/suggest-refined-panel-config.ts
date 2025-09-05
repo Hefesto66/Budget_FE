@@ -114,7 +114,7 @@ const prompt = ai.definePrompt({
     - Calcule o 'custo_total' e o 'payback' para a configuração que você montou. Para o payback, pode usar uma estimativa simplificada: Custo Total / (Valor da Fatura Média Mensal * 0.9 * 12).
 
 **Formato da Resposta (JSON Obrigatório):**
-Sua resposta DEVE ser um JSON válido com a estrutura definida. Certifique-se de que `configuracao_otimizada.itens` seja um array contendo os produtos que você selecionou.
+Sua resposta DEVE ser um JSON válido com a estrutura definida. Certifique-se de que 'configuracao_otimizada.itens' seja um array contendo os produtos que você selecionou.
 `,
 });
 
