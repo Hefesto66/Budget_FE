@@ -68,6 +68,16 @@ export const clientSchema = z.object({
 
 export type ClientFormData = z.infer<typeof clientSchema>;
 
+
+export interface Quote {
+    id: string;
+    leadId: string;
+    createdAt: string; // ISO string
+    formData: SolarCalculationInput;
+    results: SolarCalculationResult;
+}
+
+
 export type { SuggestRefinedPanelConfigOutput };
 
 export interface CustomizationSettings {

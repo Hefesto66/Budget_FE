@@ -9,7 +9,7 @@ import type { z } from "zod";
 import { Step1DataInput } from "./Step1DataInput";
 import { Step2Results } from "./Step2Results";
 import { StepIndicator } from "./StepIndicator";
-import type { SolarCalculationResult, SolarCalculationInput, ClientFormData } from "@/types";
+import type { SolarCalculationResult, SolarCalculationInput, ClientFormData, Quote } from "@/types";
 import { getCalculation } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -159,6 +159,12 @@ export function Wizard() {
   };
   
   const goBack = () => {
+    // If we are in a lead context, just go back to the lead page.
+    if(leadId) {
+      router.push(`/crm/${leadId}`);
+      return;
+    }
+    // Otherwise, restart the wizard.
     setCurrentStep(0);
     setResults(null);
     methods.reset(defaultValues);
@@ -171,7 +177,7 @@ export function Wizard() {
     setResults(newResults);
   }
 
-  const handleSaveQuote = async () => {
+  const handleSaveQuote = async (proposalIdFromResults: string) => {
     if (!leadId || !results) {
         toast({ title: "Erro", description: "Contexto do lead ou resultados do cálculo não encontrados.", variant: "destructive" });
         return;
@@ -179,19 +185,22 @@ export function Wizard() {
 
     const formData = methods.getValues();
     
-    const newQuote = {
-        id: `quote-${Date.now()}`,
+    // Use the existing quoteId if in edit mode, otherwise use the new one from results
+    const finalQuoteId = quoteId || proposalIdFromResults;
+
+    const quoteToSave: Quote = {
+        id: finalQuoteId,
         leadId: leadId,
-        createdAt: new Date().toISOString(),
+        createdAt: quoteId ? getQuoteById(quoteId)!.createdAt : new Date().toISOString(), // Keep original creation date
         formData: formData,
         results: results,
     };
 
-    saveQuote(newQuote);
+    saveQuote(quoteToSave);
 
     toast({
-      title: "Cotação Salva!",
-      description: "A cotação foi associada ao lead com sucesso.",
+      title: quoteId ? "Cotação Atualizada!" : "Cotação Salva!",
+      description: "A cotação foi salva com sucesso.",
     });
     
     router.push(`/crm/${leadId}`);
@@ -204,7 +213,7 @@ export function Wizard() {
   }
 
   if (!isReady) {
-    return <div>Carregando Orçamento...</div>; // Or a skeleton loader
+    return <div className="flex items-center justify-center h-64">Carregando Orçamento...</div>; // Or a skeleton loader
   }
 
   return (
@@ -225,8 +234,8 @@ export function Wizard() {
                     <Button variant="outline" onClick={handleGoBackToLead}>
                         <ArrowLeft /> Voltar para o Lead
                     </Button>
-                     <Button onClick={handleSaveQuote} disabled={!results}>
-                        <Save /> Salvar Cotação
+                     <Button onClick={() => results && document.getElementById('save-quote-button')?.click()} disabled={!results}>
+                        <Save /> {quoteId ? "Atualizar Cotação" : "Salvar Cotação"}
                     </Button>
                 </div>
             </div>
@@ -258,6 +267,8 @@ export function Wizard() {
                       results={results}
                       onBack={goBack}
                       onRecalculate={handleRecalculate}
+                      onSave={handleSaveQuote}
+                      isEditing={!!quoteId}
                     />
                   </motion.div>
                 )}

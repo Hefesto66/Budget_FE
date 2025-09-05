@@ -37,6 +37,7 @@ import { format, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useFormContext } from "react-hook-form";
+import { useSearchParams } from "next/navigation";
 
 
 const COMPANY_DATA_KEY = "companyData";
@@ -46,20 +47,32 @@ interface Step2ResultsProps {
   results: SolarCalculationResult;
   onBack: () => void;
   onRecalculate: (newResults: SolarCalculationResult) => void;
+  onSave: (proposalId: string) => void;
+  isEditing: boolean;
 }
 
-export function Step2Results({ results, onBack, onRecalculate }: Step2ResultsProps) {
+export function Step2Results({ results, onBack, onRecalculate, onSave, isEditing }: Step2ResultsProps) {
   const { toast } = useToast();
   const formMethods = useFormContext<SolarCalculationInput>();
+  const searchParams = useSearchParams();
   
   const [isRefining, setIsRefining] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
 
   // State for the editable document details
-  const [proposalId, setProposalId] = useState('FE-S001');
+  const [proposalId, setProposalId] = useState('');
   const [proposalDate, setProposalDate] = useState<Date>(new Date());
   const [proposalValidity, setProposalValidity] = useState<Date>(addDays(new Date(), 20));
+
+  useEffect(() => {
+    const quoteId = searchParams.get('quoteId');
+    if (quoteId) {
+      setProposalId(quoteId);
+    } else {
+      setProposalId(`QT-${Date.now().toString().slice(-6)}`);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     // Automatically update validity date when proposal date changes
@@ -192,7 +205,7 @@ export function Step2Results({ results, onBack, onRecalculate }: Step2ResultsPro
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save('proposta-solar.pdf');
+      pdf.save(`proposta-${proposalId}.pdf`);
 
     } catch (error) {
       console.error("Failed to export PDF:", error);
@@ -204,6 +217,15 @@ export function Step2Results({ results, onBack, onRecalculate }: Step2ResultsPro
     }
     setIsExporting(false);
   };
+  
+  const handleSave = () => {
+    if (proposalId) {
+      onSave(proposalId);
+    } else {
+      toast({ title: "Erro", description: "ID da proposta não foi gerado.", variant: "destructive" });
+    }
+  }
+
 
   return (
     <>
@@ -288,7 +310,7 @@ export function Step2Results({ results, onBack, onRecalculate }: Step2ResultsPro
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
                     <Label htmlFor="proposalId">ID da Proposta</Label>
-                    <Input id="proposalId" value={proposalId} onChange={(e) => setProposalId(e.target.value)} />
+                    <Input id="proposalId" value={proposalId} onChange={(e) => setProposalId(e.target.value)} disabled={isEditing} />
                 </div>
                 <div className="space-y-2">
                     <Label>Data do Documento</Label>
@@ -302,7 +324,7 @@ export function Step2Results({ results, onBack, onRecalculate }: Step2ResultsPro
                             )}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {proposalDate ? format(proposalDate, "P", { locale: ptBR }) : <span>Selecione uma data</span>}
+                            {proposalDate ? format(proposalDate, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
                         </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
@@ -328,7 +350,7 @@ export function Step2Results({ results, onBack, onRecalculate }: Step2ResultsPro
                             )}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {proposalValidity ? format(proposalValidity, "P", { locale: ptBR }) : <span>Selecione uma data</span>}
+                            {proposalValidity ? format(proposalValidity, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
                         </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
@@ -353,6 +375,9 @@ export function Step2Results({ results, onBack, onRecalculate }: Step2ResultsPro
             Voltar
           </Button>
           <div className="flex flex-col-reverse gap-4 sm:flex-row">
+            {/* Hidden button to be triggered by the parent Wizard component */}
+            <Button id="save-quote-button" onClick={handleSave} className="hidden" />
+
             <Button type="button" variant="secondary" onClick={handleAiRefinement} disabled={isRefining}>
                 <Sparkles className={`mr-2 h-4 w-4 ${isRefining ? 'animate-spin' : ''}`} />
                 {isRefining ? "Analisando..." : "Refinar com IA"}
