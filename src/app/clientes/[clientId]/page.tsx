@@ -72,6 +72,8 @@ export default function ClientForm() {
     },
   });
 
+  const clientType = form.watch("type");
+
   useEffect(() => {
     if (isEditing) {
       const existingClient = getClientById(clientId);
@@ -183,10 +185,12 @@ export default function ClientForm() {
                                     <Label htmlFor="street">Rua</Label>
                                     <Input id="street" placeholder="Rua, Av..." {...form.register("street")} />
                                 </div>
-                                 <div className="space-y-1">
-                                    <Label htmlFor="cnpj">CNPJ / CPF</Label>
-                                    <Input id="cnpj" placeholder="Documento de identificação" {...form.register("cnpj")} />
-                                </div>
+                                {clientType === 'company' && (
+                                    <div className="space-y-1">
+                                        <Label htmlFor="cnpj">CNPJ</Label>
+                                        <Input id="cnpj" placeholder="Documento de identificação" {...form.register("cnpj")} />
+                                    </div>
+                                )}
                                 <div className="space-y-1">
                                     <Label htmlFor="cityState">Cidade, Estado</Label>
                                     <Input id="cityState" placeholder="Ex: Goiânia, GO" {...form.register("cityState")} />
