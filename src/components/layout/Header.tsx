@@ -19,7 +19,7 @@ export function Header() {
             <Link href="/minha-empresa"><Building className="mr-2 h-4 w-4"/> Minha Empresa</Link>
           </Button>
           <Button asChild>
-            <Link href="/orcamento"><PlusCircle /> Novo Orçamento</Link>
+            <Link href="/orcamento"><PlusCircle /> Cotação Rápida</Link>
           </Button>
         </div>
       </div>
