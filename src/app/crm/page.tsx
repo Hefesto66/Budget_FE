@@ -5,7 +5,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { PlusCircle, MoreHorizontal, Trash2, Plus } from 'lucide-react';
+import { PlusCircle, Trash2, Plus, Pencil } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { Header } from '@/components/layout/Header';
 import { useEffect, useState, useRef } from 'react';
@@ -22,7 +22,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 
 // Importa o DragDropContext dinamicamente para evitar problemas de SSR
@@ -52,7 +57,7 @@ const Draggable = dynamic(
 const LeadCard = ({ lead, index }: { lead: Lead, index: number }) => (
   <Draggable draggableId={lead.id} index={index}>
     {(provided, snapshot) => (
-       <div
+      <div
         ref={provided.innerRef}
         {...provided.draggableProps}
         {...provided.dragHandleProps}
@@ -81,6 +86,11 @@ export default function CrmPage() {
   const [stages, setStages] = useState<Stage[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [newStageName, setNewStageName] = useState("");
+  
+  // State for editing a stage
+  const [editingStage, setEditingStage] = useState<Stage | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  
   const { toast } = useToast();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -90,7 +100,6 @@ export default function CrmPage() {
     const allLeads = getLeads();
     setStages(allStages);
     
-    // Initialize all stages in the state, even if they have no leads
     const leadsGrouped: Record<string, Lead[]> = {};
     allStages.forEach(stage => {
         leadsGrouped[stage.id] = [];
@@ -99,7 +108,7 @@ export default function CrmPage() {
     allLeads.forEach(lead => {
         if (leadsGrouped[lead.stage]) {
             leadsGrouped[lead.stage].push(lead);
-        } else if(allStages.length > 0){ // If lead stage doesn't exist, put it in the first stage
+        } else if(allStages.length > 0){
             leadsGrouped[allStages[0].id].push(lead);
             saveLead({...lead, stage: allStages[0].id});
         }
@@ -125,7 +134,6 @@ export default function CrmPage() {
     };
   }, []);
 
-
   const handleAddStage = () => {
     if (!newStageName.trim()) {
       toast({ title: "Erro", description: "O nome da etapa não pode ser vazio.", variant: "destructive" });
@@ -138,14 +146,12 @@ export default function CrmPage() {
         return;
     }
     
-    const newStage: Stage = { id: newStageId, title: newStageName };
+    const newStage: Stage = { id: newStageId, title: newStageName, description: '', isWon: false };
     const newStages = [...stages, newStage];
     setStages(newStages);
     saveStages(newStages);
     
-    // Add the new stage to the leadsByStage state
     setLeadsByStage(prev => ({...prev, [newStage.id]: []}));
-    
     setNewStageName("");
     toast({ title: "Sucesso!", description: `Etapa "${newStageName}" criada.` });
   };
@@ -161,7 +167,6 @@ export default function CrmPage() {
     setStages(newStages);
     saveStages(newStages);
     
-    // Remove the stage from the leadsByStage state
     setLeadsByStage(prev => {
         const newState = {...prev};
         delete newState[stageId];
@@ -170,14 +175,37 @@ export default function CrmPage() {
 
     toast({ title: "Sucesso!", description: `A etapa foi excluída.` });
   };
+  
+  const handleEditStage = (stage: Stage) => {
+    setEditingStage(stage);
+    setIsEditDialogOpen(true);
+  };
+  
+  const handleSaveStageChanges = () => {
+    if (!editingStage) return;
+
+    const newStages = stages.map(s => (s.id === editingStage.id ? editingStage : s));
+    
+    // Se marcou um novo estágio como "Ganho", desmarcar todos os outros
+    if (editingStage.isWon) {
+      newStages.forEach(s => {
+        if (s.id !== editingStage.id) {
+          s.isWon = false;
+        }
+      });
+    }
+
+    setStages(newStages);
+    saveStages(newStages);
+    setEditingStage(null);
+    setIsEditDialogOpen(false);
+    toast({ title: "Sucesso!", description: "A etapa foi atualizada." });
+  };
 
   const onDragEnd = (result: DropResult) => {
     const { source, destination, draggableId } = result;
 
-    // Dropped outside the list
-    if (!destination) {
-      return;
-    }
+    if (!destination) return;
 
     const sourceStageId = source.droppableId;
     const destStageId = destination.droppableId;
@@ -185,34 +213,26 @@ export default function CrmPage() {
     const startStageLeads = Array.from(leadsByStage[sourceStageId]);
     const [movedLead] = startStageLeads.splice(source.index, 1);
 
-    // If moving within the same stage
     if (sourceStageId === destStageId) {
       startStageLeads.splice(destination.index, 0, movedLead);
-      const newLeadsByStage = {
-        ...leadsByStage,
-        [sourceStageId]: startStageLeads,
-      };
-      setLeadsByStage(newLeadsByStage);
+      setLeadsByStage(prev => ({ ...prev, [sourceStageId]: startStageLeads }));
     } else {
-      // Moving to a different stage
       const finishStageLeads = Array.from(leadsByStage[destStageId]);
       finishStageLeads.splice(destination.index, 0, movedLead);
 
-      const newLeadsByStage = {
-        ...leadsByStage,
+      setLeadsByStage(prev => ({
+        ...prev,
         [sourceStageId]: startStageLeads,
         [destStageId]: finishStageLeads,
-      };
-      setLeadsByStage(newLeadsByStage);
+      }));
       
-      // Update lead stage in storage
       const updatedLead = { ...movedLead, stage: destStageId };
       saveLead(updatedLead);
     }
   };
 
   if (!isClient) {
-    return null; // or a loading skeleton
+    return null;
   }
 
   return (
@@ -236,10 +256,26 @@ export default function CrmPage() {
                           <div 
                             ref={provided.innerRef}
                             {...provided.droppableProps}
-                            className={`w-80 flex-shrink-0 flex flex-col rounded-xl p-4 transition-colors ${snapshot.isDraggingOver ? 'bg-primary/10' : 'bg-gray-200/50 dark:bg-gray-800/50'}`}
+                            className={`w-80 flex-shrink-0 flex flex-col rounded-xl p-4 transition-colors group ${snapshot.isDraggingOver ? 'bg-primary/10' : 'bg-gray-200/50 dark:bg-gray-800/50'}`}
                           >
-                              <div className="mb-4 flex justify-between items-center">
-                                  <h2 className="font-semibold text-foreground">{stage.title}</h2>
+                            <div className="mb-4 flex justify-between items-center">
+                                <TooltipProvider delayDuration={100}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                       <h2 className="font-semibold text-foreground cursor-help">{stage.title}</h2>
+                                    </TooltipTrigger>
+                                    {stage.description && (
+                                       <TooltipContent>
+                                        <p className="max-w-xs">{stage.description}</p>
+                                      </TooltipContent>
+                                    )}
+                                  </Tooltip>
+                                </TooltipProvider>
+                                
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                   <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => handleEditStage(stage)}>
+                                        <Pencil className="h-4 w-4" />
+                                    </Button>
                                   {(leadsByStage[stage.id]?.length ?? 0) === 0 && (
                                       <AlertDialog>
                                           <AlertDialogTrigger asChild>
@@ -261,7 +297,8 @@ export default function CrmPage() {
                                           </AlertDialogContent>
                                       </AlertDialog>
                                   )}
-                              </div>
+                                </div>
+                            </div>
                               <div className="flex-1 min-h-[100px]">
                                 {(leadsByStage[stage.id] && leadsByStage[stage.id].length > 0) ? (
                                   leadsByStage[stage.id].map((lead, index) => <LeadCard key={lead.id} lead={lead} index={index} />)
@@ -299,6 +336,50 @@ export default function CrmPage() {
               </div>
           </main>
       </div>
+
+       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Editar Etapa: {editingStage?.title}</DialogTitle>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+                <div>
+                    <Label htmlFor="stage-title">Nome da Etapa</Label>
+                    <Input 
+                        id="stage-title" 
+                        value={editingStage?.title || ''} 
+                        onChange={(e) => setEditingStage(prev => prev ? {...prev, title: e.target.value} : null)}
+                    />
+                </div>
+                <div>
+                    <Label htmlFor="stage-description">Descrição</Label>
+                    <Textarea 
+                        id="stage-description" 
+                        placeholder="Descreva o que acontece nesta etapa..."
+                        value={editingStage?.description || ''}
+                        onChange={(e) => setEditingStage(prev => prev ? {...prev, description: e.target.value} : null)}
+                    />
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Switch 
+                        id="is-won-stage"
+                        checked={editingStage?.isWon || false}
+                        onCheckedChange={(checked) => setEditingStage(prev => prev ? {...prev, isWon: checked} : null)}
+                    />
+                    <Label htmlFor="is-won-stage">Marcar como estágio "Ganho"?</Label>
+                </div>
+                 <p className="text-xs text-muted-foreground">
+                    Marcar esta opção fará com que qualquer lead movido para cá seja considerado uma venda concluída. Apenas uma etapa pode ser marcada como "Ganho".
+                </p>
+            </div>
+            <DialogFooter>
+                <Button variant="ghost" onClick={() => setIsEditDialogOpen(false)}>Cancelar</Button>
+                <Button onClick={handleSaveStageChanges}>Salvar Alterações</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DragDropContext>
   );
 }
+
+    

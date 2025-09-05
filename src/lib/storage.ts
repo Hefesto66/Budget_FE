@@ -21,6 +21,8 @@ export interface Quote {
 export interface Stage {
   id: string;
   title: string;
+  description?: string;
+  isWon?: boolean;
 }
 
 
@@ -59,16 +61,15 @@ const saveToStorage = <T>(key: string, data: T): void => {
 
 // ====== STAGE FUNCTIONS ====== //
 const DEFAULT_STAGES: Stage[] = [
-  { id: 'qualificacao', title: 'Qualificação' },
-  { id: 'proposta', title: 'Proposta Enviada' },
-  { id: 'negociacao', title: 'Negociação' },
-  { id: 'ganho', title: 'Ganho' },
-  { id: 'perdido', title: 'Perdido' },
+  { id: 'qualificacao', title: 'Qualificação', description: 'Leads iniciais que precisam ser contactados e avaliados.', isWon: false },
+  { id: 'proposta', title: 'Proposta Enviada', description: 'Leads que receberam uma proposta formal.', isWon: false },
+  { id: 'negociacao', title: 'Negociação', description: 'Discussão de termos, preços e condições com o cliente.', isWon: false },
+  { id: 'ganho', title: 'Ganho', description: 'Vendas fechadas e contratos assinados.', isWon: true },
+  { id: 'perdido', title: 'Perdido', description: 'Oportunidades que não avançaram.', isWon: false },
 ];
 
 export const getStages = (): Stage[] => {
   const stages = getFromStorage<Stage[]>(STAGES_STORAGE_KEY);
-  // If no stages are in storage (e.g., first visit), set and return defaults.
   if (!stages || stages.length === 0) {
     saveToStorage(STAGES_STORAGE_KEY, DEFAULT_STAGES);
     return DEFAULT_STAGES;
@@ -151,3 +152,5 @@ export const generateNewQuoteId = (): string => {
     const paddedNumber = String(number).padStart(4, '0'); // Formats to 0001, 0002, etc.
     return `NX-S${paddedNumber}`;
 }
+
+    
