@@ -64,6 +64,7 @@ export function Wizard() {
   const [clientData, setClientData] = useState<ClientFormData | null>(null);
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false); 
   const [isReady, setIsReady] = useState(false);
+  const [proposalId, setProposalId] = useState<string>("");
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -80,6 +81,7 @@ export function Wizard() {
       let initialData = { ...defaultValues };
 
       if (quoteId) {
+        setProposalId(quoteId);
         const existingQuote = getQuoteById(quoteId);
         if (existingQuote) {
           initialData = existingQuote.formData;
@@ -148,6 +150,8 @@ export function Wizard() {
 
     if (result.success && result.data) {
       setResults(result.data);
+      // Generate the ID here for a new proposal, or keep the existing one.
+      setProposalId(quoteId || generateNewQuoteId());
       setCurrentStep(1);
     } else {
       toast({
@@ -167,6 +171,7 @@ export function Wizard() {
     // Otherwise, restart the wizard.
     setCurrentStep(0);
     setResults(null);
+    setProposalId("");
     methods.reset(defaultValues);
     if (!leadId) { 
         setIsClientDialogOpen(true);
@@ -181,20 +186,16 @@ export function Wizard() {
     setResults(newResults);
   }
 
-  const handleSaveQuote = (proposalIdFromResults: string) => {
-    if (!leadId || !results) {
-        toast({ title: "Erro", description: "Contexto do lead ou resultados do cálculo não encontrados.", variant: "destructive" });
+  const handleSaveQuote = () => {
+    if (!leadId || !results || !proposalId) {
+        toast({ title: "Erro", description: "Contexto do lead, resultados do cálculo ou ID da proposta não encontrados.", variant: "destructive" });
         return;
     }
 
     const formData = methods.getValues();
     
-    // If we are editing, use the existing quoteId.
-    // If we are creating, generate a new sequential ID.
-    const finalQuoteId = quoteId || generateNewQuoteId();
-
     const quoteToSave: Quote = {
-        id: finalQuoteId,
+        id: proposalId,
         leadId: leadId,
         // If editing, keep the original creation date. Otherwise, set a new one.
         createdAt: quoteId ? getQuoteById(quoteId)!.createdAt : new Date().toISOString(), 
@@ -271,6 +272,7 @@ export function Wizard() {
                   >
                     <Step2Results 
                       results={results}
+                      proposalId={proposalId}
                       onBack={goBack}
                       onRecalculate={handleRecalculate}
                       onSave={handleSaveQuote}
@@ -286,3 +288,5 @@ export function Wizard() {
     </div>
   );
 }
+
+    

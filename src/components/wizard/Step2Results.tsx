@@ -45,36 +45,33 @@ const CUSTOMIZATION_KEY = "proposalCustomization";
 
 interface Step2ResultsProps {
   results: SolarCalculationResult;
+  proposalId: string;
   onBack: () => void;
   onRecalculate: (newResults: SolarCalculationResult) => void;
-  onSave: (proposalId: string) => void;
+  onSave: () => void;
   onGoToDataInput: () => void;
   isEditing: boolean;
 }
 
-export function Step2Results({ results, onBack, onRecalculate, onSave, onGoToDataInput, isEditing }: Step2ResultsProps) {
+export function Step2Results({ 
+  results, 
+  proposalId,
+  onBack, 
+  onRecalculate, 
+  onSave, 
+  onGoToDataInput, 
+  isEditing 
+}: Step2ResultsProps) {
   const { toast } = useToast();
   const formMethods = useFormContext<SolarCalculationInput>();
-  const searchParams = useSearchParams();
   
   const [isRefining, setIsRefining] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
 
   // State for the editable document details
-  const [proposalId, setProposalId] = useState('');
   const [proposalDate, setProposalDate] = useState<Date>(new Date());
   const [proposalValidity, setProposalValidity] = useState<Date>(addDays(new Date(), 20));
-
-  useEffect(() => {
-    const quoteId = searchParams.get('quoteId');
-    if (quoteId) {
-      setProposalId(quoteId);
-    } else {
-      // For new quotes, we display a placeholder. The real ID is generated on save.
-      setProposalId("A ser gerado");
-    }
-  }, [searchParams]);
 
   useEffect(() => {
     // Automatically update validity date when proposal date changes
@@ -219,13 +216,6 @@ export function Step2Results({ results, onBack, onRecalculate, onSave, onGoToDat
     }
     setIsExporting(false);
   };
-  
-  const handleSave = () => {
-    // The actual ID is passed from the Wizard component on save.
-    // Here we just pass a placeholder or the existing ID.
-    onSave(proposalId);
-  }
-
 
   return (
     <>
@@ -310,7 +300,7 @@ export function Step2Results({ results, onBack, onRecalculate, onSave, onGoToDat
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
                     <Label htmlFor="proposalId">ID da Proposta</Label>
-                    <Input id="proposalId" value={proposalId} onChange={(e) => setProposalId(e.target.value)} disabled />
+                    <Input id="proposalId" value={proposalId} disabled />
                 </div>
                 <div className="space-y-2">
                     <Label>Data do Documento</Label>
@@ -376,7 +366,7 @@ export function Step2Results({ results, onBack, onRecalculate, onSave, onGoToDat
           </Button>
           <div className="flex flex-col-reverse gap-4 sm:flex-row">
             {/* Hidden button to be triggered by the parent Wizard component */}
-            <Button id="save-quote-button" onClick={handleSave} className="hidden" />
+            <Button id="save-quote-button" onClick={onSave} className="hidden" />
 
             {isEditing && (
               <Button type="button" variant="outline" onClick={onGoToDataInput}>
@@ -500,3 +490,5 @@ const defaultCustomization: CustomizationSettings = {
     showTimeline: false,
   },
 };
+
+    
