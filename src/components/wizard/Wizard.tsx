@@ -248,7 +248,7 @@ export function Wizard() {
   }
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-12 sm:py-16">
+    <div className="container mx-auto max-w-7xl px-4 py-12 sm:py-16">
       
       <div>
           {leadId && (
@@ -266,7 +266,7 @@ export function Wizard() {
                 </div>
             </div>
           )}
-          <StepIndicator currentStep={currentStep} steps={steps} />
+          {/* <StepIndicator currentStep={currentStep} steps={steps} /> */}
           <FormProvider {...methods}>
             <form onSubmit={methods.handleSubmit(processForm)} className="mt-12">
               <AnimatePresence mode="wait">
@@ -308,9 +308,3 @@ export function Wizard() {
     </div>
   );
 }
-
-    
-
-    
-
-    

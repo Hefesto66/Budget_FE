@@ -1,7 +1,7 @@
 
 "use client";
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { useMemo } from 'react';
 
 export function Header() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const { title, showQuickQuote } = useMemo(() => {
     if (pathname === '/crm') {
@@ -27,7 +28,8 @@ export function Header() {
         return { title: isNew ? 'Novo Lead' : 'Detalhes do Lead', showQuickQuote: false };
     }
     if (pathname === '/orcamento') {
-      return { title: 'Cotação Rápida', showQuickQuote: false };
+      const hasLead = searchParams.has('leadId');
+      return { title: hasLead ? 'Cotação' : 'Cotação Rápida', showQuickQuote: false };
     }
      if (pathname === '/definicoes') {
       return { title: 'Definições', showQuickQuote: false };
@@ -47,7 +49,7 @@ export function Header() {
     }
     // Default state for home page
     return { title: null, showQuickQuote: true };
-  }, [pathname]);
+  }, [pathname, searchParams]);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-gray-900/80 backdrop-blur supports-[backdrop-filter]:bg-gray-900/60">
