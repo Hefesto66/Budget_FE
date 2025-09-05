@@ -23,6 +23,10 @@ export function formatNumber(value: number, decimalPlaces = 0) {
 }
 
 export function formatDate(date: Date, formatStr: string = "dd/MM/yyyy") {
+  if (!(date instanceof Date) || isNaN(date.getTime())) {
+    // Return a placeholder or empty string if the date is invalid
+    return "Data inválida";
+  }
   return dateFnsFormat(date, formatStr, { locale: ptBR });
 }
 

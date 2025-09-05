@@ -2,6 +2,15 @@
 import type { SolarCalculationInput, SolarCalculationResult } from "@/types";
 
 // ====== TYPES ====== //
+
+export interface HistoryEntry {
+  id: string;
+  timestamp: string; // ISO string
+  type: 'note' | 'log' | 'log-lead' | 'log-quote' | 'log-stage';
+  text: string;
+  author?: string; // Optional: to track which user made the change
+}
+
 export interface Client {
   id: string;
   name: string;
@@ -19,6 +28,7 @@ export interface Client {
   salespersonId?: string;
   paymentTermId?: string;
   priceListId?: string;
+  history: HistoryEntry[];
 }
 
 export interface Lead {
@@ -215,13 +225,30 @@ export const saveClient = (newClient: Client): void => {
 
   if (existingIndex > -1) {
     // Update existing client
-    clients[existingIndex] = newClient;
+    clients[existingIndex] = { ...clients[existingIndex], ...newClient };
   } else {
     // Add new client
     clients.push(newClient);
   }
   saveToStorage(CLIENTS_STORAGE_KEY, clients);
 };
+
+export const addHistoryEntry = (clientId: string, text: string, type: HistoryEntry['type']) => {
+    const client = getClientById(clientId);
+    if (!client) return;
+
+    const newEntry: HistoryEntry = {
+        id: `hist-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        text,
+        type,
+        author: type === 'note' ? 'Usuário' : 'Sistema'
+    };
+    
+    const updatedHistory = [newEntry, ...(client.history || [])];
+
+    saveClient({ ...client, history: updatedHistory });
+}
 
 
 // ====== SALES CONFIG FUNCTIONS ====== //

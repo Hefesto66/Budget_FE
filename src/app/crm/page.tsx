@@ -9,7 +9,7 @@ import { PlusCircle, Trash2, Plus, Pencil } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { Header } from '@/components/layout/Header';
 import { useEffect, useState, useRef } from 'react';
-import { getLeads, type Lead, getStages, saveStages, type Stage, saveLead, deleteLead } from '@/lib/storage';
+import { getLeads, type Lead, getStages, saveStages, type Stage, saveLead, deleteLead, addHistoryEntry } from '@/lib/storage';
 import type { DropResult } from "@hello-pangea/dnd";
 import {
   AlertDialog,
@@ -251,6 +251,11 @@ export default function CrmPage() {
       const finishStageLeads = Array.from(leadsByStage[destStageId]);
       finishStageLeads.splice(destination.index, 0, movedLead);
 
+      const destStage = stages.find(s => s.id === destStageId);
+      if(destStage) {
+        addHistoryEntry(movedLead.clientId, `Lead "${movedLead.title}" movido para a etapa "${destStage.title}".`, 'log-stage');
+      }
+
       setLeadsByStage(prev => ({
         ...prev,
         [sourceStageId]: startStageLeads,
@@ -412,3 +417,5 @@ export default function CrmPage() {
     </DragDropContext>
   );
 }
+
+    

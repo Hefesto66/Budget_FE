@@ -16,7 +16,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { solarCalculationSchema } from "@/types";
 import { Button } from "../ui/button";
 import { ArrowLeft, Save } from "lucide-react";
-import { getLeadById, getQuoteById, saveQuote, generateNewQuoteId, getClientById } from "@/lib/storage";
+import { getLeadById, getQuoteById, saveQuote, generateNewQuoteId, getClientById, addHistoryEntry } from "@/lib/storage";
 
 const steps = [
   { id: "01", name: "Dados de Consumo" },
@@ -194,8 +194,8 @@ export function Wizard() {
   }
 
   const handleSaveQuote = () => {
-    if (!leadId || !results || !proposalId) {
-        toast({ title: "Erro", description: "Contexto do lead, resultados do cálculo ou ID da proposta não encontrados para salvar.", variant: "destructive" });
+    if (!leadId || !results || !proposalId || !clienteId) {
+        toast({ title: "Erro", description: "Contexto do lead, cliente, resultados do cálculo ou ID da proposta não encontrados para salvar.", variant: "destructive" });
         return;
     }
 
@@ -211,6 +211,12 @@ export function Wizard() {
     };
 
     saveQuote(quoteToSave);
+
+    const historyMessage = quoteId
+      ? `Cotação ${proposalId} foi atualizada.`
+      : `Nova cotação ${proposalId} foi criada.`;
+
+    addHistoryEntry(clienteId, historyMessage, 'log-quote');
 
     toast({
       title: quoteId ? "Cotação Atualizada!" : "Cotação Salva!",
@@ -293,6 +299,8 @@ export function Wizard() {
     </div>
   );
 }
+
+    
 
     
 

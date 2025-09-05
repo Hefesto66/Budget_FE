@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { saveLead, getClients, saveClient, type Client } from '@/lib/storage';
+import { saveLead, getClients, saveClient, type Client, addHistoryEntry } from '@/lib/storage';
 import {
   Popover,
   PopoverContent,
@@ -112,6 +112,7 @@ export default function NewLeadPage() {
     };
     
     saveLead(newLead);
+    addHistoryEntry(selectedClient.id, `Novo lead criado: "${data.title}"`, 'log-lead');
 
     await new Promise(resolve => setTimeout(resolve, 500)); 
 
@@ -134,9 +135,11 @@ export default function NewLeadPage() {
       id: `client-${Date.now()}`,
       name: newClientName,
       type: 'individual', // Default type
+      history: [],
     };
     
     saveClient(newClient);
+    addHistoryEntry(newClient.id, 'Cliente criado através do formulário de novo lead.', 'log');
     
     const updatedClients = [...clients, newClient];
     setClients(updatedClients);
@@ -310,3 +313,5 @@ export default function NewLeadPage() {
     </div>
   )
 }
+
+    
