@@ -38,7 +38,6 @@ import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useFormContext } from "react-hook-form";
 import { useSearchParams } from "next/navigation";
-import { generateNewQuoteId } from "@/lib/storage";
 
 
 const COMPANY_DATA_KEY = "companyData";
@@ -72,7 +71,8 @@ export function Step2Results({ results, onBack, onRecalculate, onSave, onGoToDat
     if (quoteId) {
       setProposalId(quoteId);
     } else {
-      setProposalId(generateNewQuoteId());
+      // For new quotes, we display a placeholder. The real ID is generated on save.
+      setProposalId("A ser gerado");
     }
   }, [searchParams]);
 
@@ -221,11 +221,9 @@ export function Step2Results({ results, onBack, onRecalculate, onSave, onGoToDat
   };
   
   const handleSave = () => {
-    if (proposalId) {
-      onSave(proposalId);
-    } else {
-      toast({ title: "Erro", description: "ID da proposta não foi gerado.", variant: "destructive" });
-    }
+    // The actual ID is passed from the Wizard component on save.
+    // Here we just pass a placeholder or the existing ID.
+    onSave(proposalId);
   }
 
 

@@ -181,7 +181,7 @@ export function Wizard() {
     setResults(newResults);
   }
 
-  const handleSaveQuote = async (proposalIdFromResults: string) => {
+  const handleSaveQuote = (proposalIdFromResults: string) => {
     if (!leadId || !results) {
         toast({ title: "Erro", description: "Contexto do lead ou resultados do cálculo não encontrados.", variant: "destructive" });
         return;
@@ -189,13 +189,15 @@ export function Wizard() {
 
     const formData = methods.getValues();
     
-    // Use the existing quoteId if in edit mode, otherwise use the new one from results
-    const finalQuoteId = quoteId || proposalIdFromResults;
+    // If we are editing, use the existing quoteId.
+    // If we are creating, generate a new sequential ID.
+    const finalQuoteId = quoteId || generateNewQuoteId();
 
     const quoteToSave: Quote = {
         id: finalQuoteId,
         leadId: leadId,
-        createdAt: quoteId ? getQuoteById(quoteId)!.createdAt : new Date().toISOString(), // Keep original creation date
+        // If editing, keep the original creation date. Otherwise, set a new one.
+        createdAt: quoteId ? getQuoteById(quoteId)!.createdAt : new Date().toISOString(), 
         formData: formData,
         results: results,
     };
