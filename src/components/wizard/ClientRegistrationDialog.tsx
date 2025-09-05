@@ -40,6 +40,8 @@ export function ClientRegistrationDialog({ isOpen, onSave, onSkip }: ClientRegis
     form.reset();
   };
 
+  if (!isOpen) return null;
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onSkip(); }}>
       <DialogContent className="sm:max-w-[425px]" onInteractOutside={(e) => e.preventDefault()}>
@@ -108,3 +110,5 @@ export function ClientRegistrationDialog({ isOpen, onSave, onSkip }: ClientRegis
     </Dialog>
   );
 }
+
+    

@@ -33,17 +33,17 @@ export default function LeadDetailPage() {
     setIsClient(true);
     if (leadId) {
       const foundLead = getLeadById(leadId);
-      setLead(foundLead);
-      const foundQuotes = getQuotesByLeadId(leadId);
-      setQuotes(foundQuotes);
+      setLead(foundLead || null);
+      if (foundLead) {
+        const foundQuotes = getQuotesByLeadId(leadId);
+        setQuotes(foundQuotes);
+      }
     }
   }, [leadId]);
 
   const handleNewQuote = () => {
     if (!lead) return;
-    // For now, we assume a single client per lead for simplicity
-    const clientId = `client-${lead.id}`;
-    router.push(`/orcamento?leadId=${lead.id}&clienteId=${clientId}`);
+    router.push(`/orcamento?leadId=${lead.id}`);
   };
 
   const handleQuoteClick = (quoteId: string) => {
@@ -158,3 +158,5 @@ export default function LeadDetailPage() {
     </div>
   );
 }
+
+    

@@ -14,10 +14,9 @@ import { getCalculation } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { solarCalculationSchema } from "@/types";
-import { ClientRegistrationDialog } from "./ClientRegistrationDialog";
 import { Button } from "../ui/button";
 import { ArrowLeft, Save } from "lucide-react";
-import { getLeadById, getQuoteById, saveQuote, generateNewQuoteId } from "@/lib/storage";
+import { getLeadById, getQuoteById, saveQuote, generateNewQuoteId, getClientById } from "@/lib/storage";
 
 const steps = [
   { id: "01", name: "Dados de Consumo" },
@@ -62,7 +61,6 @@ export function Wizard() {
   const { toast } = useToast();
   
   const [clientData, setClientData] = useState<ClientFormData | null>(null);
-  const [isClientDialogOpen, setIsClientDialogOpen] = useState(false); 
   const [isReady, setIsReady] = useState(false);
   const [proposalId, setProposalId] = useState<string>("");
 
@@ -70,6 +68,7 @@ export function Wizard() {
   const searchParams = useSearchParams();
   const leadId = searchParams.get('leadId');
   const quoteId = searchParams.get('quoteId');
+  const clienteId = searchParams.get('clienteId');
   
   const methods = useForm<z.infer<typeof solarCalculationSchema>>({
     resolver: zodResolver(solarCalculationSchema),
@@ -94,25 +93,23 @@ export function Wizard() {
       }
       methods.reset(initialData);
       
-      if (!leadId && !quoteId) {
-        setIsClientDialogOpen(true);
+      if (clienteId) {
+          const foundClient = getClientById(clienteId);
+          if(foundClient) {
+              setClientData({
+                  name: foundClient.name,
+                  document: foundClient.cnpj || '',
+                  address: foundClient.street || '',
+              });
+          }
       }
       
       setIsReady(true);
     };
 
     initialize();
-  }, [leadId, quoteId, methods, router]);
+  }, [leadId, quoteId, clienteId, methods, router]);
 
-  const handleClientDataSave = (data: ClientFormData) => {
-    setClientData(data);
-    setIsClientDialogOpen(false);
-  };
-  
-  const handleSkipClient = () => {
-    setClientData(null);
-    setIsClientDialogOpen(false);
-  }
 
   const processForm = async (data: SolarCalculationInput) => {
     setIsLoading(true);
@@ -173,9 +170,6 @@ export function Wizard() {
     setResults(null);
     setProposalId("");
     methods.reset(defaultValues);
-    if (!leadId) { 
-        setIsClientDialogOpen(true);
-    }
   }
   
   const goToStep = (stepIndex: number) => {
@@ -188,7 +182,7 @@ export function Wizard() {
 
   const handleSaveQuote = () => {
     if (!leadId || !results || !proposalId) {
-        toast({ title: "Erro", description: "Contexto do lead, resultados do cálculo ou ID da proposta não encontrados.", variant: "destructive" });
+        toast({ title: "Erro", description: "Contexto do lead, resultados do cálculo ou ID da proposta não encontrados para salvar.", variant: "destructive" });
         return;
     }
 
@@ -216,6 +210,8 @@ export function Wizard() {
   const handleGoBackToLead = () => {
      if (leadId) {
       router.push(`/crm/${leadId}`);
+    } else {
+      router.push('/crm');
     }
   }
 
@@ -225,13 +221,8 @@ export function Wizard() {
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-12 sm:py-16">
-      <ClientRegistrationDialog
-        isOpen={isClientDialogOpen}
-        onSave={handleClientDataSave}
-        onSkip={handleSkipClient}
-      />
       
-      <div className={isClientDialogOpen ? 'blur-sm' : ''}>
+      <div>
           {leadId && (
             <div className="mb-8 flex justify-between items-center">
                  <h2 className="text-lg font-semibold text-foreground">
@@ -273,6 +264,7 @@ export function Wizard() {
                     <Step2Results 
                       results={results}
                       proposalId={proposalId}
+                      clientData={clientData}
                       onBack={goBack}
                       onRecalculate={handleRecalculate}
                       onSave={handleSaveQuote}

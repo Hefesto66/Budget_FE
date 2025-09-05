@@ -46,6 +46,7 @@ const CUSTOMIZATION_KEY = "proposalCustomization";
 interface Step2ResultsProps {
   results: SolarCalculationResult;
   proposalId: string;
+  clientData: ClientFormData | null;
   onBack: () => void;
   onRecalculate: (newResults: SolarCalculationResult) => void;
   onSave: () => void;
@@ -56,6 +57,7 @@ interface Step2ResultsProps {
 export function Step2Results({ 
   results, 
   proposalId,
+  clientData,
   onBack, 
   onRecalculate, 
   onSave, 
@@ -161,7 +163,7 @@ export function Step2Results({
           results={results}
           formData={formData}
           companyData={companyData}
-          clientData={null} // TODO: Pass client data if available
+          clientData={clientData}
           customization={customization!}
           proposalId={proposalId}
           proposalDate={proposalDate}
@@ -300,7 +302,7 @@ export function Step2Results({
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
                     <Label htmlFor="proposalId">ID da Proposta</Label>
-                    <Input id="proposalId" value={proposalId} disabled />
+                    <Input id="proposalId" value={proposalId || "A ser gerado"} disabled />
                 </div>
                 <div className="space-y-2">
                     <Label>Data do Documento</Label>

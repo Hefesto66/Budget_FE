@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,9 +18,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save, ArrowLeft, UserPlus } from "lucide-react";
+import { Loader2, Save, ArrowLeft, UserPlus, ChevronsUpDown, Check } from "lucide-react";
 import { Header } from "@/components/layout/Header";
-import { useState } from 'react';
 import {
   Select,
   SelectContent,
@@ -27,11 +27,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { saveLead } from '@/lib/storage';
+import { saveLead, getClients, saveClient, type Client } from '@/lib/storage';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogDescription
+} from "@/components/ui/dialog"
+import { cn } from "@/lib/utils";
+
 
 const newLeadSchema = z.object({
   title: z.string().min(1, "O título do lead é obrigatório."),
-  clientName: z.string().min(1, "O nome do cliente é obrigatório."),
+  clientId: z.string().min(1, "É obrigatório selecionar um cliente."),
   value: z.coerce.number().positive("O valor deve ser positivo."),
   stage: z.string().min(1, "A etapa é obrigatória."),
 });
@@ -42,12 +66,26 @@ export default function NewLeadPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
+  
+  // State for the combobox
+  const [comboboxOpen, setComboboxOpen] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState("");
 
+  // State for the "New Client" dialog
+  const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
+
+  useEffect(() => {
+    // Load clients from storage when component mounts
+    setClients(getClients());
+  }, []);
+  
   const form = useForm<NewLeadFormData>({
     resolver: zodResolver(newLeadSchema),
     defaultValues: {
       title: "",
-      clientName: "",
+      clientId: "",
       value: 0,
       stage: 'qualificacao'
     },
@@ -56,12 +94,25 @@ export default function NewLeadPage() {
   const onSubmit = async (data: NewLeadFormData) => {
     setIsSaving(true);
     
+    const selectedClient = clients.find(c => c.id === data.clientId);
+    if (!selectedClient) {
+      toast({ title: "Erro", description: "Cliente selecionado não é válido.", variant: "destructive" });
+      setIsSaving(false);
+      return;
+    }
+
     const newLeadId = `lead-${Date.now()}`;
-    const newLead = { id: newLeadId, ...data };
+    const newLead = { 
+      id: newLeadId, 
+      title: data.title,
+      value: data.value,
+      stage: data.stage,
+      clientName: selectedClient.name, // Save client name for display
+    };
     
     saveLead(newLead);
 
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate async save
+    await new Promise(resolve => setTimeout(resolve, 500)); 
 
     toast({
       title: "Sucesso!",
@@ -71,6 +122,35 @@ export default function NewLeadPage() {
     router.push(`/crm/${newLeadId}`); 
     setIsSaving(false);
   };
+  
+  const handleCreateNewClient = () => {
+    if (!newClientName.trim()) {
+      toast({ title: "Erro", description: "O nome do cliente não pode ser vazio.", variant: "destructive" });
+      return;
+    }
+    
+    const newClient: Client = {
+      id: `client-${Date.now()}`,
+      name: newClientName,
+      type: 'individual', // Default type
+    };
+    
+    saveClient(newClient);
+    
+    const updatedClients = [...clients, newClient];
+    setClients(updatedClients);
+    
+    form.setValue("clientId", newClient.id);
+    setSelectedClientId(newClient.id);
+
+    toast({ title: "Cliente Criado!", description: `${newClientName} foi adicionado à sua lista de clientes.` });
+    
+    setNewClientName("");
+    setIsClientDialogOpen(false);
+    setComboboxOpen(false); // Close combobox after selection
+  };
+
+  const selectedClientName = clients.find(c => c.id === selectedClientId)?.name || "Selecione um cliente...";
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -100,9 +180,59 @@ export default function NewLeadPage() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <Label htmlFor="clientName">Nome do Cliente</Label>
-                        <Input id="clientName" placeholder="Ex: Sr. João Silva" {...form.register("clientName")} className="mt-2" />
-                        {form.formState.errors.clientName && <p className="text-sm text-destructive mt-1">{form.formState.errors.clientName.message}</p>}
+                        <Label>Cliente</Label>
+                        <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={comboboxOpen}
+                              className="w-full justify-between mt-2 font-normal"
+                            >
+                              {selectedClientName}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                            <Command>
+                              <CommandInput placeholder="Pesquisar cliente..." />
+                              <CommandList>
+                                <CommandEmpty>
+                                   <div className="p-4 text-sm">Nenhum cliente encontrado.</div>
+                                </CommandEmpty>
+                                <CommandGroup>
+                                  {clients.map((client) => (
+                                    <CommandItem
+                                      key={client.id}
+                                      value={client.name}
+                                      onSelect={() => {
+                                        form.setValue("clientId", client.id);
+                                        setSelectedClientId(client.id);
+                                        setComboboxOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          selectedClientId === client.id ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      {client.name}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                                <CommandItem
+                                    onSelect={() => setIsClientDialogOpen(true)}
+                                    className="text-primary cursor-pointer font-medium"
+                                >
+                                    <UserPlus className="mr-2 h-4 w-4" />
+                                    Criar novo cliente
+                                </CommandItem>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        {form.formState.errors.clientId && <p className="text-sm text-destructive mt-1">{form.formState.errors.clientId.message}</p>}
                     </div>
                      <div>
                         <Label htmlFor="value">Valor Estimado (R$)</Label>
@@ -146,6 +276,38 @@ export default function NewLeadPage() {
           </form>
         </div>
       </main>
+      
+      {/* Dialog for creating a new client */}
+      <Dialog open={isClientDialogOpen} onOpenChange={setIsClientDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Criar Novo Cliente</DialogTitle>
+             <DialogDescription>
+                Adicione um novo cliente que será associado a este lead.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="new-client-name" className="text-right">
+                Nome
+              </Label>
+              <Input
+                id="new-client-name"
+                value={newClientName}
+                onChange={(e) => setNewClientName(e.target.value)}
+                className="col-span-3"
+                placeholder="Nome completo do cliente"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsClientDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleCreateNewClient}>Salvar Cliente</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
+
+    
