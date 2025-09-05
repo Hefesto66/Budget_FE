@@ -13,10 +13,11 @@ interface AppCardProps {
   name: string;
   description: string;
   className?: string;
+  disabled?: boolean;
 }
 
-const AppCard = ({ href, icon, name, description, className }: AppCardProps) => (
-  <Link href={href} className="block group">
+const AppCard = ({ href, icon, name, description, className, disabled }: AppCardProps) => (
+  <Link href={disabled ? "#" : href} className={cn("block group", disabled && "pointer-events-none opacity-60")}>
     <motion.div
       whileHover={{ y: -5, scale: 1.02 }}
       transition={{ type: "spring", stiffness: 300 }}
@@ -66,7 +67,7 @@ export default function Home() {
               description="Gerencie leads, oportunidades e feche mais negócios com o funil de vendas."
             />
             <AppCard
-              href="#"
+              href="/clientes"
               icon={<Users className="h-10 w-10 text-primary" />}
               name="Clientes"
               description="Centralize as informações e o histórico de todos os seus clientes."
@@ -76,6 +77,7 @@ export default function Home() {
               icon={<Building2 className="h-10 w-10 text-primary" />}
               name="Inventário"
               description="Controle seus produtos, painéis, inversores e outros equipamentos."
+              disabled
             />
           </div>
         </section>

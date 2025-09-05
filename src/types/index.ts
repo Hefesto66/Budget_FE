@@ -82,6 +82,21 @@ export interface Stage {
   title: string;
 }
 
+export interface Client {
+  id: string;
+  name: string;
+  type: 'individual' | 'company';
+  photo?: string | null;
+  cnpj?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  street?: string;
+  cityState?: string;
+  zip?: string;
+  country?: string;
+}
+
 
 export type { SuggestRefinedPanelConfigOutput };
 

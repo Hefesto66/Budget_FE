@@ -2,6 +2,21 @@
 import type { SolarCalculationInput, SolarCalculationResult } from "@/types";
 
 // ====== TYPES ====== //
+export interface Client {
+  id: string;
+  name: string;
+  type: 'individual' | 'company';
+  photo?: string | null;
+  cnpj?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  street?: string;
+  cityState?: string;
+  zip?: string;
+  country?: string;
+}
+
 export interface Lead {
   id: string;
   title: string;
@@ -31,6 +46,7 @@ const LEADS_STORAGE_KEY = 'fe-solar-leads';
 const QUOTES_STORAGE_KEY = 'fe-solar-quotes';
 const QUOTE_COUNTER_KEY = 'fe-solar-quote-counter';
 const STAGES_STORAGE_KEY = 'fe-solar-stages';
+const CLIENTS_STORAGE_KEY = 'fe-solar-clients';
 
 
 // ====== HELPERS ====== //
@@ -153,4 +169,28 @@ export const generateNewQuoteId = (): string => {
     return `NX-S${paddedNumber}`;
 }
 
-    
+// ====== CLIENT FUNCTIONS ====== //
+
+export const getClients = (): Client[] => {
+  return (getFromStorage<Client[]>(CLIENTS_STORAGE_KEY)) || [];
+};
+
+export const getClientById = (id: string): Client | undefined => {
+  const clients = getClients();
+  return clients.find(client => client.id === id);
+};
+
+export const saveClient = (newClient: Client): void => {
+  const clients = getClients();
+  const existingIndex = clients.findIndex(client => client.id === newClient.id);
+
+  if (existingIndex > -1) {
+    // Update existing client
+    clients[existingIndex] = newClient;
+  } else {
+    // Add new client
+    clients.push(newClient);
+  }
+  saveToStorage(CLIENTS_STORAGE_KEY, clients);
+};
+
