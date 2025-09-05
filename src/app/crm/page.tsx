@@ -8,26 +8,10 @@ import { PlusCircle, MoreHorizontal } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { Header } from '@/components/layout/Header';
+import { useEffect, useState } from 'react';
+import { getLeads, type Lead } from '@/lib/storage';
 
-// Mock data - in a real app, this would come from a database (e.g., Firestore)
-const leadsByStage = {
-  qualificacao: [
-    { id: 'lead-001', title: 'Orçamento para Residência em Alphaville', client: 'Sr. João Silva', value: 25000 },
-    { id: 'lead-002', title: 'Sistema para Fazenda Solar', client: 'AgroNegócios S.A.', value: 150000 },
-  ],
-  proposta: [
-    { id: 'lead-003', title: 'Projeto para Condomínio Fechado', client: 'Sra. Maria Oliveira', value: 85000 },
-  ],
-  negociacao: [
-     { id: 'lead-004', title: 'Cobertura de Estacionamento', client: 'Shopping Center Plaza', value: 320000 },
-  ],
-  ganho: [],
-  perdido: [
-      { id: 'lead-005', title: 'Proposta para Indústria Têxtil', client: 'Malhas & Cia', value: 120000 },
-  ],
-};
-
-const stageTitles = {
+const stageTitles: Record<string, string> = {
   qualificacao: 'Qualificação',
   proposta: 'Proposta Enviada',
   negociacao: 'Negociação',
@@ -35,9 +19,10 @@ const stageTitles = {
   perdido: 'Perdido',
 };
 
-type Stage = keyof typeof leadsByStage;
+type Stage = keyof typeof stageTitles;
 
-const LeadCard = ({ lead }: { lead: (typeof leadsByStage.qualificacao)[0] }) => (
+
+const LeadCard = ({ lead }: { lead: Lead }) => (
   <Link href={`/crm/${lead.id}`}>
     <motion.div
       layoutId={`card-container-${lead.id}`}
@@ -51,7 +36,7 @@ const LeadCard = ({ lead }: { lead: (typeof leadsByStage.qualificacao)[0] }) => 
                 <MoreHorizontal className="h-4 w-4" />
             </Button>
         </div>
-        <p className="text-sm text-muted-foreground">{lead.client}</p>
+        <p className="text-sm text-muted-foreground">{lead.clientName}</p>
         <p className="mt-2 text-lg font-bold text-primary">{formatCurrency(lead.value)}</p>
       </CardContent>
     </motion.div>
@@ -60,6 +45,35 @@ const LeadCard = ({ lead }: { lead: (typeof leadsByStage.qualificacao)[0] }) => 
 
 
 export default function CrmPage() {
+  const [leadsByStage, setLeadsByStage] = useState<Record<Stage, Lead[]>>({
+    qualificacao: [],
+    proposta: [],
+    negociacao: [],
+    ganho: [],
+    perdido: [],
+  });
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    const allLeads = getLeads();
+    const groupedLeads = allLeads.reduce((acc, lead) => {
+      const stage = lead.stage as Stage;
+      if (!acc[stage]) {
+        acc[stage] = [];
+      }
+      acc[stage].push(lead);
+      return acc;
+    }, {} as Record<Stage, Lead[]>);
+    
+    setLeadsByStage(prev => ({...prev, ...groupedLeads}));
+
+  }, []);
+
+  if (!isClient) {
+    return null; // or a loading skeleton
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-950">
         <Header />
@@ -74,14 +88,14 @@ export default function CrmPage() {
                 </Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-                {(Object.keys(leadsByStage) as Stage[]).map((stage) => (
+                {(Object.keys(stageTitles) as Stage[]).map((stage) => (
                     <div key={stage} className="flex flex-col rounded-xl bg-gray-200/50 dark:bg-gray-800/50 p-4">
                         <h2 className="mb-4 text-lg font-semibold text-foreground">{stageTitles[stage]}</h2>
                         <div className="flex-1">
-                          {leadsByStage[stage].length > 0 ? (
+                          {(leadsByStage[stage] && leadsByStage[stage].length > 0) ? (
                             leadsByStage[stage].map(lead => <LeadCard key={lead.id} lead={lead} />)
                           ) : (
-                             <div className="flex items-center justify-center h-full rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 text-sm text-muted-foreground">
+                             <div className="flex items-center justify-center h-full rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 text-sm text-muted-foreground p-4 text-center">
                                 Sem leads nesta etapa
                              </div>
                           )}

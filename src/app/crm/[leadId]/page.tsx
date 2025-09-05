@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from "next/navigation";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -17,46 +18,54 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-
-// Mock data - in a real app, this would come from a database and use the leadId param
-const mockLead = { 
-  id: 'lead-001', 
-  title: 'Orçamento para Residência em Alphaville', 
-  client: { id: 'client-123', name: 'Sr. João Silva' }, 
-  value: 25000,
-  stage: 'Qualificação',
-  salesperson: 'Ana Costa',
-  createdAt: new Date('2024-07-20T10:00:00Z'),
-};
-
-const mockClient = {
-    id: 'client-123',
-    name: 'Sr. João Silva',
-    email: 'joao.silva@email.com',
-    phone: '(11) 98765-4321',
-    address: 'Alameda dos Bosques, 123, Alphaville, Barueri - SP'
-}
-
-const mockQuotes = [
-    { id: 'QT-001', createdAt: new Date('2024-07-21T11:30:00Z'), value: 24500, status: 'Enviada' },
-    { id: 'QT-002', createdAt: new Date('2024-07-22T15:00:00Z'), value: 25000, status: 'Aprovada' },
-]
-
+import { getLeadById, getQuotesByLeadId, type Lead, type Quote } from '@/lib/storage';
 
 export default function LeadDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const leadId = params.leadId;
+  const leadId = params.leadId as string;
+  
+  const [lead, setLead] = useState<Lead | null>(null);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [isClient, setIsClient] = useState(false);
 
-  // In a real app, you would fetch lead, client and quotes data based on leadId
-  const lead = mockLead;
-  const client = mockClient;
-  const quotes = mockQuotes;
+  useEffect(() => {
+    setIsClient(true);
+    if (leadId) {
+      const foundLead = getLeadById(leadId);
+      setLead(foundLead);
+      const foundQuotes = getQuotesByLeadId(leadId);
+      setQuotes(foundQuotes);
+    }
+  }, [leadId]);
 
   const handleNewQuote = () => {
-    // Navigate to the budget page, passing lead and client IDs as query params
-    router.push(`/orcamento?leadId=${lead.id}&clienteId=${client.id}`);
+    if (!lead) return;
+    // For now, we assume a single client per lead for simplicity
+    const clientId = `client-${lead.id}`;
+    router.push(`/orcamento?leadId=${lead.id}&clienteId=${clientId}`);
   };
+
+  const handleQuoteClick = (quoteId: string) => {
+    router.push(`/orcamento?leadId=${leadId}&quoteId=${quoteId}`);
+  };
+
+  if (!isClient) {
+    // Render a skeleton or loading state while waiting for client-side hydration
+    return <div>Carregando...</div>;
+  }
+  
+  if (!lead) {
+    return (
+       <div className="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-950">
+        <Header />
+        <main className="flex-1 p-6 text-center">
+            <h1 className="text-xl">Lead não encontrado.</h1>
+            <Button variant="link" onClick={() => router.push('/crm')}>Voltar para o Funil</Button>
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-950">
@@ -78,8 +87,6 @@ export default function LeadDetailPage() {
                             <div className="flex items-center gap-4 text-muted-foreground text-sm pt-2">
                                 <div className="flex items-center gap-1.5"><DollarSign className="h-4 w-4" /><span>{formatCurrency(lead.value)}</span></div>
                                 <div className="flex items-center gap-1.5"><Tag className="h-4 w-4" /><span>{lead.stage}</span></div>
-                                <div className="flex items-center gap-1.5"><User className="h-4 w-4" /><span>{lead.salesperson}</span></div>
-                                <div className="flex items-center gap-1.5"><Calendar className="h-4 w-4" /><span>Criado em {formatDate(lead.createdAt)}</span></div>
                             </div>
                         </CardHeader>
                         <CardContent>
@@ -101,21 +108,25 @@ export default function LeadDetailPage() {
                            <Table>
                                 <TableHeader>
                                     <TableRow>
-                                    <TableHead>ID</TableHead>
+                                    <TableHead>ID da Cotação</TableHead>
                                     <TableHead>Data</TableHead>
-                                    <TableHead>Status</TableHead>
                                     <TableHead className="text-right">Valor</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {quotes.map((quote) => (
-                                    <TableRow key={quote.id}>
+                                    {quotes.length > 0 ? quotes.map((quote) => (
+                                    <TableRow key={quote.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleQuoteClick(quote.id)}>
                                         <TableCell className="font-medium">{quote.id}</TableCell>
-                                        <TableCell>{formatDate(quote.createdAt)}</TableCell>
-                                        <TableCell>{quote.status}</TableCell>
-                                        <TableCell className="text-right">{formatCurrency(quote.value)}</TableCell>
+                                        <TableCell>{formatDate(new Date(quote.createdAt))}</TableCell>
+                                        <TableCell className="text-right">{formatCurrency(quote.results.financeiro.custo_sistema_reais)}</TableCell>
                                     </TableRow>
-                                    ))}
+                                    )) : (
+                                      <TableRow>
+                                        <TableCell colSpan={3} className="text-center h-24 text-muted-foreground">
+                                          Nenhuma cotação criada para este lead.
+                                        </TableCell>
+                                      </TableRow>
+                                    )}
                                 </TableBody>
                             </Table>
                         </CardContent>
@@ -128,30 +139,16 @@ export default function LeadDetailPage() {
                         <CardHeader>
                             <CardTitle className="flex items-center justify-between">
                                 Cliente
-                                <Button variant="outline" size="sm">
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    Criar Novo
-                                </Button>
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-secondary rounded-full">
-                                    <Building className="h-5 w-5 text-secondary-foreground" />
+                                    <User className="h-5 w-5 text-secondary-foreground" />
                                 </div>
                                 <div>
-                                    <p className="font-semibold text-foreground">{client.name}</p>
-                                    <p className="text-xs text-muted-foreground">{client.address}</p>
+                                    <p className="font-semibold text-foreground">{lead.clientName}</p>
                                 </div>
-                            </div>
-                             <Separator />
-                            <div className="flex items-center gap-3">
-                                <Mail className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm text-foreground">{client.email}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <Phone className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm text-foreground">{client.phone}</span>
                             </div>
                         </CardContent>
                     </Card>

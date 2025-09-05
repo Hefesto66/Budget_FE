@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save, ArrowLeft, UserPlus } from "lucide-react";
 import { Header } from "@/components/layout/Header";
@@ -28,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { saveLead } from '@/lib/storage';
 
 const newLeadSchema = z.object({
   title: z.string().min(1, "O título do lead é obrigatório."),
@@ -56,17 +56,19 @@ export default function NewLeadPage() {
   const onSubmit = async (data: NewLeadFormData) => {
     setIsSaving(true);
     
-    // Simulate saving to a database
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    console.log("New Lead Data:", data);
+    const newLeadId = `lead-${Date.now()}`;
+    const newLead = { id: newLeadId, ...data };
+    
+    saveLead(newLead);
+
+    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate async save
 
     toast({
       title: "Sucesso!",
       description: "O novo lead foi criado.",
     });
 
-    // In a real app, you'd get the new lead's ID and redirect there
-    router.push('/crm/lead-001'); 
+    router.push(`/crm/${newLeadId}`); 
     setIsSaving(false);
   };
 

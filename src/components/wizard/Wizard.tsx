@@ -17,11 +17,43 @@ import { solarCalculationSchema } from "@/types";
 import { ClientRegistrationDialog } from "./ClientRegistrationDialog";
 import { Button } from "../ui/button";
 import { ArrowLeft, Save } from "lucide-react";
+import { getLeadById, getQuoteById, saveQuote } from "@/lib/storage";
 
 const steps = [
   { id: "01", name: "Dados de Consumo" },
   { id: "02", name: "Resultados e Configuração" },
 ];
+
+const defaultValues: SolarCalculationInput = {
+    consumo_mensal_kwh: 500,
+    valor_medio_fatura_reais: 450,
+    adicional_bandeira_reais_kwh: 0,
+    cip_iluminacao_publica_reais: 25,
+    concessionaria: "Equatorial GO",
+    rede_fases: "mono",
+    irradiacao_psh_kwh_m2_dia: 5.7,
+    // Módulos
+    fabricante_modulo: "TongWei Bifacial",
+    potencia_modulo_wp: 550,
+    preco_modulo_reais: 750,
+    garantia_defeito_modulo_anos: 12,
+    garantia_geracao_modulo_anos: 30,
+    // Inversor
+    modelo_inversor: "Inversor Central - SIW300H (Híbrido)",
+    fabricante_inversor: "WEG",
+    potencia_inversor_kw: 5,
+    tensao_inversor_v: 220,
+    quantidade_inversores: 1,
+    garantia_inversor_anos: 7,
+    eficiencia_inversor_percent: 97,
+    custo_inversor_reais: 4000,
+    // Custos e Perdas
+    fator_perdas_percent: 20,
+    custo_fixo_instalacao_reais: 2500,
+    custo_om_anual_reais: 150,
+    meta_compensacao_percent: 100,
+    quantidade_modulos: 7,
+}
 
 export function Wizard() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -31,54 +63,44 @@ export function Wizard() {
   
   const [clientData, setClientData] = useState<ClientFormData | null>(null);
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false); 
+  const [isReady, setIsReady] = useState(false);
 
   const router = useRouter();
   const searchParams = useSearchParams();
   const leadId = searchParams.get('leadId');
-  const clienteId = searchParams.get('clienteId');
+  const quoteId = searchParams.get('quoteId');
   
-  useEffect(() => {
-    if (!leadId) { 
-        setIsClientDialogOpen(true);
-    } else {
-        console.log("Contexto de CRM:", { leadId, clienteId });
-    }
-  }, [leadId, clienteId]);
-
-
   const methods = useForm<z.infer<typeof solarCalculationSchema>>({
     resolver: zodResolver(solarCalculationSchema),
-    defaultValues: {
-      consumo_mensal_kwh: 500,
-      valor_medio_fatura_reais: 450,
-      adicional_bandeira_reais_kwh: 0,
-      cip_iluminacao_publica_reais: 25,
-      concessionaria: "Equatorial GO",
-      rede_fases: "mono",
-      irradiacao_psh_kwh_m2_dia: 5.7,
-      // Módulos
-      fabricante_modulo: "TongWei Bifacial",
-      potencia_modulo_wp: 550,
-      preco_modulo_reais: 750,
-      garantia_defeito_modulo_anos: 12,
-      garantia_geracao_modulo_anos: 30,
-      // Inversor
-      modelo_inversor: "Inversor Central - SIW300H (Híbrido)",
-      fabricante_inversor: "WEG",
-      potencia_inversor_kw: 5,
-      tensao_inversor_v: 220,
-      quantidade_inversores: 1,
-      garantia_inversor_anos: 7,
-      eficiencia_inversor_percent: 97,
-      custo_inversor_reais: 4000,
-      // Custos e Perdas
-      fator_perdas_percent: 20,
-      custo_fixo_instalacao_reais: 2500,
-      custo_om_anual_reais: 150,
-      meta_compensacao_percent: 100,
-      quantidade_modulos: 7, // Default initial quantity
-    },
+    defaultValues
   });
+  
+  useEffect(() => {
+    const initialize = async () => {
+      let initialData = { ...defaultValues };
+
+      if (quoteId) {
+        const existingQuote = getQuoteById(quoteId);
+        if (existingQuote) {
+          initialData = existingQuote.formData;
+          const calcResult = await getCalculation(initialData);
+          if (calcResult.success) {
+            setResults(calcResult.data);
+            setCurrentStep(1);
+          }
+        }
+      }
+      methods.reset(initialData);
+      
+      if (!leadId && !quoteId) {
+        setIsClientDialogOpen(true);
+      }
+      
+      setIsReady(true);
+    };
+
+    initialize();
+  }, [leadId, quoteId, methods, router]);
 
   const handleClientDataSave = (data: ClientFormData) => {
     setClientData(data);
@@ -139,6 +161,7 @@ export function Wizard() {
   const goBack = () => {
     setCurrentStep(0);
     setResults(null);
+    methods.reset(defaultValues);
     if (!leadId) { 
         setIsClientDialogOpen(true);
     }
@@ -149,26 +172,39 @@ export function Wizard() {
   }
 
   const handleSaveQuote = async () => {
-    // In a real app, this would save the quote to Firestore
-    // linking it to the leadId.
-    console.log("Saving quote for lead:", leadId);
-    console.log("Quote data:", results);
+    if (!leadId || !results) {
+        toast({ title: "Erro", description: "Contexto do lead ou resultados do cálculo não encontrados.", variant: "destructive" });
+        return;
+    }
+
+    const formData = methods.getValues();
+    
+    const newQuote = {
+        id: `quote-${Date.now()}`,
+        leadId: leadId,
+        createdAt: new Date().toISOString(),
+        formData: formData,
+        results: results,
+    };
+
+    saveQuote(newQuote);
 
     toast({
       title: "Cotação Salva!",
       description: "A cotação foi associada ao lead com sucesso.",
     });
     
-    // Redirect back to the lead detail page
-    if (leadId) {
-      router.push(`/crm/${leadId}`);
-    }
+    router.push(`/crm/${leadId}`);
   };
 
   const handleGoBackToLead = () => {
      if (leadId) {
       router.push(`/crm/${leadId}`);
     }
+  }
+
+  if (!isReady) {
+    return <div>Carregando Orçamento...</div>; // Or a skeleton loader
   }
 
   return (
@@ -183,13 +219,13 @@ export function Wizard() {
           {leadId && (
             <div className="mb-8 flex justify-between items-center">
                  <h2 className="text-lg font-semibold text-foreground">
-                    Cotação para o Lead: <span className="text-primary font-bold">{leadId}</span>
+                    Cotação para o Lead: <span className="text-primary font-bold">{getLeadById(leadId)?.title}</span>
                 </h2>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={handleGoBackToLead}>
                         <ArrowLeft /> Voltar para o Lead
                     </Button>
-                     <Button onClick={handleSaveQuote} disabled={currentStep !== 1}>
+                     <Button onClick={handleSaveQuote} disabled={!results}>
                         <Save /> Salvar Cotação
                     </Button>
                 </div>
