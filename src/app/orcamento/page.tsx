@@ -1,7 +1,11 @@
+
+"use client";
+
+import { Suspense } from 'react';
 import { Wizard } from '@/components/wizard/Wizard';
 import { Header } from '@/components/layout/Header';
 
-export default function OrcamentoPage() {
+function OrcamentoPageComponent() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
@@ -10,4 +14,12 @@ export default function OrcamentoPage() {
       </main>
     </div>
   );
+}
+
+export default function OrcamentoPage() {
+  return (
+    <Suspense fallback={<div>Carregando...</div>}>
+      <OrcamentoPageComponent />
+    </Suspense>
+  )
 }

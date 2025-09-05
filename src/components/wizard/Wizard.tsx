@@ -1,9 +1,10 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useSearchParams } from 'next/navigation'
 import type { z } from "zod";
 import { Step1DataInput } from "./Step1DataInput";
 import { Step2Results } from "./Step2Results";
@@ -27,7 +28,20 @@ export function Wizard() {
   const { toast } = useToast();
   
   const [clientData, setClientData] = useState<ClientFormData | null>(null);
-  const [isClientDialogOpen, setIsClientDialogOpen] = useState(true);
+  const [isClientDialogOpen, setIsClientDialogOpen] = useState(false); // Default to false
+
+  const searchParams = useSearchParams();
+  const leadId = searchParams.get('leadId');
+  const clienteId = searchParams.get('clienteId');
+  
+  useEffect(() => {
+    if (!leadId) { // Only show dialog if not coming from a lead context
+        setIsClientDialogOpen(true);
+    } else {
+        // In a real app, you would fetch client data using the clienteId
+        console.log("Contexto de CRM:", { leadId, clienteId });
+    }
+  }, [leadId, clienteId]);
 
 
   const methods = useForm<z.infer<typeof solarCalculationSchema>>({
@@ -124,7 +138,9 @@ export function Wizard() {
   const goBack = () => {
     setCurrentStep(0);
     setResults(null);
-    setIsClientDialogOpen(true);
+    if (!leadId) { // Only re-open dialog if not in CRM context
+        setIsClientDialogOpen(true);
+    }
   }
 
   const handleRecalculate = (newResults: SolarCalculationResult) => {
@@ -138,8 +154,8 @@ export function Wizard() {
         onSave={handleClientDataSave}
         onSkip={handleSkipClient}
       />
-      {!isClientDialogOpen && (
-        <>
+      
+      <div className={isClientDialogOpen ? 'blur-sm' : ''}>
           <StepIndicator currentStep={currentStep} steps={steps} />
           <FormProvider {...methods}>
             <form onSubmit={methods.handleSubmit(processForm)} className="mt-12">
@@ -173,8 +189,7 @@ export function Wizard() {
               </AnimatePresence>
             </form>
           </FormProvider>
-        </>
-      )}
+      </div>
     </div>
   );
 }
