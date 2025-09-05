@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import type { z } from "zod";
 import { Step1DataInput } from "./Step1DataInput";
 import { Step2Results } from "./Step2Results";
@@ -15,6 +15,8 @@ import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { solarCalculationSchema } from "@/types";
 import { ClientRegistrationDialog } from "./ClientRegistrationDialog";
+import { Button } from "../ui/button";
+import { ArrowLeft, Save } from "lucide-react";
 
 const steps = [
   { id: "01", name: "Dados de Consumo" },
@@ -28,17 +30,17 @@ export function Wizard() {
   const { toast } = useToast();
   
   const [clientData, setClientData] = useState<ClientFormData | null>(null);
-  const [isClientDialogOpen, setIsClientDialogOpen] = useState(false); // Default to false
+  const [isClientDialogOpen, setIsClientDialogOpen] = useState(false); 
 
+  const router = useRouter();
   const searchParams = useSearchParams();
   const leadId = searchParams.get('leadId');
   const clienteId = searchParams.get('clienteId');
   
   useEffect(() => {
-    if (!leadId) { // Only show dialog if not coming from a lead context
+    if (!leadId) { 
         setIsClientDialogOpen(true);
     } else {
-        // In a real app, you would fetch client data using the clienteId
         console.log("Contexto de CRM:", { leadId, clienteId });
     }
   }, [leadId, clienteId]);
@@ -105,7 +107,6 @@ export function Wizard() {
         custo_fixo_instalacao_reais: Number(data.custo_fixo_instalacao_reais),
         custo_om_anual_reais: Number(data.custo_om_anual_reais),
         adicional_bandeira_reais_kwh: Number(data.adicional_bandeira_reais_kwh),
-        // Handle optional empty string from form input
         quantidade_modulos: data.quantidade_modulos ? Number(data.quantidade_modulos) : undefined,
     });
 
@@ -138,13 +139,36 @@ export function Wizard() {
   const goBack = () => {
     setCurrentStep(0);
     setResults(null);
-    if (!leadId) { // Only re-open dialog if not in CRM context
+    if (!leadId) { 
         setIsClientDialogOpen(true);
     }
   }
 
   const handleRecalculate = (newResults: SolarCalculationResult) => {
     setResults(newResults);
+  }
+
+  const handleSaveQuote = async () => {
+    // In a real app, this would save the quote to Firestore
+    // linking it to the leadId.
+    console.log("Saving quote for lead:", leadId);
+    console.log("Quote data:", results);
+
+    toast({
+      title: "Cotação Salva!",
+      description: "A cotação foi associada ao lead com sucesso.",
+    });
+    
+    // Redirect back to the lead detail page
+    if (leadId) {
+      router.push(`/crm/${leadId}`);
+    }
+  };
+
+  const handleGoBackToLead = () => {
+     if (leadId) {
+      router.push(`/crm/${leadId}`);
+    }
   }
 
   return (
@@ -156,6 +180,21 @@ export function Wizard() {
       />
       
       <div className={isClientDialogOpen ? 'blur-sm' : ''}>
+          {leadId && (
+            <div className="mb-8 flex justify-between items-center">
+                 <h2 className="text-lg font-semibold text-foreground">
+                    Cotação para o Lead: <span className="text-primary font-bold">{leadId}</span>
+                </h2>
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={handleGoBackToLead}>
+                        <ArrowLeft /> Voltar para o Lead
+                    </Button>
+                     <Button onClick={handleSaveQuote} disabled={currentStep !== 1}>
+                        <Save /> Salvar Cotação
+                    </Button>
+                </div>
+            </div>
+          )}
           <StepIndicator currentStep={currentStep} steps={steps} />
           <FormProvider {...methods}>
             <form onSubmit={methods.handleSubmit(processForm)} className="mt-12">

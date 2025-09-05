@@ -3,11 +3,20 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { PlusCircle, ArrowLeft, Building, Mail, Phone, Tag, DollarSign, User, Calendar, FileText } from 'lucide-react';
 import { Header } from "@/components/layout/Header";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 // Mock data - in a real app, this would come from a database and use the leadId param
 const mockLead = { 
@@ -28,15 +37,21 @@ const mockClient = {
     address: 'Alameda dos Bosques, 123, Alphaville, Barueri - SP'
 }
 
+const mockQuotes = [
+    { id: 'QT-001', createdAt: new Date('2024-07-21T11:30:00Z'), value: 24500, status: 'Enviada' },
+    { id: 'QT-002', createdAt: new Date('2024-07-22T15:00:00Z'), value: 25000, status: 'Aprovada' },
+]
+
 
 export default function LeadDetailPage() {
   const router = useRouter();
   const params = useParams();
   const leadId = params.leadId;
 
-  // In a real app, you would fetch lead and client data based on leadId
+  // In a real app, you would fetch lead, client and quotes data based on leadId
   const lead = mockLead;
   const client = mockClient;
+  const quotes = mockQuotes;
 
   const handleNewQuote = () => {
     // Navigate to the budget page, passing lead and client IDs as query params
@@ -48,7 +63,7 @@ export default function LeadDetailPage() {
         <Header />
         <main className="flex-1 p-6">
             <div className="mb-6">
-                <Button variant="ghost" onClick={() => router.back()}>
+                <Button variant="ghost" onClick={() => router.push('/crm')}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Voltar para o Funil
                 </Button>
@@ -77,10 +92,32 @@ export default function LeadDetailPage() {
 
                     <Card>
                         <CardHeader>
-                            <CardTitle>Próximas Atividades</CardTitle>
+                            <CardTitle>Cotações</CardTitle>
+                             <CardDescription>
+                                Todas as cotações e propostas geradas para esta oportunidade.
+                            </CardDescription>
                         </CardHeader>
                         <CardContent>
-                           <p className="text-muted-foreground">Nenhuma atividade agendada.</p>
+                           <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                    <TableHead>ID</TableHead>
+                                    <TableHead>Data</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead className="text-right">Valor</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {quotes.map((quote) => (
+                                    <TableRow key={quote.id}>
+                                        <TableCell className="font-medium">{quote.id}</TableCell>
+                                        <TableCell>{formatDate(quote.createdAt)}</TableCell>
+                                        <TableCell>{quote.status}</TableCell>
+                                        <TableCell className="text-right">{formatCurrency(quote.value)}</TableCell>
+                                    </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         </CardContent>
                     </Card>
                 </div>

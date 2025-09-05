@@ -66,9 +66,11 @@ export default function CrmPage() {
         <main className="flex-1 p-6">
             <div className="mb-6 flex items-center justify-between">
                 <h1 className="text-3xl font-bold font-headline text-foreground">Meu Funil de Vendas</h1>
-                <Button size="lg">
-                    <PlusCircle className="mr-2 h-5 w-5"/>
-                    Criar Lead
+                <Button size="lg" asChild>
+                    <Link href="/crm/new-lead">
+                        <PlusCircle className="mr-2 h-5 w-5"/>
+                        Criar Lead
+                    </Link>
                 </Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
