@@ -236,7 +236,7 @@ export default function ClientForm() {
                                     </>
                                 ) : (
                                     <div className="flex flex-col items-center">
-                                        <User className="h-10 w-10 mb-2" />
+                                        {form.getValues('type') === 'company' ? <Building className="h-10 w-10 mb-2" /> : <User className="h-10 w-10 mb-2" />}
                                         <span>Adicionar Foto</span>
                                     </div>
                                 )}
