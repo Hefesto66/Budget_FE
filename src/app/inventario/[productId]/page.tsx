@@ -202,15 +202,9 @@ export default function ProductForm() {
                             )}
 
                              {productType === 'INVERSOR' && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-1">
-                                        <Label htmlFor="spec-potencia-inversor">Potência de Saída (kW)</Label>
-                                        <Input id="spec-potencia-inversor" type="number" placeholder="Ex: 5" value={specifications['Potência de Saída (kW)'] || ''} onChange={e => handleSpecChange('Potência de Saída (kW)', e.target.value)} />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label htmlFor="spec-eficiencia">Eficiência (%)</Label>
-                                        <Input id="spec-eficiencia" type="number" placeholder="Ex: 97.5" value={specifications['Eficiência (%)'] || ''} onChange={e => handleSpecChange('Eficiência (%)', e.target.value)} />
-                                    </div>
+                                <div className="space-y-1">
+                                    <Label htmlFor="spec-eficiencia">Eficiência (%)</Label>
+                                    <Input id="spec-eficiencia" type="number" placeholder="Ex: 97.5" value={specifications['Eficiência (%)'] || ''} onChange={e => handleSpecChange('Eficiência (%)', e.target.value)} />
                                 </div>
                             )}
                             
