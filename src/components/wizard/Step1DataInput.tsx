@@ -117,6 +117,88 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                 )}
               />
          </div>
+         
+        <Accordion type="single" collapsible className="w-full mt-6">
+            <AccordionItem value="advanced-params" className="border-t">
+                <AccordionTrigger className="pt-4">
+                    <span className="font-semibold text-primary">Parâmetros Avançados</span>
+                </AccordionTrigger>
+                <AccordionContent>
+                    <div className="space-y-6 pt-4">
+                        {/* Módulos */}
+                        <div className="p-4 border rounded-md">
+                            <h4 className="font-medium mb-4 text-foreground">Detalhes dos Módulos</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <FormField control={form.control} name="potencia_modulo_wp" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Potência do Módulo (Wp)</FormLabel>
+                                        <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                                        <FormMessage />
+                                    </FormItem>
+                                )}/>
+                                <FormField control={form.control} name="preco_modulo_reais" render={({ field }) => (
+                                     <FormItem>
+                                        <FormLabel>Preço por Módulo (R$)</FormLabel>
+                                        <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                                        <FormMessage />
+                                    </FormItem>
+                                )}/>
+                            </div>
+                        </div>
+
+                        {/* Inversor */}
+                        <div className="p-4 border rounded-md">
+                            <h4 className="font-medium mb-4 text-foreground">Detalhes do Inversor</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <FormField control={form.control} name="custo_inversor_reais" render={({ field }) => (
+                                     <FormItem>
+                                        <FormLabel>Custo do Inversor (R$)</FormLabel>
+                                        <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                                        <FormMessage />
+                                    </FormItem>
+                                )}/>
+                                <FormField control={form.control} name="eficiencia_inversor_percent" render={({ field }) => (
+                                     <FormItem>
+                                        <FormLabel>Eficiência do Inversor (%)</FormLabel>
+                                        <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                                        <FormMessage />
+                                    </FormItem>
+                                )}/>
+                                 <FormField control={form.control} name="quantidade_inversores" render={({ field }) => (
+                                     <FormItem>
+                                        <FormLabel>Quantidade de Inversores</FormLabel>
+                                        <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                                        <FormMessage />
+                                    </FormItem>
+                                )}/>
+                            </div>
+                        </div>
+
+                        {/* Custos e Perdas */}
+                        <div className="p-4 border rounded-md">
+                             <h4 className="font-medium mb-4 text-foreground">Custos e Perdas do Sistema</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                               <FormField control={form.control} name="fator_perdas_percent" render={({ field }) => (
+                                     <FormItem>
+                                        <FormLabel>Fator de Perdas (%)</FormLabel>
+                                        <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                                        <FormMessage />
+                                    </FormItem>
+                                )}/>
+                                <FormField control={form.control} name="custo_fixo_instalacao_reais" render={({ field }) => (
+                                     <FormItem>
+                                        <FormLabel>Custo de Instalação (R$)</FormLabel>
+                                        <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                                        <FormMessage />
+                                    </FormItem>
+                                )}/>
+                            </div>
+                        </div>
+                    </div>
+                </AccordionContent>
+            </AccordionItem>
+        </Accordion>
+
         <div className="flex justify-end pt-6">
             <Button type="submit" size="lg" disabled={isLoading}>
                 {isLoading && <Calculator className="mr-2 h-5 w-5 animate-spin" />}
