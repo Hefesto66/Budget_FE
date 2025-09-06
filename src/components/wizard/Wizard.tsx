@@ -4,8 +4,9 @@
 import { useState, useEffect } from "react";
 import { useForm, FormProvider, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams, useRouter, permanentRedirect } from 'next/navigation'
 import { z } from "zod";
+import Link from 'next/link';
 import { Step2Results } from "./Step2Results";
 import type { SolarCalculationResult, SolarCalculationInput, ClientFormData, Quote } from "@/types";
 import { getCalculation, getRefinedSuggestions } from "@/app/orcamento/actions";
@@ -13,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { solarCalculationSchema } from "@/types";
 import { Button } from "../ui/button";
-import { ArrowLeft, Save, Sparkles, Calculator, Plus, Trash2, Check, ChevronsUpDown, CheckCircle, Loader2, FileDown } from "lucide-react";
+import { ArrowLeft, Save, Sparkles, Calculator, Plus, Trash2, Check, ChevronsUpDown, CheckCircle, Loader2, FileDown, ChevronRight } from "lucide-react";
 import { getLeadById, getQuoteById, saveQuote, generateNewQuoteId, getClientById, addHistoryEntry, getProducts, Product, PRODUCT_TYPES } from "@/lib/storage";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "../ui/accordion";
@@ -337,7 +338,7 @@ export function Wizard() {
 
   const watchedBOM = useWatch({ control: methods.control, name: 'billOfMaterials' });
   const totalCost = watchedBOM.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
-
+  
   if (!isReady) {
     return <div className="flex items-center justify-center h-64">Carregando Orçamento...</div>;
   }
@@ -377,23 +378,7 @@ export function Wizard() {
                     )}
                     
                     <div className="space-y-6">
-                        <Card>
-                            <CardContent className="p-4">
-                            <Accordion type="single" collapsible className="w-full">
-                                <AccordionItem value="simulador-manual" className="border-0">
-                                <AccordionTrigger>
-                                    <div className="flex items-center gap-2 text-lg font-semibold">
-                                    <Calculator className="h-5 w-5" /> Simulador Manual
-                                    </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="pt-4">
-                                    <Step1DataInput isLoading={false} />
-                                </AccordionContent>
-                                </AccordionItem>
-                            </Accordion>
-                            </CardContent>
-                        </Card>
-
+                        
                         <Card>
                         <CardHeader>
                             <CardTitle className="font-headline">Lista de Materiais</CardTitle>
@@ -415,46 +400,55 @@ export function Wizard() {
                                 {fields.map((field, index) => (
                                     <TableRow key={field.id}>
                                         <TableCell>
-                                        <FormField
-                                                control={methods.control}
-                                                name={`billOfMaterials.${index}.name`}
-                                                render={({ field: formField }) => (
-                                                    <Popover open={openCombobox === index} onOpenChange={(isOpen) => setOpenCombobox(isOpen ? index : null)}>
-                                                        <PopoverTrigger asChild>
-                                                            <FormControl>
-                                                                <Button
-                                                                    variant="outline"
-                                                                    role="combobox"
-                                                                    className={cn("w-full justify-between font-normal", !formField.value && "text-muted-foreground")}
-                                                                >
-                                                                    {formField.value || "Selecione um produto"}
-                                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                                </Button>
-                                                            </FormControl>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                                            <Command>
-                                                                <CommandInput placeholder="Pesquisar produto..." />
-                                                                <CommandList>
-                                                                    <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
-                                                                    <CommandGroup>
-                                                                        {inventory.map((item) => (
-                                                                            <CommandItem
-                                                                                value={item.name}
-                                                                                key={item.id}
-                                                                                onSelect={() => onProductSelect(item, index)}
-                                                                            >
-                                                                                <Check className={cn("mr-2 h-4 w-4", item.name === formField.value ? "opacity-100" : "opacity-0")}/>
-                                                                                {item.name}
-                                                                            </CommandItem>
-                                                                        ))}
-                                                                    </CommandGroup>
-                                                                </CommandList>
-                                                            </Command>
-                                                        </PopoverContent>
-                                                    </Popover>
+                                            <div className="flex items-center gap-2">
+                                                <FormField
+                                                    control={methods.control}
+                                                    name={`billOfMaterials.${index}.name`}
+                                                    render={({ field: formField }) => (
+                                                        <Popover open={openCombobox === index} onOpenChange={(isOpen) => setOpenCombobox(isOpen ? index : null)}>
+                                                            <PopoverTrigger asChild>
+                                                                <FormControl>
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        role="combobox"
+                                                                        className={cn("w-full justify-between font-normal", !formField.value && "text-muted-foreground")}
+                                                                    >
+                                                                        {formField.value || "Selecione um produto"}
+                                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                                    </Button>
+                                                                </FormControl>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                                <Command>
+                                                                    <CommandInput placeholder="Pesquisar produto..." />
+                                                                    <CommandList>
+                                                                        <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
+                                                                        <CommandGroup>
+                                                                            {inventory.map((item) => (
+                                                                                <CommandItem
+                                                                                    value={item.name}
+                                                                                    key={item.id}
+                                                                                    onSelect={() => onProductSelect(item, index)}
+                                                                                >
+                                                                                    <Check className={cn("mr-2 h-4 w-4", item.name === formField.value ? "opacity-100" : "opacity-0")}/>
+                                                                                    {item.name}
+                                                                                </CommandItem>
+                                                                            ))}
+                                                                        </CommandGroup>
+                                                                    </CommandList>
+                                                                </Command>
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                    )}
+                                                />
+                                                 {field.productId && (
+                                                    <Link href={`/inventario/${field.productId}`} passHref legacyBehavior>
+                                                        <a target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+                                                            <ChevronRight className="h-5 w-5" />
+                                                        </a>
+                                                    </Link>
                                                 )}
-                                            />
+                                            </div>
                                         </TableCell>
                                         <TableCell className="text-muted-foreground">
                                             {methods.watch(`billOfMaterials.${index}.manufacturer`)}
@@ -505,6 +499,22 @@ export function Wizard() {
                                 </div>
                             </div>
                         </CardContent>
+                        </Card>
+                         <Card>
+                            <CardContent className="p-4">
+                            <Accordion type="single" collapsible className="w-full">
+                                <AccordionItem value="simulador-manual" className="border-0">
+                                <AccordionTrigger>
+                                    <div className="flex items-center gap-2 text-lg font-semibold">
+                                    <Calculator className="h-5 w-5" /> Simulador Manual
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="pt-4">
+                                    <Step1DataInput isLoading={false} />
+                                </AccordionContent>
+                                </AccordionItem>
+                            </Accordion>
+                            </CardContent>
                         </Card>
                     </div>
 
@@ -604,3 +614,5 @@ export function Wizard() {
     </div>
   );
 }
+
+    
