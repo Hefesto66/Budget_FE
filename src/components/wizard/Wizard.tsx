@@ -231,43 +231,40 @@ export function Wizard() {
     const inverterProduct = getProductById(inverterItem.productId);
     
     if (!panelProduct) {
-         toast({ title: "Erro de Produto", description: `Painel Solar "${panelItem.name}" não foi encontrado no inventário. Verifique a lista.`, variant: "destructive" });
-         console.error("Failed to find panel product with ID:", panelItem.productId);
+        toast({ title: "Erro de Produto", description: `Painel Solar "${panelItem.name}" não foi encontrado no inventário. Verifique a lista.`, variant: "destructive" });
         setIsLoading(false);
         return;
     }
      if (!inverterProduct) {
-         toast({ title: "Erro de Produto", description: `Inversor "${inverterItem.name}" não foi encontrado no inventário. Verifique a lista.`, variant: "destructive" });
-         console.error("Failed to find inverter product with ID:", inverterItem.productId);
+        toast({ title: "Erro de Produto", description: `Inversor "${inverterItem.name}" não foi encontrado no inventário. Verifique a lista.`, variant: "destructive" });
         setIsLoading(false);
         return;
     }
 
-    const totalCostFromBom = bom.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
-    
-    const panelPower = parseFloat(panelProduct.technicalSpecifications?.['Potência (Wp)'] || '0');
-    const inverterEfficiency = parseFloat(inverterProduct.technicalSpecifications?.['Eficiência (%)'] || '0');
-    const inverterPower = parseFloat(inverterProduct.technicalSpecifications?.['Potência de Saída (kW)'] || '0');
+    const panelPowerWp = parseFloat(panelProduct.technicalSpecifications?.['Potência (Wp)'] || '0');
+    if (panelPowerWp === 0) {
+      console.error("[CÁLCULO-ERRO] Potência (Wp) do painel não encontrada ou é zero para o produto:", panelProduct);
+      toast({ title: "Dado Faltando", description: `O produto "${panelProduct.name}" não tem a especificação "Potência (Wp)".`, variant: "destructive" });
+      setIsLoading(false);
+      return;
+    }
 
-    if (panelPower === 0) {
-        toast({ title: "Dado Faltando", description: `O produto "${panelProduct.name}" não tem a especificação "Potência (Wp)".`, variant: "destructive" });
-        setIsLoading(false); return;
+    const inverterEfficiency = parseFloat(inverterProduct.technicalSpecifications?.['Eficiência (%)'] || '0');
+     if (inverterEfficiency === 0) {
+      console.error("[CÁLCULO-ERRO] Eficiência (%) do inversor não encontrada ou é zero para o produto:", inverterProduct);
+      toast({ title: "Dado Faltando", description: `O produto "${inverterProduct.name}" não tem a especificação "Eficiência (%)".`, variant: "destructive" });
+      setIsLoading(false);
+      return;
     }
-    if (inverterEfficiency === 0) {
-        toast({ title: "Dado Faltando", description: `O produto "${inverterProduct.name}" não tem a especificação "Eficiência (%)".`, variant: "destructive" });
-        setIsLoading(false); return;
-    }
-    if (inverterPower === 0) {
-        toast({ title: "Dado Faltando", description: `O produto "${inverterProduct.name}" não tem a especificação "Potência de Saída (kW)".`, variant: "destructive" });
-        setIsLoading(false); return;
-    }
+
+    const totalCostFromBom = bom.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
 
     const calculationData: SolarCalculationInput = {
         ...data.calculationInput,
         custo_sistema_reais: totalCostFromBom,
         quantidade_modulos: panelItem.quantity,
         preco_modulo_reais: panelItem.cost,
-        potencia_modulo_wp: panelPower,
+        potencia_modulo_wp: panelPowerWp,
         fabricante_modulo: panelProduct.technicalSpecifications?.['Fabricante'] || 'N/A',
         garantia_defeito_modulo_anos: 12, 
         garantia_geracao_modulo_anos: 25, 
@@ -276,17 +273,17 @@ export function Wizard() {
         eficiencia_inversor_percent: inverterEfficiency,
         fabricante_inversor: inverterProduct.technicalSpecifications?.['Fabricante'] || 'N/A',
         modelo_inversor: inverterProduct.name,
-        potencia_inversor_kw: inverterPower,
+        potencia_inversor_kw: parseFloat(inverterProduct.technicalSpecifications?.['Potência de Saída (kW)'] || '5'),
         tensao_inversor_v: 220, 
         garantia_inversor_anos: 5, 
         custo_fixo_instalacao_reais: serviceItem.cost,
     };
     
-    console.log("[DEBUG] Data sent to calculation:", JSON.stringify(calculationData, null, 2));
+    console.log("[CÁLCULO-LOG] Enviando para cálculo:", calculationData);
     
     const result = await getCalculation(calculationData);
     
-    console.log("[DEBUG] Response from calculation:", JSON.stringify(result, null, 2));
+    console.log("[CÁLCULO-LOG] Resposta do cálculo:", result);
 
     setIsLoading(false);
 
