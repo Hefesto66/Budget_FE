@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useForm, FormProvider, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams, useRouter } from 'next/navigation'
-import type { z } from "zod";
+import { z } from "zod";
 import { Step2Results } from "./Step2Results";
 import type { SolarCalculationResult, SolarCalculationInput, ClientFormData, Quote } from "@/types";
 import { getCalculation } from "@/app/orcamento/actions";
