@@ -222,14 +222,14 @@ export function Wizard() {
         return;
     }
     if (!serviceItem) {
-        toast({ title: "Item Faltando", description: "A lista de materiais precisa conter pelo menos um item do tipo 'Serviço' para o custo de instalação.", variant: "destructive" });
+        toast({ title: "Item Faltando", description: "A lista de materiais precisa conter um item do tipo 'Serviço' para o custo de instalação.", variant: "destructive" });
         setIsLoading(false);
         return;
     }
     
     const panelProduct = getProductById(panelItem.productId);
     const inverterProduct = getProductById(inverterItem.productId);
-
+    
     if (!panelProduct) {
          toast({ title: "Erro de Produto", description: `Painel Solar "${panelItem.name}" não foi encontrado no inventário. Verifique a lista.`, variant: "destructive" });
         setIsLoading(false);
@@ -250,20 +250,29 @@ export function Wizard() {
         preco_modulo_reais: panelItem.cost,
         potencia_modulo_wp: parseFloat(panelProduct.technicalSpecifications?.['Potência'] || '550'),
         fabricante_modulo: panelProduct.technicalSpecifications?.['Fabricante'] || 'N/A',
-        garantia_defeito_modulo_anos: 12, // Exemplo, idealmente viria do produto
-        garantia_geracao_modulo_anos: 25, // Exemplo
+        garantia_defeito_modulo_anos: 12, 
+        garantia_geracao_modulo_anos: 25, 
         quantidade_inversores: inverterItem.quantity,
         custo_inversor_reais: inverterItem.cost,
         eficiencia_inversor_percent: parseFloat(inverterProduct.technicalSpecifications?.['Eficiência'] || '97'),
         fabricante_inversor: inverterProduct.technicalSpecifications?.['Fabricante'] || 'N/A',
         modelo_inversor: inverterProduct.name,
         potencia_inversor_kw: parseFloat(inverterProduct.technicalSpecifications?.['Potência'] || '5'),
-        tensao_inversor_v: 220, // Exemplo
-        garantia_inversor_anos: 5, // Exemplo
+        tensao_inversor_v: 220, 
+        garantia_inversor_anos: 5, 
         custo_fixo_instalacao_reais: serviceItem.cost,
     };
     
+    console.log("================ DATA SENT TO CALCULATION ================");
+    console.log(JSON.stringify(calculationData, null, 2));
+    console.log("========================================================");
+
     const result = await getCalculation(calculationData);
+    
+    console.log("============== RESPONSE FROM CALCULATION ==============");
+    console.log(JSON.stringify(result, null, 2));
+    console.log("========================================================");
+
     setIsLoading(false);
 
     if (result.success && result.data) {

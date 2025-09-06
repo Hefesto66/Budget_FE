@@ -29,7 +29,9 @@ export async function getCalculation(input: SolarCalculationInput) {
     const result = await calculateSolar(input);
     return { success: true, data: result };
   } catch (error: any) {
-    console.error("Calculation failed:", error);
+    console.error("================ ERROR IN CALCULATION ACTION ================");
+    console.error(error);
+    console.error("==========================================================");
     const errorMessage =
       error.cause?.message || "Falha ao calcular. Verifique os dados.";
     return { success: false, error: errorMessage };
