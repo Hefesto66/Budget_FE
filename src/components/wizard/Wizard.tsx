@@ -72,7 +72,6 @@ const defaultValues: SolarCalculationInput = {
     fator_perdas_percent: 20,
     custo_om_anual_reais: 150,
     meta_compensacao_percent: 100,
-    quantidade_modulos: undefined,
     salespersonId: "",
     paymentTermId: "",
     priceListId: ""
@@ -207,7 +206,7 @@ export function Wizard() {
         preco_modulo_reais: panel.cost,
         quantidade_modulos: panel.quantity,
         
-        eficiencia_inversor_percent: inverterProduct?.technicalSpecifications?.['Eficiência'] ? parseFloat(inverterProduct.technicalSpecifications['Eficiência']) : undefined,
+        eficiencia_inversor_percent: inverterProduct?.technicalSpecifications?.['Eficiência'] ? parseFloat(inverterProduct.technicalSpecifications['Eficiência']) : 97,
         custo_inversor_reais: inverter.cost,
         quantidade_inversores: inverter.quantity,
 
@@ -307,7 +306,7 @@ export function Wizard() {
     append({ productId: '', name: '', type: 'OUTRO', manufacturer: '', cost: 0, unit: '', quantity: 1 });
   }
 
-  const navigateToProduct = () => {
+  const navigateToProduct = (productId: string) => {
     const draftData = {
       formData: methods.getValues(),
       results,
@@ -316,7 +315,7 @@ export function Wizard() {
       currentStep
     };
     sessionStorage.setItem(DRAFT_QUOTE_SESSION_KEY, JSON.stringify(draftData));
-    router.push(`/inventario`);
+    router.push(`/inventario/${productId}`);
   };
 
   
@@ -417,15 +416,6 @@ export function Wizard() {
                     )}
                     
                     <div className="space-y-6">
-                       <Card>
-                          <CardHeader>
-                              <CardTitle className="font-headline">Simulador Manual</CardTitle>
-                          </CardHeader>
-                          <CardContent className="p-4">
-                            <Step1DataInput isLoading={isLoading} />
-                          </CardContent>
-                        </Card>
-                        
                         <Card>
                           <CardHeader>
                               <CardTitle className="font-headline">Lista de Materiais</CardTitle>
@@ -494,7 +484,7 @@ export function Wizard() {
                                                           variant="ghost"
                                                           size="icon"
                                                           className="h-8 w-8 shrink-0 text-muted-foreground hover:text-primary"
-                                                          onClick={navigateToProduct}
+                                                          onClick={() => navigateToProduct(field.productId)}
                                                       >
                                                           <ChevronRight className="h-5 w-5" />
                                                       </Button>
@@ -549,6 +539,14 @@ export function Wizard() {
                                       </div>
                                   </div>
                               </div>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardHeader>
+                              <CardTitle className="font-headline">Simulador Manual</CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-4">
+                            <Step1DataInput isLoading={isLoading} />
                           </CardContent>
                         </Card>
                     </div>

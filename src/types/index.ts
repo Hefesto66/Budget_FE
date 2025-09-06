@@ -10,7 +10,7 @@ export const solarCalculationSchema = z.object({
   cip_iluminacao_publica_reais: z.number().gte(0, { message: "O valor da CIP não pode ser negativo." }),
   adicional_bandeira_reais_kwh: z.number().gte(0).default(0),
   
-  // Seção 2: Detalhes Técnicos
+  // Seção 2: Detalhes Técnicos do Local
   concessionaria: z.enum(
       ["Equatorial GO", "CHESP"], 
       { errorMap: () => ({ message: 'Concessionária não suportada para esta região.' }) }
@@ -18,35 +18,35 @@ export const solarCalculationSchema = z.object({
   rede_fases: z.enum(['mono', 'bi', 'tri']),
   irradiacao_psh_kwh_m2_dia: z.number().min(0.1, "Valor de irradiação muito baixo.").max(12, { message: "Valor de irradiação irreal. Verifique o dado." }),
 
-  // Seção 3: Equipamentos e Custos (agora maioritariamente opcionais, pois vêm da BOM)
+  // Seção 3: Parâmetros de Cálculo (Derivados da BOM ou com valores padrão)
   // Módulos
-  potencia_modulo_wp: z.number().positive({ message: "A potência do módulo deve ser maior que zero." }).optional(),
-  preco_modulo_reais: z.number().positive({ message: "O preço do módulo deve ser maior que zero." }).optional(),
-  quantidade_modulos: z.number().int().positive({message: "A quantidade de módulos deve ser um número positivo."}).optional(),
-  fabricante_modulo: z.string().default("").optional(),
-  garantia_defeito_modulo_anos: z.number().int().positive().default(12).optional(),
-  garantia_geracao_modulo_anos: z.number().int().positive().default(30).optional(),
+  potencia_modulo_wp: z.number().positive().optional(),
+  preco_modulo_reais: z.number().positive().optional(),
+  quantidade_modulos: z.number().int().positive().optional(),
+  fabricante_modulo: z.string().optional(),
+  garantia_defeito_modulo_anos: z.number().int().positive().optional(),
+  garantia_geracao_modulo_anos: z.number().int().positive().optional(),
   
   // Inversor
-  modelo_inversor: z.string().default("Inversor Central - SIW300H (Híbrido)").optional(),
-  fabricante_inversor: z.string().default("WEG").optional(),
-  potencia_inversor_kw: z.number().positive().default(5).optional(),
-  tensao_inversor_v: z.number().positive().default(220).optional(),
-  quantidade_inversores: z.number().int().positive().default(1).optional(),
-  garantia_inversor_anos: z.number().int().positive().default(7).optional(),
-  eficiencia_inversor_percent: z.number().min(80).max(99, { message: "Eficiência do inversor deve estar entre 80% e 99%." }).optional(),
-  custo_inversor_reais: z.number().positive({ message: "O custo do inversor deve ser maior que zero." }).optional(),
+  modelo_inversor: z.string().optional(),
+  fabricante_inversor: z.string().optional(),
+  potencia_inversor_kw: z.number().positive().optional(),
+  tensao_inversor_v: z.number().positive().optional(),
+  quantidade_inversores: z.number().int().positive().optional(),
+  garantia_inversor_anos: z.number().int().positive().optional(),
+  eficiencia_inversor_percent: z.number().min(80).max(99).optional(),
+  custo_inversor_reais: z.number().positive().optional(),
 
   // Custos e Perdas
-  fator_perdas_percent: z.number().min(0).max(100, { message: "Fator de perdas deve estar entre 0% e 100%." }).default(20),
-  custo_fixo_instalacao_reais: z.number().gte(0, { message: "O custo de instalação não pode ser negativo." }).optional(),
+  fator_perdas_percent: z.number().min(0).max(100).default(20),
+  custo_fixo_instalacao_reais: z.number().gte(0).optional(),
   custo_om_anual_reais: z.number().gte(0).default(0),
   
-  // Advanced/Optional Fields
+  // Avançado
   meta_compensacao_percent: z.number().min(0).max(100).default(100),
   custo_sistema_reais: z.number().gte(0).optional(),
   
-  // Sales Fields
+  // Vendas
   salespersonId: z.string().optional(),
   paymentTermId: z.string().optional(),
   priceListId: z.string().optional(),
