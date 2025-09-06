@@ -250,16 +250,16 @@ export function Wizard() {
         preco_modulo_reais: panelItem.cost,
         potencia_modulo_wp: parseFloat(panelProduct.technicalSpecifications?.['Potência'] || '550'),
         fabricante_modulo: panelProduct.technicalSpecifications?.['Fabricante'] || 'N/A',
-        garantia_defeito_modulo_anos: 12,
-        garantia_geracao_modulo_anos: 25,
+        garantia_defeito_modulo_anos: 12, // Exemplo, idealmente viria do produto
+        garantia_geracao_modulo_anos: 25, // Exemplo
         quantidade_inversores: inverterItem.quantity,
         custo_inversor_reais: inverterItem.cost,
         eficiencia_inversor_percent: parseFloat(inverterProduct.technicalSpecifications?.['Eficiência'] || '97'),
         fabricante_inversor: inverterProduct.technicalSpecifications?.['Fabricante'] || 'N/A',
         modelo_inversor: inverterProduct.name,
         potencia_inversor_kw: parseFloat(inverterProduct.technicalSpecifications?.['Potência'] || '5'),
-        tensao_inversor_v: 220,
-        garantia_inversor_anos: 5,
+        tensao_inversor_v: 220, // Exemplo
+        garantia_inversor_anos: 5, // Exemplo
         custo_fixo_instalacao_reais: serviceItem.cost,
     };
     
@@ -696,7 +696,3 @@ export function Wizard() {
     </div>
   );
 }
-
-    
-
-    

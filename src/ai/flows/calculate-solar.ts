@@ -47,7 +47,7 @@ const calculateSolarFlow = ai.defineFlow(
     
     // 4. Determine Number of Panels
     let quantidade_modulos = data.quantidade_modulos;
-    if (!quantidade_modulos) {
+    if (!quantidade_modulos || quantidade_modulos <= 0) {
         if (!data.potencia_modulo_wp || data.potencia_modulo_wp <= 0) {
             throw new Error("A potência do módulo (Wp) é necessária para dimensionar o sistema.");
         }
@@ -80,7 +80,7 @@ const calculateSolarFlow = ai.defineFlow(
     
     const economia_mensal_reais = Math.max(0, conta_antes_reais - conta_depois_reais);
     const economia_anual_reais = economia_mensal_reais * 12;
-    const economia_primeiro_ano = (economia_mensal_reais * 12) - data.custo_om_anual_reais;
+    const economia_primeiro_ano = (economia_mensal_reais * 12) - (data.custo_om_anual_reais ?? 0);
     
     const custo_sistema_reais = data.custo_sistema_reais ?? (
         (quantidade_modulos * (data.preco_modulo_reais ?? 0)) + 
