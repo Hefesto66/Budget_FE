@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { useForm, FormProvider, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useSearchParams, useRouter, permanentRedirect } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { z } from "zod";
 import Link from 'next/link';
 import { Step2Results } from "./Step2Results";
@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { solarCalculationSchema } from "@/types";
 import { Button } from "../ui/button";
 import { ArrowLeft, Save, Sparkles, Calculator, Plus, Trash2, Check, ChevronsUpDown, CheckCircle, Loader2, FileDown, ChevronRight } from "lucide-react";
-import { getLeadById, getQuoteById, saveQuote, generateNewQuoteId, getClientById, addHistoryEntry, getProducts, Product, PRODUCT_TYPES } from "@/lib/storage";
+import { getLeadById, getQuoteById, saveQuote, generateNewQuoteId, getClientById, addHistoryEntry, getProducts, Product } from "@/lib/storage";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "../ui/accordion";
 import {
@@ -26,7 +26,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Step1DataInput } from "./Step1DataInput";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
 import { Input } from "../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
@@ -35,6 +34,14 @@ import { cn, formatCurrency } from "@/lib/utils";
 import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../ui/alert-dialog";
 import { Separator } from "../ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 
 const wizardSchema = z.object({
     calculationInput: solarCalculationSchema,
@@ -49,7 +56,9 @@ const wizardSchema = z.object({
     }))
 });
 
-type WizardFormData = z.infer<typeof wizardSchema>;
+export type WizardFormData = z.infer<typeof wizardSchema>;
+
+const DRAFT_QUOTE_SESSION_KEY = 'draftQuoteData';
 
 const defaultValues: SolarCalculationInput = {
     consumo_mensal_kwh: 500,
@@ -67,6 +76,18 @@ const defaultValues: SolarCalculationInput = {
     paymentTermId: "",
     priceListId: ""
 }
+
+const concessionariaOptions = [
+    { value: "Equatorial GO", label: "Equatorial - GO" },
+    { value: "CHESP", label: "CHESP" },
+];
+
+const phaseOptions = [
+    { value: "mono", label: "Monofásico" },
+    { value: "bi", label: "Bifásico" },
+    { value: "tri", label: "Trifásico" },
+];
+
 
 export function Wizard() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -107,6 +128,20 @@ export function Wizard() {
     setInventory(getProducts());
     
     const initialize = async () => {
+      // 1. Check for a draft in session storage first
+      const draftDataStr = sessionStorage.getItem(DRAFT_QUOTE_SESSION_KEY);
+      if (draftDataStr) {
+          const draftData = JSON.parse(draftDataStr);
+          methods.reset(draftData.formData);
+          if (draftData.results) setResults(draftData.results);
+          if (draftData.clientData) setClientData(draftData.clientData);
+          if (draftData.proposalId) setProposalId(draftData.proposalId);
+          setCurrentStep(draftData.currentStep);
+          setIsReady(true);
+          return;
+      }
+
+      // 2. If no draft, load from quote/lead params
       let initialData: SolarCalculationInput = { ...defaultValues };
       let clientToSet: any = null;
       let bomToSet: any[] = [];
@@ -141,7 +176,7 @@ export function Wizard() {
       methods.reset({ calculationInput: initialData, billOfMaterials: bomToSet });
       if(clientToSet) setClientData(clientToSet);
       if(loadedResults) setResults(loadedResults);
-      if(quoteId) setCurrentStep(1);
+      if(quoteId && loadedResults) setCurrentStep(1);
 
       setIsReady(true);
     };
@@ -244,6 +279,7 @@ export function Wizard() {
     };
 
     saveQuote(quoteToSave);
+    sessionStorage.removeItem(DRAFT_QUOTE_SESSION_KEY); // Clear draft on successful save
 
     const historyMessage = quoteId ? `Cotação ${finalProposalId} foi atualizada.` : `Nova cotação ${finalProposalId} foi criada.`;
 
@@ -260,6 +296,7 @@ export function Wizard() {
   };
 
   const handleGoBackToLead = () => {
+     sessionStorage.removeItem(DRAFT_QUOTE_SESSION_KEY);
      if (leadId) router.push(`/crm/${leadId}`);
      else router.push('/crm');
   }
@@ -280,6 +317,19 @@ export function Wizard() {
   const handleAddNewItem = () => {
     append({ productId: '', name: '', type: 'OUTRO', manufacturer: '', cost: 0, unit: '', quantity: 1 });
   }
+
+  const navigateToProduct = (productId: string) => {
+    const draftData = {
+      formData: methods.getValues(),
+      results,
+      clientData,
+      proposalId,
+      currentStep
+    };
+    sessionStorage.setItem(DRAFT_QUOTE_SESSION_KEY, JSON.stringify(draftData));
+    router.push(`/inventario/${productId}`);
+  };
+
   
   const handleAiRefinement = async () => {
     setIsRefining(true);
@@ -378,127 +428,130 @@ export function Wizard() {
                     )}
                     
                     <div className="space-y-6">
-                        
                         <Card>
-                        <CardHeader>
-                            <CardTitle className="font-headline">Lista de Materiais</CardTitle>
-                            <CardDescription>Insumos que irão compor a proposta comercial.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-[40%]">Descrição</TableHead>
-                                        <TableHead>Fabricante</TableHead>
-                                        <TableHead className="text-right">Custo</TableHead>
-                                        <TableHead className="text-center">Un.</TableHead>
-                                        <TableHead className="w-[100px] text-right">Qtde.</TableHead>
-                                        <TableHead className="w-[50px]"></TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                {fields.map((field, index) => (
-                                    <TableRow key={field.id}>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <FormField
-                                                    control={methods.control}
-                                                    name={`billOfMaterials.${index}.name`}
-                                                    render={({ field: formField }) => (
-                                                        <Popover open={openCombobox === index} onOpenChange={(isOpen) => setOpenCombobox(isOpen ? index : null)}>
-                                                            <PopoverTrigger asChild>
-                                                                <FormControl>
-                                                                    <Button
-                                                                        variant="outline"
-                                                                        role="combobox"
-                                                                        className={cn("w-full justify-between font-normal", !formField.value && "text-muted-foreground")}
-                                                                    >
-                                                                        {formField.value || "Selecione um produto"}
-                                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                                    </Button>
-                                                                </FormControl>
-                                                            </PopoverTrigger>
-                                                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                                                <Command>
-                                                                    <CommandInput placeholder="Pesquisar produto..." />
-                                                                    <CommandList>
-                                                                        <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
-                                                                        <CommandGroup>
-                                                                            {inventory.map((item) => (
-                                                                                <CommandItem
-                                                                                    value={item.name}
-                                                                                    key={item.id}
-                                                                                    onSelect={() => onProductSelect(item, index)}
-                                                                                >
-                                                                                    <Check className={cn("mr-2 h-4 w-4", item.name === formField.value ? "opacity-100" : "opacity-0")}/>
-                                                                                    {item.name}
-                                                                                </CommandItem>
-                                                                            ))}
-                                                                        </CommandGroup>
-                                                                    </CommandList>
-                                                                </Command>
-                                                            </PopoverContent>
-                                                        </Popover>
-                                                    )}
-                                                />
-                                                 {field.productId && (
-                                                    <Link href={`/inventario/${field.productId}`} passHref legacyBehavior>
-                                                        <a target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
-                                                            <ChevronRight className="h-5 w-5" />
-                                                        </a>
-                                                    </Link>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground">
-                                            {methods.watch(`billOfMaterials.${index}.manufacturer`)}
-                                        </TableCell>
-                                        <TableCell className="text-right text-muted-foreground">
-                                            {formatCurrency(methods.watch(`billOfMaterials.${index}.cost`))}
-                                        </TableCell>
-                                        <TableCell className="text-center text-muted-foreground">
-                                            {methods.watch(`billOfMaterials.${index}.unit`)}
-                                        </TableCell>
-                                        <TableCell>
-                                            <FormField
-                                                control={methods.control}
-                                                name={`billOfMaterials.${index}.quantity`}
-                                                render={({ field }) => (
-                                                    <Input
-                                                        type="number"
-                                                        className="text-right"
-                                                        {...field}
-                                                        onChange={e => field.onChange(Number(e.target.value))}
-                                                    />
-                                                )}
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
-                                                <Trash2 className="h-4 w-4 text-destructive" />
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                    <TableRow>
-                                        <TableCell colSpan={6}>
-                                            <Button type="button" variant="link" onClick={handleAddNewItem}>
-                                                <Plus className="mr-2 h-4 w-4"/>
-                                                Adicionar Item
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
-                            <div className="flex justify-end mt-4">
-                                <div className="w-full max-w-xs space-y-2">
-                                    <div className="flex justify-between font-semibold text-lg">
-                                        <span>Total Geral:</span>
-                                        <span>{formatCurrency(totalCost)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
+                          <CardHeader>
+                              <CardTitle className="font-headline">Lista de Materiais</CardTitle>
+                              <CardDescription>Insumos que irão compor a proposta comercial.</CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                              <Table>
+                                  <TableHeader>
+                                      <TableRow>
+                                          <TableHead className="w-[40%]">Descrição</TableHead>
+                                          <TableHead>Fabricante</TableHead>
+                                          <TableHead className="text-right">Custo</TableHead>
+                                          <TableHead className="text-center">Un.</TableHead>
+                                          <TableHead className="w-[100px] text-right">Qtde.</TableHead>
+                                          <TableHead className="w-[50px]"></TableHead>
+                                      </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                  {fields.map((field, index) => (
+                                      <TableRow key={field.id}>
+                                          <TableCell>
+                                              <div className="flex items-center gap-2">
+                                                  <FormField
+                                                      control={methods.control}
+                                                      name={`billOfMaterials.${index}.name`}
+                                                      render={({ field: formField }) => (
+                                                          <Popover open={openCombobox === index} onOpenChange={(isOpen) => setOpenCombobox(isOpen ? index : null)}>
+                                                              <PopoverTrigger asChild>
+                                                                  <FormControl>
+                                                                      <Button
+                                                                          variant="outline"
+                                                                          role="combobox"
+                                                                          className={cn("w-full justify-between font-normal", !formField.value && "text-muted-foreground")}
+                                                                      >
+                                                                          {formField.value || "Selecione um produto"}
+                                                                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                                      </Button>
+                                                                  </FormControl>
+                                                              </PopoverTrigger>
+                                                              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                                  <Command>
+                                                                      <CommandInput placeholder="Pesquisar produto..." />
+                                                                      <CommandList>
+                                                                          <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
+                                                                          <CommandGroup>
+                                                                              {inventory.map((item) => (
+                                                                                  <CommandItem
+                                                                                      value={item.name}
+                                                                                      key={item.id}
+                                                                                      onSelect={() => onProductSelect(item, index)}
+                                                                                  >
+                                                                                      <Check className={cn("mr-2 h-4 w-4", item.name === formField.value ? "opacity-100" : "opacity-0")}/>
+                                                                                      {item.name}
+                                                                                  </CommandItem>
+                                                                              ))}
+                                                                          </CommandGroup>
+                                                                      </CommandList>
+                                                                  </Command>
+                                                              </PopoverContent>
+                                                          </Popover>
+                                                      )}
+                                                  />
+                                                   {field.productId && (
+                                                      <Button
+                                                          type="button"
+                                                          variant="ghost"
+                                                          size="icon"
+                                                          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-primary"
+                                                          onClick={() => navigateToProduct(field.productId)}
+                                                      >
+                                                          <ChevronRight className="h-5 w-5" />
+                                                      </Button>
+                                                  )}
+                                              </div>
+                                          </TableCell>
+                                          <TableCell className="text-muted-foreground">
+                                              {methods.watch(`billOfMaterials.${index}.manufacturer`)}
+                                          </TableCell>
+                                          <TableCell className="text-right text-muted-foreground">
+                                              {formatCurrency(methods.watch(`billOfMaterials.${index}.cost`))}
+                                          </TableCell>
+                                          <TableCell className="text-center text-muted-foreground">
+                                              {methods.watch(`billOfMaterials.${index}.unit`)}
+                                          </TableCell>
+                                          <TableCell>
+                                              <FormField
+                                                  control={methods.control}
+                                                  name={`billOfMaterials.${index}.quantity`}
+                                                  render={({ field }) => (
+                                                      <Input
+                                                          type="number"
+                                                          className="text-right"
+                                                          {...field}
+                                                          onChange={e => field.onChange(Number(e.target.value))}
+                                                      />
+                                                  )}
+                                              />
+                                          </TableCell>
+                                          <TableCell>
+                                              <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                              </Button>
+                                          </TableCell>
+                                      </TableRow>
+                                  ))}
+                                      <TableRow>
+                                          <TableCell colSpan={6}>
+                                              <Button type="button" variant="link" onClick={handleAddNewItem}>
+                                                  <Plus className="mr-2 h-4 w-4"/>
+                                                  Adicionar Item
+                                              </Button>
+                                          </TableCell>
+                                      </TableRow>
+                                  </TableBody>
+                              </Table>
+                              <div className="flex justify-end mt-4">
+                                  <div className="w-full max-w-xs space-y-2">
+                                      <div className="flex justify-between font-semibold text-lg">
+                                          <span>Total Geral:</span>
+                                          <span>{formatCurrency(totalCost)}</span>
+                                      </div>
+                                  </div>
+                              </div>
+                          </CardContent>
                         </Card>
                          <Card>
                             <CardContent className="p-4">
@@ -510,7 +563,131 @@ export function Wizard() {
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent className="pt-4">
-                                    <Step1DataInput isLoading={false} />
+                                   <div className="border p-6 rounded-lg">
+                                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                          <FormField
+                                            control={methods.control}
+                                            name="calculationInput.consumo_mensal_kwh"
+                                            render={({ field }) => (
+                                              <FormItem>
+                                                <FormLabel>Consumo médio mensal (kWh) *</FormLabel>
+                                                <FormControl>
+                                                  <Input type="number" placeholder="ex: 500" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))}/>
+                                                </FormControl>
+                                                <FormMessage />
+                                              </FormItem>
+                                            )}
+                                          />
+                                          <FormField
+                                            control={methods.control}
+                                            name="calculationInput.valor_medio_fatura_reais"
+                                            render={({ field }) => (
+                                              <FormItem>
+                                                <FormLabel>Valor médio da fatura (R$) *</FormLabel>
+                                                <FormControl>
+                                                  <Input type="number" placeholder="ex: 450.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value))}/>
+                                                </FormControl>
+                                                <FormMessage />
+                                              </FormItem>
+                                            )}
+                                          />
+                                          <FormField
+                                              control={methods.control}
+                                              name="calculationInput.rede_fases"
+                                              render={({ field }) => (
+                                                  <FormItem>
+                                                  <FormLabel>Tipo de Rede *</FormLabel>
+                                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                      <FormControl>
+                                                      <SelectTrigger>
+                                                          <SelectValue placeholder="Selecione o tipo de rede" />
+                                                      </SelectTrigger>
+                                                      </FormControl>
+                                                      <SelectContent>
+                                                      {phaseOptions.map((opt) => (
+                                                          <SelectItem key={opt.value} value={opt.value}>
+                                                              {opt.label}
+                                                          </SelectItem>
+                                                      ))}
+                                                      </SelectContent>
+                                                  </Select>
+                                                  <FormMessage />
+                                                  </FormItem>
+                                              )}
+                                          />
+                                           <FormField
+                                              control={methods.control}
+                                              name="calculationInput.irradiacao_psh_kwh_m2_dia"
+                                              render={({ field }) => (
+                                                <FormItem>
+                                                  <FormLabel>Irradiação Solar Local (PSH) *</FormLabel>
+                                                  <FormControl>
+                                                    <Input type="number" placeholder="ex: 5.7" {...field} onChange={e => field.onChange(parseFloat(e.target.value))}/>
+                                                  </FormControl>
+                                                  <FormMessage />
+                                                </FormItem>
+                                              )}
+                                            />
+                                            <FormField
+                                              control={methods.control}
+                                              name="calculationInput.cip_iluminacao_publica_reais"
+                                              render={({ field }) => (
+                                                <FormItem>
+                                                  <FormLabel>Taxa de Iluminação Pública (R$)</FormLabel>
+                                                  <FormControl>
+                                                    <Input type="number" placeholder="ex: 25.50" {...field} onChange={e => field.onChange(parseFloat(e.target.value))}/>
+                                                  </FormControl>
+                                                  <FormMessage />
+                                                </FormItem>
+                                              )}
+                                            />
+                                       </div>
+                                       
+                                      <Accordion type="single" collapsible className="w-full mt-6">
+                                          <AccordionItem value="advanced-params" className="border-t">
+                                              <AccordionTrigger className="pt-4">
+                                                  <span className="font-semibold text-primary">Parâmetros Avançados</span>
+                                              </AccordionTrigger>
+                                              <AccordionContent>
+                                                  <div className="space-y-6 pt-4">
+                                                      <div className="p-4 border rounded-md">
+                                                           <h4 className="font-medium mb-4 text-foreground">Parâmetros de Perdas e Custos Adicionais</h4>
+                                                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                             <FormField control={methods.control} name="calculationInput.fator_perdas_percent" render={({ field }) => (
+                                                                   <FormItem>
+                                                                      <FormLabel>Fator de Perdas (%)</FormLabel>
+                                                                      <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                                                                      <FormMessage />
+                                                                  </FormItem>
+                                                              )}/>
+                                                               <FormField control={methods.control} name="calculationInput.custo_om_anual_reais" render={({ field }) => (
+                                                                   <FormItem>
+                                                                      <FormLabel>Custo O&M Anual (R$)</FormLabel>
+                                                                      <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                                                                      <FormMessage />
+                                                                  </FormItem>
+                                                              )}/>
+                                                              <FormField control={methods.control} name="calculationInput.meta_compensacao_percent" render={({ field }) => (
+                                                                   <FormItem>
+                                                                      <FormLabel>Meta de Compensação (%)</FormLabel>
+                                                                      <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                                                                      <FormMessage />
+                                                                  </FormItem>
+                                                              )}/>
+                                                          </div>
+                                                      </div>
+                                                  </div>
+                                              </AccordionContent>
+                                          </AccordionItem>
+                                      </Accordion>
+
+                                      <div className="flex justify-end pt-6">
+                                          <Button type="submit" size="lg" disabled={isLoading} className="bg-transparent hover:bg-transparent text-transparent">
+                                              {/* This button is hidden, form is submitted by parent */}
+                                              Calcular e Adicionar
+                                          </Button>
+                                      </div>
+                                  </div>
                                 </AccordionContent>
                                 </AccordionItem>
                             </Accordion>
