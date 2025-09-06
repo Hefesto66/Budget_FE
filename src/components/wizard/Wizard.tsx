@@ -6,7 +6,6 @@ import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams, useRouter } from 'next/navigation'
 import type { z } from "zod";
-import { Step1DataInput } from "./Step1DataInput";
 import { Step2Results } from "./Step2Results";
 import type { SolarCalculationResult, SolarCalculationInput, ClientFormData, Quote } from "@/types";
 import { getCalculation } from "@/app/orcamento/actions";
@@ -26,6 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Step1DataInput } from "./Step1DataInput";
 
 const steps = [
   { id: "01", name: "Dados de Consumo" },
