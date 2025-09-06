@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -35,8 +34,6 @@ import { format, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useFormContext } from "react-hook-form";
-import { useSearchParams } from "next/navigation";
-
 
 const COMPANY_DATA_KEY = "companyData";
 const CUSTOMIZATION_KEY = "proposalCustomization";
@@ -86,6 +83,7 @@ export function Step2Results({
     setRefinedSuggestion(null);
 
     const formData = formMethods.getValues();
+    // @ts-ignore - inventory is not part of the base schema but added for the flow
     const response = await getRefinedSuggestions(formData);
 
     if (response.success && response.data) {
@@ -144,7 +142,7 @@ export function Step2Results({
       const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
       const customizationData = localStorage.getItem(CUSTOMIZATION_KEY);
       const customization: CustomizationSettings | null = customizationData ? JSON.parse(customizationData) : defaultCustomization;
-      const formData = formMethods.getValues();
+      const formData = formMethods.getValues().calculationInput;
 
       if (!companyData) {
         toast({
@@ -238,7 +236,7 @@ export function Step2Results({
                     icon={<Zap />}
                     title="Sistema Sugerido"
                     value={`${results.resultados_geracao.quantidade_modulos} painéis`}
-                    description={`${formMethods.getValues().potencia_modulo_wp}Wp | ${formatNumber(results.resultados_geracao.geracao_media_mensal_kwh, 0)} kWh/mês`}
+                    description={`${formMethods.getValues().calculationInput.potencia_modulo_wp}Wp | ${formatNumber(results.resultados_geracao.geracao_media_mensal_kwh, 0)} kWh/mês`}
                 />
                 <ResultCard
                   icon={<Calendar />}
@@ -392,13 +390,13 @@ export function Step2Results({
                     <div className="grid grid-cols-2 gap-x-6">
                         <div className="space-y-3">
                             <h5 className="font-medium text-muted-foreground">Configuração Atual</h5>
-                             <ComparisonItem label="Painéis" value={`${results.resultados_geracao.quantidade_modulos} de ${formMethods.getValues().potencia_modulo_wp}Wp`} />
+                             <ComparisonItem label="Painéis" value={`${results.resultados_geracao.quantidade_modulos} de ${formMethods.getValues().calculationInput.potencia_modulo_wp}Wp`} />
                              <ComparisonItem label="Custo Total" value={formatCurrency(results.resultados_financeiros.custo_total_sistema_reais)} />
                              <ComparisonItem label="Payback" value={paybackText} />
                         </div>
                         <div className="space-y-3 rounded-md border border-primary bg-primary/5 p-4">
                              <h5 className="font-medium text-primary">Sugestão Otimizada</h5>
-                             <ComparisonItem label="Painéis" value={`${refinedSuggestion.configuracao_otimizada.itens.find(i => i.nomeProduto.toLowerCase().includes('painel'))?.quantidade} de ${formMethods.getValues().potencia_modulo_wp}Wp`} highlight />
+                             <ComparisonItem label="Painéis" value={`${refinedSuggestion.configuracao_otimizada.itens.find(i => i.nomeProduto.toLowerCase().includes('painel'))?.quantidade} de ${formMethods.getValues().calculationInput.potencia_modulo_wp}Wp`} highlight />
                              <ComparisonItem label="Custo Total" value={formatCurrency(refinedSuggestion.configuracao_otimizada.custo_total)} highlight />
                              <ComparisonItem label="Payback" value={`${formatNumber(refinedSuggestion.configuracao_otimizada.payback, 1)} anos`} highlight />
                         </div>
@@ -470,3 +468,5 @@ const defaultCustomization: CustomizationSettings = {
     showTimeline: false,
   },
 };
+
+    
