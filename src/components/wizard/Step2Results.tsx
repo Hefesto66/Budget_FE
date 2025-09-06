@@ -3,8 +3,6 @@
 
 import { useState, useEffect } from "react";
 import ReactDOMServer from 'react-dom/server';
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings, SolarCalculationInput } from "@/types";
 import { ResultCard } from "@/components/ResultCard";
 import { Button } from "@/components/ui/button";
