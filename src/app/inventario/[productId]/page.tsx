@@ -115,11 +115,7 @@ export default function ProductForm() {
       description: `Produto ${isEditing ? 'atualizado' : 'criado'} com sucesso.`,
     });
     
-    if (!isEditing) {
-        router.push(`/inventario/${productToSave.id}`);
-    } else {
-        // No need to refresh, state is handled locally
-    }
+    router.push('/inventario');
     
     setIsSaving(false);
   };
