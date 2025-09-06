@@ -318,7 +318,7 @@ export function Wizard() {
     append({ productId: '', name: '', type: 'OUTRO', manufacturer: '', cost: 0, unit: '', quantity: 1 });
   }
 
-  const navigateToProduct = (productId: string) => {
+  const navigateToProduct = () => {
     const draftData = {
       formData: methods.getValues(),
       results,
@@ -327,7 +327,7 @@ export function Wizard() {
       currentStep
     };
     sessionStorage.setItem(DRAFT_QUOTE_SESSION_KEY, JSON.stringify(draftData));
-    router.push(`/inventario/${productId}`);
+    router.push(`/inventario`);
   };
 
   
@@ -428,6 +428,131 @@ export function Wizard() {
                     )}
                     
                     <div className="space-y-6">
+                        <Card>
+                          <CardHeader>
+                              <CardTitle className="font-headline">Lista de Materiais</CardTitle>
+                              <CardDescription>Insumos que irão compor a proposta comercial.</CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                              <Table>
+                                  <TableHeader>
+                                      <TableRow>
+                                          <TableHead className="w-[40%]">Descrição</TableHead>
+                                          <TableHead>Fabricante</TableHead>
+                                          <TableHead className="text-right">Custo</TableHead>
+                                          <TableHead className="text-center">Un.</TableHead>
+                                          <TableHead className="w-[100px] text-right">Qtde.</TableHead>
+                                          <TableHead className="w-[50px]"></TableHead>
+                                      </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                  {fields.map((field, index) => (
+                                      <TableRow key={field.id}>
+                                          <TableCell>
+                                              <div className="flex items-center gap-2">
+                                                  <FormField
+                                                      control={methods.control}
+                                                      name={`billOfMaterials.${index}.name`}
+                                                      render={({ field: formField }) => (
+                                                          <Popover open={openCombobox === index} onOpenChange={(isOpen) => setOpenCombobox(isOpen ? index : null)}>
+                                                              <PopoverTrigger asChild>
+                                                                  <FormControl>
+                                                                      <Button
+                                                                          variant="outline"
+                                                                          role="combobox"
+                                                                          className={cn("w-full justify-between font-normal", !formField.value && "text-muted-foreground")}
+                                                                      >
+                                                                          {formField.value || "Selecione um produto"}
+                                                                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                                      </Button>
+                                                                  </FormControl>
+                                                              </PopoverTrigger>
+                                                              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                                  <Command>
+                                                                      <CommandInput placeholder="Pesquisar produto..." />
+                                                                      <CommandList>
+                                                                          <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
+                                                                          <CommandGroup>
+                                                                              {inventory.map((item) => (
+                                                                                  <CommandItem
+                                                                                      value={item.name}
+                                                                                      key={item.id}
+                                                                                      onSelect={() => onProductSelect(item, index)}
+                                                                                  >
+                                                                                      <Check className={cn("mr-2 h-4 w-4", item.name === formField.value ? "opacity-100" : "opacity-0")}/>
+                                                                                      {item.name}
+                                                                                  </CommandItem>
+                                                                              ))}
+                                                                          </CommandGroup>
+                                                                      </CommandList>
+                                                                  </Command>
+                                                              </PopoverContent>
+                                                          </Popover>
+                                                      )}
+                                                  />
+                                                   {field.productId && (
+                                                      <Button
+                                                          type="button"
+                                                          variant="ghost"
+                                                          size="icon"
+                                                          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-primary"
+                                                          onClick={navigateToProduct}
+                                                      >
+                                                          <ChevronRight className="h-5 w-5" />
+                                                      </Button>
+                                                  )}
+                                              </div>
+                                          </TableCell>
+                                          <TableCell className="text-muted-foreground">
+                                              {methods.watch(`billOfMaterials.${index}.manufacturer`)}
+                                          </TableCell>
+                                          <TableCell className="text-right text-muted-foreground">
+                                              {formatCurrency(methods.watch(`billOfMaterials.${index}.cost`))}
+                                          </TableCell>
+                                          <TableCell className="text-center text-muted-foreground">
+                                              {methods.watch(`billOfMaterials.${index}.unit`)}
+                                          </TableCell>
+                                          <TableCell>
+                                              <FormField
+                                                  control={methods.control}
+                                                  name={`billOfMaterials.${index}.quantity`}
+                                                  render={({ field }) => (
+                                                      <Input
+                                                          type="number"
+                                                          className="text-right"
+                                                          {...field}
+                                                          onChange={e => field.onChange(Number(e.target.value))}
+                                                      />
+                                                  )}
+                                              />
+                                          </TableCell>
+                                          <TableCell>
+                                              <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                              </Button>
+                                          </TableCell>
+                                      </TableRow>
+                                  ))}
+                                      <TableRow>
+                                          <TableCell colSpan={6}>
+                                              <Button type="button" variant="link" onClick={handleAddNewItem}>
+                                                  <Plus className="mr-2 h-4 w-4"/>
+                                                  Adicionar Item
+                                              </Button>
+                                          </TableCell>
+                                      </TableRow>
+                                  </TableBody>
+                              </Table>
+                              <div className="flex justify-end mt-4">
+                                  <div className="w-full max-w-xs space-y-2">
+                                      <div className="flex justify-between font-semibold text-lg">
+                                          <span>Total Geral:</span>
+                                          <span>{formatCurrency(totalCost)}</span>
+                                      </div>
+                                  </div>
+                              </div>
+                          </CardContent>
+                        </Card>
                          <Card>
                             <CardContent className="p-4">
                             <Accordion type="single" collapsible className="w-full">
@@ -555,143 +680,11 @@ export function Wizard() {
                                               </AccordionContent>
                                           </AccordionItem>
                                       </Accordion>
-
-                                      <div className="flex justify-end pt-6">
-                                          <Button type="submit" size="lg" disabled={isLoading} className="bg-transparent hover:bg-transparent text-transparent">
-                                              {/* This button is hidden, form is submitted by parent */}
-                                              Calcular e Adicionar
-                                          </Button>
-                                      </div>
                                   </div>
                                 </AccordionContent>
                                 </AccordionItem>
                             </Accordion>
                             </CardContent>
-                        </Card>
-                        <Card>
-                          <CardHeader>
-                              <CardTitle className="font-headline">Lista de Materiais</CardTitle>
-                              <CardDescription>Insumos que irão compor a proposta comercial.</CardDescription>
-                          </CardHeader>
-                          <CardContent>
-                              <Table>
-                                  <TableHeader>
-                                      <TableRow>
-                                          <TableHead className="w-[40%]">Descrição</TableHead>
-                                          <TableHead>Fabricante</TableHead>
-                                          <TableHead className="text-right">Custo</TableHead>
-                                          <TableHead className="text-center">Un.</TableHead>
-                                          <TableHead className="w-[100px] text-right">Qtde.</TableHead>
-                                          <TableHead className="w-[50px]"></TableHead>
-                                      </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                  {fields.map((field, index) => (
-                                      <TableRow key={field.id}>
-                                          <TableCell>
-                                              <div className="flex items-center gap-2">
-                                                  <FormField
-                                                      control={methods.control}
-                                                      name={`billOfMaterials.${index}.name`}
-                                                      render={({ field: formField }) => (
-                                                          <Popover open={openCombobox === index} onOpenChange={(isOpen) => setOpenCombobox(isOpen ? index : null)}>
-                                                              <PopoverTrigger asChild>
-                                                                  <FormControl>
-                                                                      <Button
-                                                                          variant="outline"
-                                                                          role="combobox"
-                                                                          className={cn("w-full justify-between font-normal", !formField.value && "text-muted-foreground")}
-                                                                      >
-                                                                          {formField.value || "Selecione um produto"}
-                                                                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                                      </Button>
-                                                                  </FormControl>
-                                                              </PopoverTrigger>
-                                                              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                                                  <Command>
-                                                                      <CommandInput placeholder="Pesquisar produto..." />
-                                                                      <CommandList>
-                                                                          <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
-                                                                          <CommandGroup>
-                                                                              {inventory.map((item) => (
-                                                                                  <CommandItem
-                                                                                      value={item.name}
-                                                                                      key={item.id}
-                                                                                      onSelect={() => onProductSelect(item, index)}
-                                                                                  >
-                                                                                      <Check className={cn("mr-2 h-4 w-4", item.name === formField.value ? "opacity-100" : "opacity-0")}/>
-                                                                                      {item.name}
-                                                                                  </CommandItem>
-                                                                              ))}
-                                                                          </CommandGroup>
-                                                                      </CommandList>
-                                                                  </Command>
-                                                              </PopoverContent>
-                                                          </Popover>
-                                                      )}
-                                                  />
-                                                   {field.productId && (
-                                                      <Button
-                                                          type="button"
-                                                          variant="ghost"
-                                                          size="icon"
-                                                          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-primary"
-                                                          onClick={() => navigateToProduct(field.productId)}
-                                                      >
-                                                          <ChevronRight className="h-5 w-5" />
-                                                      </Button>
-                                                  )}
-                                              </div>
-                                          </TableCell>
-                                          <TableCell className="text-muted-foreground">
-                                              {methods.watch(`billOfMaterials.${index}.manufacturer`)}
-                                          </TableCell>
-                                          <TableCell className="text-right text-muted-foreground">
-                                              {formatCurrency(methods.watch(`billOfMaterials.${index}.cost`))}
-                                          </TableCell>
-                                          <TableCell className="text-center text-muted-foreground">
-                                              {methods.watch(`billOfMaterials.${index}.unit`)}
-                                          </TableCell>
-                                          <TableCell>
-                                              <FormField
-                                                  control={methods.control}
-                                                  name={`billOfMaterials.${index}.quantity`}
-                                                  render={({ field }) => (
-                                                      <Input
-                                                          type="number"
-                                                          className="text-right"
-                                                          {...field}
-                                                          onChange={e => field.onChange(Number(e.target.value))}
-                                                      />
-                                                  )}
-                                              />
-                                          </TableCell>
-                                          <TableCell>
-                                              <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
-                                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                              </Button>
-                                          </TableCell>
-                                      </TableRow>
-                                  ))}
-                                      <TableRow>
-                                          <TableCell colSpan={6}>
-                                              <Button type="button" variant="link" onClick={handleAddNewItem}>
-                                                  <Plus className="mr-2 h-4 w-4"/>
-                                                  Adicionar Item
-                                              </Button>
-                                          </TableCell>
-                                      </TableRow>
-                                  </TableBody>
-                              </Table>
-                              <div className="flex justify-end mt-4">
-                                  <div className="w-full max-w-xs space-y-2">
-                                      <div className="flex justify-between font-semibold text-lg">
-                                          <span>Total Geral:</span>
-                                          <span>{formatCurrency(totalCost)}</span>
-                                      </div>
-                                  </div>
-                              </div>
-                          </CardContent>
                         </Card>
                     </div>
 
@@ -791,3 +784,5 @@ export function Wizard() {
     </div>
   );
 }
+
+    
