@@ -69,19 +69,32 @@ const defaultValues: SolarCalculationInput = {
     concessionaria: "Equatorial GO",
     rede_fases: "mono",
     irradiacao_psh_kwh_m2_dia: 5.7,
+    // Itens que vêm da BOM, mas precisam de um valor inicial
     potencia_modulo_wp: 550,
     preco_modulo_reais: 750,
-    quantidade_modulos: 10,
+    quantidade_modulos: 10, // Default, mas é recalculado se não informado
     eficiencia_inversor_percent: 97,
     custo_inversor_reais: 4200,
     quantidade_inversores: 1,
     custo_fixo_instalacao_reais: 1500,
+    // Parâmetros de cálculo com defaults
     fator_perdas_percent: 20,
     custo_om_anual_reais: 150,
     meta_compensacao_percent: 100,
+    custo_sistema_reais: 0, // Será sobreposto pelo cálculo da BOM
+    // Campos de Vendas
     salespersonId: "",
     paymentTermId: "",
-    priceListId: ""
+    priceListId: "",
+    // Campos que não estão no formulário, mas precisam de valor
+    modelo_inversor: "",
+    fabricante_inversor: "",
+    potencia_inversor_kw: 0,
+    tensao_inversor_v: 0,
+    garantia_inversor_anos: 0,
+    fabricante_modulo: "",
+    garantia_defeito_modulo_anos: 0,
+    garantia_geracao_modulo_anos: 0,
 }
 
 export function Wizard() {
@@ -302,7 +315,7 @@ export function Wizard() {
       currentStep
     };
     sessionStorage.setItem(DRAFT_QUOTE_SESSION_KEY, JSON.stringify(draftData));
-    router.push(`/inventario/${productId}`);
+    router.push(`/inventario`);
   };
 
   
