@@ -8,12 +8,12 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { z } from "zod";
 import { Step2Results } from "./Step2Results";
 import type { SolarCalculationResult, SolarCalculationInput, ClientFormData, Quote } from "@/types";
-import { getCalculation } from "@/app/orcamento/actions";
+import { getCalculation, getRefinedSuggestions } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { solarCalculationSchema } from "@/types";
 import { Button } from "../ui/button";
-import { ArrowLeft, Save, Sparkles, Calculator, Plus, Trash2, Check, ChevronsUpDown } from "lucide-react";
+import { ArrowLeft, Save, Sparkles, Calculator, Plus, Trash2, Check, ChevronsUpDown, CheckCircle } from "lucide-react";
 import { getLeadById, getQuoteById, saveQuote, generateNewQuoteId, getClientById, addHistoryEntry, getProducts, Product } from "@/lib/storage";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "../ui/accordion";
@@ -30,7 +30,10 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/
 import { Input } from "../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
+import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../ui/alert-dialog";
+import { Separator } from "../ui/separator";
 
 const wizardSchema = z.object({
     calculationInput: solarCalculationSchema,
@@ -113,9 +116,9 @@ export function Wizard() {
 
   const [inventory, setInventory] = useState<Product[]>([]);
   const [openCombobox, setOpenCombobox] = useState<number | null>(null);
-
-  const watchedBOM = useWatch({ control: methods.control, name: 'billOfMaterials' });
-  const totalCost = watchedBOM.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
+  
+  const [isRefining, setIsRefining] = useState(false);
+  const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
 
 
   useEffect(() => {
@@ -125,6 +128,7 @@ export function Wizard() {
     const initialize = async () => {
       let initialData = { ...defaultValues };
       let clientToSet: any = null;
+      let bomToSet: any[] = [];
 
       if (quoteId) {
         setProposalId(quoteId);
@@ -134,8 +138,10 @@ export function Wizard() {
           const calcResult = await getCalculation(initialData);
           if (calcResult.success) {
             setResults(calcResult.data);
-            // TODO: Populate bill of materials from saved quote
             setCurrentStep(1); // Go to results page if loading an existing quote
+          }
+          if (existingQuote.billOfMaterials) {
+            bomToSet = existingQuote.billOfMaterials;
           }
         }
       }
@@ -154,7 +160,7 @@ export function Wizard() {
           }
       }
       
-      methods.reset({ calculationInput: initialData, billOfMaterials: [] });
+      methods.reset({ calculationInput: initialData, billOfMaterials: bomToSet });
       if(clientToSet) {
         setClientData(clientToSet);
       }
@@ -180,8 +186,8 @@ export function Wizard() {
       const service = inventory.find(p => p.type === 'SERVICO');
 
       const bom : any[] = [];
-      if(panel) bom.push({ productId: panel.id, name: panel.name, manufacturer: 'N/A', cost: panel.salePrice, unit: panel.unit, quantity: result.data.dimensionamento.quantidade_modulos });
-      if(inverter) bom.push({ productId: inverter.id, name: inverter.name, manufacturer: 'N/A', cost: inverter.salePrice, unit: inverter.unit, quantity: data.quantidade_inversores });
+      if(panel) bom.push({ productId: panel.id, name: panel.name, manufacturer: panel.technicalSpecifications?.['Fabricante'] || 'N/A', cost: panel.salePrice, unit: panel.unit, quantity: result.data.dimensionamento.quantidade_modulos });
+      if(inverter) bom.push({ productId: inverter.id, name: inverter.name, manufacturer: inverter.technicalSpecifications?.['Fabricante'] || 'N/A', cost: inverter.salePrice, unit: inverter.unit, quantity: data.quantidade_inversores });
       if(service) bom.push({ productId: service.id, name: service.name, manufacturer: 'N/A', cost: service.salePrice, unit: service.unit, quantity: 1 });
 
       methods.setValue('billOfMaterials', bom);
@@ -205,35 +211,51 @@ export function Wizard() {
   }
 
   const handleSaveQuote = () => {
-    if (!leadId || !results || !proposalId || !clienteId) {
-        toast({ title: "Erro", description: "Contexto do lead, cliente, resultados do cálculo ou ID da proposta não encontrados para salvar.", variant: "destructive" });
+    if (!leadId || !clienteId) {
+        toast({ title: "Erro", description: "Contexto do lead ou cliente não encontrados para salvar.", variant: "destructive" });
         return;
     }
+    
+    const finalProposalId = quoteId || generateNewQuoteId();
+    if (!proposalId) setProposalId(finalProposalId);
 
     const formData = methods.getValues('calculationInput');
+    const billOfMaterials = methods.getValues('billOfMaterials');
     
-    const quoteToSave: Quote = {
-        id: proposalId,
-        leadId: leadId,
-        createdAt: quoteId ? getQuoteById(quoteId)!.createdAt : new Date().toISOString(), 
-        formData: formData,
-        results: results,
-    };
+    // Recalculate final results based on BOM
+    const finalSystemCost = billOfMaterials.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
+    const finalFormData = { ...formData, custo_sistema_reais: finalSystemCost };
+    
+    getCalculation(finalFormData).then(finalResults => {
+        if (!finalResults.success || !finalResults.data) {
+             toast({ title: "Erro ao Finalizar", description: "Não foi possível recalcular o resultado final antes de salvar.", variant: "destructive" });
+             return;
+        }
 
-    saveQuote(quoteToSave);
+        const quoteToSave: Quote = {
+            id: finalProposalId,
+            leadId: leadId,
+            createdAt: quoteId ? getQuoteById(quoteId)!.createdAt : new Date().toISOString(), 
+            formData: finalFormData,
+            results: finalResults.data,
+            billOfMaterials: billOfMaterials
+        };
 
-    const historyMessage = quoteId ? `Cotação ${proposalId} foi atualizada.` : `Nova cotação ${proposalId} foi criada.`;
+        saveQuote(quoteToSave);
 
-    addHistoryEntry({ 
-        clientId: clienteId, 
-        text: historyMessage, 
-        type: 'log-quote',
-        refId: proposalId,
-        quoteInfo: { leadId: leadId, clientId: clienteId }
+        const historyMessage = quoteId ? `Cotação ${finalProposalId} foi atualizada.` : `Nova cotação ${finalProposalId} foi criada.`;
+
+        addHistoryEntry({ 
+            clientId: clienteId, 
+            text: historyMessage, 
+            type: 'log-quote',
+            refId: finalProposalId,
+            quoteInfo: { leadId: leadId, clientId: clienteId }
+        });
+
+        toast({ title: quoteId ? "Cotação Atualizada!" : "Cotação Salva!", description: "A cotação foi salva com sucesso." });
+        router.push(`/crm/${leadId}`);
     });
-
-    toast({ title: quoteId ? "Cotação Atualizada!" : "Cotação Salva!", description: "A cotação foi salva com sucesso." });
-    router.push(`/crm/${leadId}`);
   };
 
   const handleGoBackToLead = () => {
@@ -256,24 +278,85 @@ export function Wizard() {
   const handleAddNewItem = () => {
     append({ productId: '', name: '', manufacturer: '', cost: 0, unit: '', quantity: 1 });
   }
+  
+  const handleAiRefinement = async () => {
+    setIsRefining(true);
+    setRefinedSuggestion(null);
+
+    const formData = methods.getValues('calculationInput');
+    const allProducts = getProducts();
+    const panels = allProducts.filter(p => p.type === 'PAINEL_SOLAR');
+    const inverters = allProducts.filter(p => p.type === 'INVERSOR');
+    
+    const response = await getRefinedSuggestions({ ...formData, inventory: { panels, inverters }});
+
+    if (response.success && response.data) {
+      setRefinedSuggestion(response.data);
+    } else {
+      toast({
+        title: "Erro na Sugestão",
+        description: response.error || "Não foi possível obter uma sugestão da IA. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+
+    setIsRefining(false);
+  };
+  
+  const handleApplySuggestion = async () => {
+    if (!refinedSuggestion) return;
+    
+    const service = inventory.find(p => p.type === 'SERVICO');
+
+    const bomFromAI = refinedSuggestion.configuracao_otimizada.itens.map(item => {
+        const product = getProductById(item.produtoId);
+        return {
+            productId: item.produtoId,
+            name: item.nomeProduto,
+            manufacturer: product?.technicalSpecifications?.['Fabricante'] || 'N/A',
+            cost: product?.salePrice || 0,
+            unit: product?.unit || 'UN',
+            quantity: item.quantidade,
+        };
+    });
+
+    if(service) {
+      bomFromAI.push({ productId: service.id, name: service.name, manufacturer: 'N/A', cost: service.salePrice, unit: service.unit, quantity: 1 });
+    }
+    
+    methods.setValue('billOfMaterials', bomFromAI);
+    setRefinedSuggestion(null); // Fecha o dialog
+    
+    toast({
+        title: "Sugestão Aplicada!",
+        description: "A lista de materiais foi atualizada com a sugestão da IA.",
+      });
+  };
+
+  const watchedBOM = useWatch({ control: methods.control, name: 'billOfMaterials' });
+  const totalCost = watchedBOM.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
 
   if (!isReady) {
     return <div className="flex items-center justify-center h-64">Carregando Orçamento...</div>;
   }
   
-
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
       {leadId && (
         <div className="mb-8 flex justify-between items-center">
-             <h2 className="text-lg font-semibold text-foreground">
-                Cotação para o Lead: <span className="text-primary font-bold">{getLeadById(leadId)?.title}</span>
-            </h2>
+            <div className="flex items-center gap-4">
+                <h2 className="text-lg font-semibold text-foreground">
+                    Cotação para o Lead: <span className="text-primary font-bold">{getLeadById(leadId)?.title}</span>
+                </h2>
+                 <Button variant="outline" size="icon" onClick={handleAiRefinement} disabled={isRefining} title="Refinar com IA">
+                    <Sparkles className={`h-4 w-4 ${isRefining ? 'animate-spin' : ''}`} />
+                </Button>
+            </div>
             <div className="flex gap-2">
                 <Button variant="outline" onClick={handleGoBackToLead}>
                     <ArrowLeft /> Voltar para o Lead
                 </Button>
-                 <Button onClick={() => results && document.getElementById('save-quote-button')?.click()} disabled={!results}>
+                 <Button onClick={handleSaveQuote}>
                     <Save /> {quoteId ? "Atualizar Cotação" : "Salvar Cotação"}
                 </Button>
             </div>
@@ -296,16 +379,6 @@ export function Wizard() {
                       <AccordionContent className="pt-4">
                         <Step1DataInput isLoading={isLoading} />
                       </AccordionContent>
-                    </AccordionItem>
-                    <AccordionItem value="dimensionamento-ia" className="border-0">
-                       <AccordionTrigger>
-                        <div className="flex items-center gap-2 text-lg font-semibold">
-                          <Sparkles className="h-5 w-5" /> Dimensionamento por IA
-                        </div>
-                      </AccordionTrigger>
-                       <AccordionContent className="pt-4">
-                         <p className="text-center text-muted-foreground p-8">O formulário para dimensionamento com IA estará disponível aqui em breve.</p>
-                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
                 </CardContent>
@@ -382,7 +455,7 @@ export function Wizard() {
                                 {methods.watch(`billOfMaterials.${index}.manufacturer`)}
                             </TableCell>
                             <TableCell className="text-right text-muted-foreground">
-                                {methods.watch(`billOfMaterials.${index}.cost`)}
+                                {formatCurrency(methods.watch(`billOfMaterials.${index}.cost`))}
                             </TableCell>
                              <TableCell className="text-center text-muted-foreground">
                                 {methods.watch(`billOfMaterials.${index}.unit`)}
@@ -422,15 +495,22 @@ export function Wizard() {
                     <div className="w-full max-w-xs space-y-2">
                         <div className="flex justify-between font-semibold text-lg">
                             <span>Total Geral:</span>
-                            <span>R$ {totalCost.toFixed(2)}</span>
+                            <span>{formatCurrency(totalCost)}</span>
                         </div>
                     </div>
                 </div>
               </CardContent>
             </Card>
+            
+            {totalCost > 0 && (
+                <div className="flex justify-end">
+                    <Button size="lg" onClick={() => setCurrentStep(1)}>Avançar para Resultados</Button>
+                </div>
+            )}
+
 
             <AnimatePresence>
-            {results && (
+            {results && currentStep === 1 && (
               <motion.div
                 key="step2"
                 initial={{ opacity: 0, y: 20 }}
@@ -451,6 +531,62 @@ export function Wizard() {
               </motion.div>
             )}
             </AnimatePresence>
+            
+             <AlertDialog open={!!refinedSuggestion} onOpenChange={(isOpen) => !isOpen && setRefinedSuggestion(null)}>
+                <AlertDialogContent className="max-w-2xl">
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="font-headline text-2xl flex items-center gap-2">
+                    <Sparkles className="h-6 w-6 text-accent" />
+                    Sugestão Otimizada por IA
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                    Analisamos seu perfil e os produtos em seu inventário para encontrar a configuração com melhor custo-benefício.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="max-h-[60vh] overflow-y-auto p-1 pr-4">
+                    {refinedSuggestion && (
+                    <div className="space-y-6 text-sm">
+                        <div>
+                            <h3 className="font-semibold mb-2 text-foreground">Análise da IA</h3>
+                            <p className="text-muted-foreground bg-secondary/50 p-4 rounded-md border">{refinedSuggestion.analise_texto}</p>
+                        </div>
+                        
+                        <Separator />
+                        
+                        <div>
+                            <h4 className="font-semibold text-foreground mb-4">Configuração Otimizada Sugerida</h4>
+                             <div className="rounded-md border border-primary bg-primary/5 p-4 space-y-2">
+                               {refinedSuggestion.configuracao_otimizada.itens.map(item => (
+                                <div key={item.produtoId} className="flex justify-between items-center">
+                                    <span>{item.nomeProduto}</span>
+                                    <span className="font-bold">{item.quantidade} UN</span>
+                                </div>
+                               ))}
+                               <Separator className="my-2 bg-primary/20"/>
+                                <div className="flex justify-between items-center text-base font-bold text-primary">
+                                    <span>Novo Custo Total</span>
+                                    <span>{formatCurrency(refinedSuggestion.configuracao_otimizada.custo_total)}</span>
+                                 </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span>Novo Payback Estimado</span>
+                                    <span>{refinedSuggestion.configuracao_otimizada.payback.toFixed(1)} anos</span>
+                                 </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    )}
+                </div>
+                <AlertDialogFooter>
+                    <Button variant="ghost" onClick={() => setRefinedSuggestion(null)}>Cancelar</Button>
+                    <Button onClick={handleApplySuggestion}>
+                        <CheckCircle className="mr-2" />
+                        Aplicar e Usar Itens
+                    </Button>
+                </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
 
           </div>
         </form>
@@ -458,3 +594,5 @@ export function Wizard() {
     </div>
   );
 }
+
+    
