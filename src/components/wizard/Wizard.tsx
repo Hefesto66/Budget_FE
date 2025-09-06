@@ -13,8 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { solarCalculationSchema } from "@/types";
 import { Button } from "../ui/button";
-import { ArrowLeft, Save, Sparkles, Calculator, Plus, Trash2, Check, ChevronsUpDown, CheckCircle } from "lucide-react";
-import { getLeadById, getQuoteById, saveQuote, generateNewQuoteId, getClientById, addHistoryEntry, getProducts, Product } from "@/lib/storage";
+import { ArrowLeft, Save, Sparkles, Calculator, Plus, Trash2, Check, ChevronsUpDown, CheckCircle, Loader2, FileDown } from "lucide-react";
+import { getLeadById, getQuoteById, saveQuote, generateNewQuoteId, getClientById, addHistoryEntry, getProducts, Product, PRODUCT_TYPES } from "@/lib/storage";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "../ui/accordion";
 import {
@@ -40,6 +40,7 @@ const wizardSchema = z.object({
     billOfMaterials: z.array(z.object({
         productId: z.string().min(1),
         name: z.string(),
+        type: z.string(),
         manufacturer: z.string(),
         cost: z.number(),
         unit: z.string(),
@@ -57,36 +58,17 @@ const defaultValues: SolarCalculationInput = {
     concessionaria: "Equatorial GO",
     rede_fases: "mono",
     irradiacao_psh_kwh_m2_dia: 5.7,
-    // Módulos
-    fabricante_modulo: "TongWei Bifacial",
-    potencia_modulo_wp: 550,
-    preco_modulo_reais: 750,
-    garantia_defeito_modulo_anos: 12,
-    garantia_geracao_modulo_anos: 30,
-    // Inversor
-    modelo_inversor: "Inversor Central - SIW300H (Híbrido)",
-    fabricante_inversor: "WEG",
-    potencia_inversor_kw: 5,
-    tensao_inversor_v: 220,
-    quantidade_inversores: 1,
-    garantia_inversor_anos: 7,
-    eficiencia_inversor_percent: 97,
-    custo_inversor_reais: 4000,
-    // Custos e Perdas
     fator_perdas_percent: 20,
-    custo_fixo_instalacao_reais: 2500,
     custo_om_anual_reais: 150,
     meta_compensacao_percent: 100,
-    // A quantidade de módulos aqui é do FORMULÁRIO e não o resultado final.
     quantidade_modulos: undefined,
-    // Vendas
     salespersonId: "",
     paymentTermId: "",
     priceListId: ""
 }
 
 export function Wizard() {
-  const [currentStep, setCurrentStep] = useState(0); // 0 for form, 1 for results
+  const [currentStep, setCurrentStep] = useState(0);
   const [results, setResults] = useState<SolarCalculationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -102,7 +84,7 @@ export function Wizard() {
   const clienteId = searchParams.get('clienteId');
   
   const methods = useForm<WizardFormData>({
-    // resolver: zodResolver(wizardSchema), // TODO: Add resolver
+    resolver: zodResolver(wizardSchema),
     defaultValues: {
         calculationInput: defaultValues,
         billOfMaterials: [],
@@ -121,24 +103,20 @@ export function Wizard() {
   const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
 
   useEffect(() => {
-    // Load inventory
     setInventory(getProducts());
     
     const initialize = async () => {
-      let initialData = { ...defaultValues };
+      let initialData: SolarCalculationInput = { ...defaultValues };
       let clientToSet: any = null;
       let bomToSet: any[] = [];
+      let loadedResults: SolarCalculationResult | null = null;
 
       if (quoteId) {
         setProposalId(quoteId);
         const existingQuote = getQuoteById(quoteId);
         if (existingQuote) {
           initialData = existingQuote.formData;
-          const calcResult = await getCalculation(initialData);
-          if (calcResult.success) {
-            setResults(calcResult.data);
-            setCurrentStep(1); // Go to results page if loading an existing quote
-          }
+          loadedResults = existingQuote.results;
           if (existingQuote.billOfMaterials) {
             bomToSet = existingQuote.billOfMaterials;
           }
@@ -151,7 +129,7 @@ export function Wizard() {
               clientToSet = {
                   name: foundClient.name,
                   document: foundClient.cnpj || '',
-                  address: foundClient.street || '',
+                  address: `${foundClient.street || ''}, ${foundClient.cityState || ''}`,
               };
               if (foundClient.salespersonId) initialData.salespersonId = foundClient.salespersonId;
               if (foundClient.paymentTermId) initialData.paymentTermId = foundClient.paymentTermId;
@@ -160,9 +138,9 @@ export function Wizard() {
       }
       
       methods.reset({ calculationInput: initialData, billOfMaterials: bomToSet });
-      if(clientToSet) {
-        setClientData(clientToSet);
-      }
+      if(clientToSet) setClientData(clientToSet);
+      if(loadedResults) setResults(loadedResults);
+      if(quoteId) setCurrentStep(1);
 
       setIsReady(true);
     };
@@ -173,16 +151,52 @@ export function Wizard() {
 
   const processForm = async (data: WizardFormData) => {
     setIsLoading(true);
-    
-    // Recalculate final results based on BOM
-    const finalSystemCost = data.billOfMaterials.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
-    const finalFormData = { ...data.calculationInput, custo_sistema_reais: finalSystemCost };
 
-    const result = await getCalculation(finalFormData);
+    const bom = data.billOfMaterials;
+    const panel = bom.find(item => item.type === 'PAINEL_SOLAR');
+    const inverter = bom.find(item => item.type === 'INVERSOR');
+    const service = bom.find(item => item.type === 'SERVICO');
+
+    if (!panel) {
+        toast({ title: "Item Faltando", description: "Por favor, adicione pelo menos um 'Painel Solar' à lista de materiais.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+    }
+     if (!inverter) {
+        toast({ title: "Item Faltando", description: "Por favor, adicione um 'Inversor' à lista de materiais.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+    }
+     if (!service) {
+        toast({ title: "Item Faltando", description: "Por favor, adicione um item de 'Serviço' (instalação) à lista de materiais.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+    }
+
+    const panelProduct = getProductById(panel.productId);
+    const inverterProduct = getProductById(inverter.productId);
+
+    const calculationData: SolarCalculationInput = {
+        ...data.calculationInput,
+        potencia_modulo_wp: panelProduct?.technicalSpecifications?.['Potência'] ? parseFloat(panelProduct.technicalSpecifications['Potência']) : undefined,
+        preco_modulo_reais: panel.cost,
+        quantidade_modulos: panel.quantity,
+        
+        eficiencia_inversor_percent: inverterProduct?.technicalSpecifications?.['Eficiência'] ? parseFloat(inverterProduct.technicalSpecifications['Eficiência']) : undefined,
+        custo_inversor_reais: inverter.cost,
+        quantidade_inversores: inverter.quantity,
+
+        custo_fixo_instalacao_reais: service.cost * service.quantity,
+
+        custo_sistema_reais: bom.reduce((acc, item) => acc + (item.cost * item.quantity), 0),
+    };
+    
+    const result = await getCalculation(calculationData);
     setIsLoading(false);
 
     if (result.success && result.data) {
       setResults(result.data);
+      methods.setValue('calculationInput', calculationData); // Save the derived values back to the form
       setCurrentStep(1);
       toast({
         title: "Cálculo Concluído",
@@ -214,40 +228,34 @@ export function Wizard() {
     const formData = methods.getValues('calculationInput');
     const billOfMaterials = methods.getValues('billOfMaterials');
     
-    // Recalculate final results based on BOM
-    const finalSystemCost = billOfMaterials.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
-    const finalFormData = { ...formData, custo_sistema_reais: finalSystemCost };
-    
-    getCalculation(finalFormData).then(finalResults => {
-        if (!finalResults.success || !finalResults.data) {
-             toast({ title: "Erro ao Finalizar", description: "Não foi possível recalcular o resultado final antes de salvar.", variant: "destructive" });
-             return;
-        }
+    if(!results) {
+         toast({ title: "Erro ao Salvar", description: "Os resultados do cálculo não foram encontrados.", variant: "destructive" });
+         return;
+    }
 
-        const quoteToSave: Quote = {
-            id: finalProposalId,
-            leadId: leadId,
-            createdAt: quoteId ? getQuoteById(quoteId)!.createdAt : new Date().toISOString(), 
-            formData: finalFormData,
-            results: finalResults.data,
-            billOfMaterials: billOfMaterials
-        };
+    const quoteToSave: Quote = {
+        id: finalProposalId,
+        leadId: leadId,
+        createdAt: quoteId ? getQuoteById(quoteId)!.createdAt : new Date().toISOString(), 
+        formData: formData,
+        results: results,
+        billOfMaterials: billOfMaterials
+    };
 
-        saveQuote(quoteToSave);
+    saveQuote(quoteToSave);
 
-        const historyMessage = quoteId ? `Cotação ${finalProposalId} foi atualizada.` : `Nova cotação ${finalProposalId} foi criada.`;
+    const historyMessage = quoteId ? `Cotação ${finalProposalId} foi atualizada.` : `Nova cotação ${finalProposalId} foi criada.`;
 
-        addHistoryEntry({ 
-            clientId: clienteId, 
-            text: historyMessage, 
-            type: 'log-quote',
-            refId: finalProposalId,
-            quoteInfo: { leadId: leadId, clientId: clienteId }
-        });
-
-        toast({ title: quoteId ? "Cotação Atualizada!" : "Cotação Salva!", description: "A cotação foi salva com sucesso." });
-        router.push(`/crm/${leadId}`);
+    addHistoryEntry({ 
+        clientId: clienteId, 
+        text: historyMessage, 
+        type: 'log-quote',
+        refId: finalProposalId,
+        quoteInfo: { leadId: leadId, clientId: clienteId }
     });
+
+    toast({ title: quoteId ? "Cotação Atualizada!" : "Cotação Salva!", description: "A cotação foi salva com sucesso." });
+    router.push(`/crm/${leadId}`);
   };
 
   const handleGoBackToLead = () => {
@@ -259,6 +267,7 @@ export function Wizard() {
     update(index, {
         productId: product.id,
         name: product.name,
+        type: product.type,
         manufacturer: product.technicalSpecifications?.['Fabricante'] || 'N/A',
         cost: product.salePrice,
         unit: product.unit,
@@ -268,7 +277,7 @@ export function Wizard() {
   }
   
   const handleAddNewItem = () => {
-    append({ productId: '', name: '', manufacturer: '', cost: 0, unit: '', quantity: 1 });
+    append({ productId: '', name: '', type: 'OUTRO', manufacturer: '', cost: 0, unit: '', quantity: 1 });
   }
   
   const handleAiRefinement = async () => {
@@ -305,6 +314,7 @@ export function Wizard() {
         return {
             productId: item.produtoId,
             name: item.nomeProduto,
+            type: product?.type || 'OUTRO',
             manufacturer: product?.technicalSpecifications?.['Fabricante'] || 'N/A',
             cost: product?.salePrice || 0,
             unit: product?.unit || 'UN',
@@ -313,11 +323,11 @@ export function Wizard() {
     });
 
     if(service) {
-      bomFromAI.push({ productId: service.id, name: service.name, manufacturer: 'N/A', cost: service.salePrice, unit: service.unit, quantity: 1 });
+      bomFromAI.push({ productId: service.id, name: service.name, type: service.type, manufacturer: 'N/A', cost: service.salePrice, unit: service.unit, quantity: 1 });
     }
     
     methods.setValue('billOfMaterials', bomFromAI);
-    setRefinedSuggestion(null); // Fecha o dialog
+    setRefinedSuggestion(null);
     
     toast({
         title: "Sugestão Aplicada!",
@@ -408,16 +418,16 @@ export function Wizard() {
                                         <FormField
                                                 control={methods.control}
                                                 name={`billOfMaterials.${index}.name`}
-                                                render={({ field }) => (
+                                                render={({ field: formField }) => (
                                                     <Popover open={openCombobox === index} onOpenChange={(isOpen) => setOpenCombobox(isOpen ? index : null)}>
                                                         <PopoverTrigger asChild>
                                                             <FormControl>
                                                                 <Button
                                                                     variant="outline"
                                                                     role="combobox"
-                                                                    className={cn("w-full justify-between font-normal", !field.value && "text-muted-foreground")}
+                                                                    className={cn("w-full justify-between font-normal", !formField.value && "text-muted-foreground")}
                                                                 >
-                                                                    {field.value ? inventory.find((item) => item.name === field.value)?.name : "Selecione um produto"}
+                                                                    {formField.value || "Selecione um produto"}
                                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                                 </Button>
                                                             </FormControl>
@@ -434,7 +444,7 @@ export function Wizard() {
                                                                                 key={item.id}
                                                                                 onSelect={() => onProductSelect(item, index)}
                                                                             >
-                                                                                <Check className={cn("mr-2 h-4 w-4", item.name === field.value ? "opacity-100" : "opacity-0")}/>
+                                                                                <Check className={cn("mr-2 h-4 w-4", item.name === formField.value ? "opacity-100" : "opacity-0")}/>
                                                                                 {item.name}
                                                                             </CommandItem>
                                                                         ))}

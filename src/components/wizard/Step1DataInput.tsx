@@ -42,7 +42,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <FormField
               control={form.control}
-              name="consumo_mensal_kwh"
+              name="calculationInput.consumo_mensal_kwh"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Consumo médio mensal (kWh) *</FormLabel>
@@ -55,7 +55,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
             />
             <FormField
               control={form.control}
-              name="valor_medio_fatura_reais"
+              name="calculationInput.valor_medio_fatura_reais"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Valor médio da fatura (R$) *</FormLabel>
@@ -68,7 +68,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
             />
             <FormField
                 control={form.control}
-                name="rede_fases"
+                name="calculationInput.rede_fases"
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Tipo de Rede *</FormLabel>
@@ -92,7 +92,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
             />
              <FormField
                 control={form.control}
-                name="irradiacao_psh_kwh_m2_dia"
+                name="calculationInput.irradiacao_psh_kwh_m2_dia"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Irradiação Solar Local (PSH) *</FormLabel>
@@ -105,7 +105,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
               />
               <FormField
                 control={form.control}
-                name="cip_iluminacao_publica_reais"
+                name="calculationInput.cip_iluminacao_publica_reais"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Taxa de Iluminação Pública (R$)</FormLabel>
@@ -125,69 +125,26 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                 </AccordionTrigger>
                 <AccordionContent>
                     <div className="space-y-6 pt-4">
-                        {/* Módulos */}
                         <div className="p-4 border rounded-md">
-                            <h4 className="font-medium mb-4 text-foreground">Detalhes dos Módulos</h4>
+                             <h4 className="font-medium mb-4 text-foreground">Parâmetros de Perdas e Custos Adicionais</h4>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <FormField control={form.control} name="potencia_modulo_wp" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Potência do Módulo (Wp)</FormLabel>
-                                        <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
-                                        <FormMessage />
-                                    </FormItem>
-                                )}/>
-                                <FormField control={form.control} name="preco_modulo_reais" render={({ field }) => (
-                                     <FormItem>
-                                        <FormLabel>Preço por Módulo (R$)</FormLabel>
-                                        <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
-                                        <FormMessage />
-                                    </FormItem>
-                                )}/>
-                            </div>
-                        </div>
-
-                        {/* Inversor */}
-                        <div className="p-4 border rounded-md">
-                            <h4 className="font-medium mb-4 text-foreground">Detalhes do Inversor</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <FormField control={form.control} name="custo_inversor_reais" render={({ field }) => (
-                                     <FormItem>
-                                        <FormLabel>Custo do Inversor (R$)</FormLabel>
-                                        <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
-                                        <FormMessage />
-                                    </FormItem>
-                                )}/>
-                                <FormField control={form.control} name="eficiencia_inversor_percent" render={({ field }) => (
-                                     <FormItem>
-                                        <FormLabel>Eficiência do Inversor (%)</FormLabel>
-                                        <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
-                                        <FormMessage />
-                                    </FormItem>
-                                )}/>
-                                 <FormField control={form.control} name="quantidade_inversores" render={({ field }) => (
-                                     <FormItem>
-                                        <FormLabel>Quantidade de Inversores</FormLabel>
-                                        <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
-                                        <FormMessage />
-                                    </FormItem>
-                                )}/>
-                            </div>
-                        </div>
-
-                        {/* Custos e Perdas */}
-                        <div className="p-4 border rounded-md">
-                             <h4 className="font-medium mb-4 text-foreground">Custos e Perdas do Sistema</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                               <FormField control={form.control} name="fator_perdas_percent" render={({ field }) => (
+                               <FormField control={form.control} name="calculationInput.fator_perdas_percent" render={({ field }) => (
                                      <FormItem>
                                         <FormLabel>Fator de Perdas (%)</FormLabel>
                                         <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
                                         <FormMessage />
                                     </FormItem>
                                 )}/>
-                                <FormField control={form.control} name="custo_fixo_instalacao_reais" render={({ field }) => (
+                                 <FormField control={form.control} name="calculationInput.custo_om_anual_reais" render={({ field }) => (
                                      <FormItem>
-                                        <FormLabel>Custo de Instalação (R$)</FormLabel>
+                                        <FormLabel>Custo O&M Anual (R$)</FormLabel>
+                                        <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                                        <FormMessage />
+                                    </FormItem>
+                                )}/>
+                                <FormField control={form.control} name="calculationInput.meta_compensacao_percent" render={({ field }) => (
+                                     <FormItem>
+                                        <FormLabel>Meta de Compensação (%)</FormLabel>
                                         <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
                                         <FormMessage />
                                     </FormItem>
@@ -200,9 +157,9 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
         </Accordion>
 
         <div className="flex justify-end pt-6">
-            <Button type="submit" size="lg" disabled={isLoading}>
-                {isLoading && <Calculator className="mr-2 h-5 w-5 animate-spin" />}
-                {!isLoading && <><Calculator className="mr-2 h-5 w-5" /> Calcular e Adicionar</>}
+            <Button type="submit" size="lg" disabled={isLoading} className="bg-transparent hover:bg-transparent text-transparent">
+                {/* This button is hidden, form is submitted by parent */}
+                Calcular e Adicionar
             </Button>
         </div>
     </div>
