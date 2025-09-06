@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 const productFormSchema = z.object({
   name: z.string().min(1, "O nome do produto é obrigatório."),
+  fabricante: z.string().optional(),
   type: z.enum(Object.keys(PRODUCT_TYPES) as [ProductType, ...ProductType[]], {
       errorMap: () => ({ message: 'Selecione um tipo de produto válido.'})
   }),
@@ -52,6 +53,7 @@ export default function ProductForm() {
     resolver: zodResolver(productFormSchema),
     defaultValues: {
       name: "",
+      fabricante: "",
       type: "OUTRO",
       salePrice: 0,
       unit: "UN",
@@ -66,7 +68,11 @@ export default function ProductForm() {
     if (isEditing) {
       const existingProduct = getProductById(productId);
       if (existingProduct) {
-        form.reset(existingProduct);
+        const formData: ProductFormData = {
+            ...existingProduct,
+            fabricante: existingProduct.technicalSpecifications?.['Fabricante'] || '',
+        };
+        form.reset(formData);
         if (existingProduct.technicalSpecifications) {
             setSpecifications(existingProduct.technicalSpecifications);
         }
@@ -83,10 +89,23 @@ export default function ProductForm() {
   const onSubmit = (data: ProductFormData) => {
     setIsSaving(true);
     
+    // Combine base specs with dynamic ones
+    const finalSpecifications = { ...specifications };
+    if (data.fabricante) {
+        finalSpecifications['Fabricante'] = data.fabricante;
+    } else {
+        delete finalSpecifications['Fabricante'];
+    }
+
     const productToSave: Product = {
       id: isEditing ? productId : `prod-${Date.now()}`,
-      ...data,
-      technicalSpecifications: specifications
+      name: data.name,
+      type: data.type,
+      salePrice: data.salePrice,
+      unit: data.unit,
+      description: data.description,
+      internalNotes: data.internalNotes,
+      technicalSpecifications: finalSpecifications,
     };
     
     saveProduct(productToSave);
@@ -151,6 +170,10 @@ export default function ProductForm() {
                                     {form.formState.errors.name && <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>}
                                 </div>
                                  <div className="space-y-1">
+                                    <Label htmlFor="fabricante">Fabricante</Label>
+                                    <Input id="fabricante" placeholder="Ex: Tongwei, Growatt" {...form.register("fabricante")} />
+                                </div>
+                                 <div className="space-y-1">
                                     <Label>Tipo de Produto *</Label>
                                     <Select onValueChange={(value: ProductType) => form.setValue('type', value)} defaultValue={form.getValues('type')}>
                                         <SelectTrigger>
@@ -196,10 +219,6 @@ export default function ProductForm() {
                             <div className="space-y-1">
                                 <Label htmlFor="internalNotes">Notas Internas</Label>
                                 <Textarea id="internalNotes" placeholder="Notas visíveis apenas para a sua equipe." {...form.register("internalNotes")} />
-                            </div>
-                             <div className="space-y-1">
-                                <Label htmlFor="specs">Especificações Adicionais</Label>
-                                <Textarea id="specs" placeholder="Ex: Fabricante: Growatt, Garantia: 10 anos" value={specifications['notas'] || ''} onChange={e => handleSpecChange('notas', e.target.value)} />
                             </div>
                         </CardContent>
                     </Card>
