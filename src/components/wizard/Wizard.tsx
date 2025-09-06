@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useForm, FormProvider } from "react-hook-form";
+import { useForm, FormProvider, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams, useRouter } from 'next/navigation'
 import type { z } from "zod";
@@ -275,9 +275,6 @@ export function Wizard() {
                         <CardTitle className="font-headline">Lista de Materiais</CardTitle>
                         <CardDescription>Insumos que irão compor a proposta comercial.</CardDescription>
                     </div>
-                    <Button type="button">
-                        <Plus className="mr-2"/> Adicionar Item
-                    </Button>
                 </div>
               </CardHeader>
               <CardContent>
