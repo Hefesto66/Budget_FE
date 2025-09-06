@@ -197,14 +197,20 @@ export default function ProductForm() {
                             {productType === 'PAINEL_SOLAR' && (
                                 <div className="space-y-1">
                                     <Label htmlFor="spec-potencia">Potência (Wp)</Label>
-                                    <Input id="spec-potencia" type="number" placeholder="Ex: 550" value={specifications['Potência'] || ''} onChange={e => handleSpecChange('Potência', e.target.value)} />
+                                    <Input id="spec-potencia" type="number" placeholder="Ex: 550" value={specifications['Potência (Wp)'] || ''} onChange={e => handleSpecChange('Potência (Wp)', e.target.value)} />
                                 </div>
                             )}
 
                              {productType === 'INVERSOR' && (
-                                <div className="space-y-1">
-                                    <Label htmlFor="spec-eficiencia">Eficiência (%)</Label>
-                                    <Input id="spec-eficiencia" type="number" placeholder="Ex: 97.5" value={specifications['Eficiência'] || ''} onChange={e => handleSpecChange('Eficiência', e.target.value)} />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-1">
+                                        <Label htmlFor="spec-potencia-inversor">Potência de Saída (kW)</Label>
+                                        <Input id="spec-potencia-inversor" type="number" placeholder="Ex: 5" value={specifications['Potência de Saída (kW)'] || ''} onChange={e => handleSpecChange('Potência de Saída (kW)', e.target.value)} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="spec-eficiencia">Eficiência (%)</Label>
+                                        <Input id="spec-eficiencia" type="number" placeholder="Ex: 97.5" value={specifications['Eficiência (%)'] || ''} onChange={e => handleSpecChange('Eficiência (%)', e.target.value)} />
+                                    </div>
                                 </div>
                             )}
                             

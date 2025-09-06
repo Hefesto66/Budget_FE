@@ -69,23 +69,23 @@ const defaultValues: SolarCalculationInput = {
     concessionaria: "Equatorial GO",
     rede_fases: "mono",
     irradiacao_psh_kwh_m2_dia: 5.7,
-    potencia_modulo_wp: 550,
-    preco_modulo_reais: 0,
-    quantidade_modulos: 0,
-    eficiencia_inversor_percent: 97,
-    custo_inversor_reais: 0,
-    quantidade_inversores: 1,
-    custo_fixo_instalacao_reais: 0,
     fator_perdas_percent: 20,
     custo_om_anual_reais: 150,
     meta_compensacao_percent: 100,
-    custo_sistema_reais: 0, 
+    potencia_modulo_wp: 550,
+    quantidade_modulos: 10,
+    eficiencia_inversor_percent: 97,
+    custo_inversor_reais: 4500,
+    quantidade_inversores: 1,
+    custo_fixo_instalacao_reais: 2000,
+    preco_modulo_reais: 750,
+    custo_sistema_reais: 0,
     salespersonId: "",
     paymentTermId: "",
     priceListId: "",
     modelo_inversor: "",
     fabricante_inversor: "",
-    potencia_inversor_kw: 0,
+    potencia_inversor_kw: 5,
     tensao_inversor_v: 0,
     garantia_inversor_anos: 0,
     fabricante_modulo: "",
@@ -156,7 +156,7 @@ export function Wizard() {
           return;
       }
 
-      let initialData: SolarCalculationInput = { ...defaultValues };
+      let initialData: Partial<SolarCalculationInput> = {};
       let clientToSet: any = null;
       let bomToSet: any[] = [];
       let loadedResults: SolarCalculationResult | null = null;
@@ -165,7 +165,7 @@ export function Wizard() {
         setProposalId(quoteId);
         const existingQuote = getQuoteById(quoteId);
         if (existingQuote) {
-          initialData = { ...defaultValues, ...existingQuote.formData };
+          initialData = existingQuote.formData;
           loadedResults = existingQuote.results;
           if (existingQuote.billOfMaterials) {
             bomToSet = existingQuote.billOfMaterials;
@@ -217,7 +217,7 @@ export function Wizard() {
         return;
     }
     if (!inverterItem) {
-        toast({ title: "Item Faltando", description: "A lista de materiais precisa conter pelo menos um item do tipo 'Inversor'.", variant: "destructive" });
+        toast({ title: "Item Faltando", description: "A lista de materiais precisa conter um item do tipo 'Inversor'.", variant: "destructive" });
         setIsLoading(false);
         return;
     }
@@ -232,46 +232,61 @@ export function Wizard() {
     
     if (!panelProduct) {
          toast({ title: "Erro de Produto", description: `Painel Solar "${panelItem.name}" não foi encontrado no inventário. Verifique a lista.`, variant: "destructive" });
+         console.error("Failed to find panel product with ID:", panelItem.productId);
         setIsLoading(false);
         return;
     }
      if (!inverterProduct) {
          toast({ title: "Erro de Produto", description: `Inversor "${inverterItem.name}" não foi encontrado no inventário. Verifique a lista.`, variant: "destructive" });
+         console.error("Failed to find inverter product with ID:", inverterItem.productId);
         setIsLoading(false);
         return;
     }
 
     const totalCostFromBom = bom.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
     
+    const panelPower = parseFloat(panelProduct.technicalSpecifications?.['Potência (Wp)'] || '0');
+    const inverterEfficiency = parseFloat(inverterProduct.technicalSpecifications?.['Eficiência (%)'] || '0');
+    const inverterPower = parseFloat(inverterProduct.technicalSpecifications?.['Potência de Saída (kW)'] || '0');
+
+    if (panelPower === 0) {
+        toast({ title: "Dado Faltando", description: `O produto "${panelProduct.name}" não tem a especificação "Potência (Wp)".`, variant: "destructive" });
+        setIsLoading(false); return;
+    }
+    if (inverterEfficiency === 0) {
+        toast({ title: "Dado Faltando", description: `O produto "${inverterProduct.name}" não tem a especificação "Eficiência (%)".`, variant: "destructive" });
+        setIsLoading(false); return;
+    }
+    if (inverterPower === 0) {
+        toast({ title: "Dado Faltando", description: `O produto "${inverterProduct.name}" não tem a especificação "Potência de Saída (kW)".`, variant: "destructive" });
+        setIsLoading(false); return;
+    }
+
     const calculationData: SolarCalculationInput = {
         ...data.calculationInput,
         custo_sistema_reais: totalCostFromBom,
         quantidade_modulos: panelItem.quantity,
         preco_modulo_reais: panelItem.cost,
-        potencia_modulo_wp: parseFloat(panelProduct.technicalSpecifications?.['Potência'] || '550'),
+        potencia_modulo_wp: panelPower,
         fabricante_modulo: panelProduct.technicalSpecifications?.['Fabricante'] || 'N/A',
         garantia_defeito_modulo_anos: 12, 
         garantia_geracao_modulo_anos: 25, 
         quantidade_inversores: inverterItem.quantity,
         custo_inversor_reais: inverterItem.cost,
-        eficiencia_inversor_percent: parseFloat(inverterProduct.technicalSpecifications?.['Eficiência'] || '97'),
+        eficiencia_inversor_percent: inverterEfficiency,
         fabricante_inversor: inverterProduct.technicalSpecifications?.['Fabricante'] || 'N/A',
         modelo_inversor: inverterProduct.name,
-        potencia_inversor_kw: parseFloat(inverterProduct.technicalSpecifications?.['Potência'] || '5'),
+        potencia_inversor_kw: inverterPower,
         tensao_inversor_v: 220, 
         garantia_inversor_anos: 5, 
         custo_fixo_instalacao_reais: serviceItem.cost,
     };
     
-    console.log("================ DATA SENT TO CALCULATION ================");
-    console.log(JSON.stringify(calculationData, null, 2));
-    console.log("========================================================");
-
+    console.log("[DEBUG] Data sent to calculation:", JSON.stringify(calculationData, null, 2));
+    
     const result = await getCalculation(calculationData);
     
-    console.log("============== RESPONSE FROM CALCULATION ==============");
-    console.log(JSON.stringify(result, null, 2));
-    console.log("========================================================");
+    console.log("[DEBUG] Response from calculation:", JSON.stringify(result, null, 2));
 
     setIsLoading(false);
 
