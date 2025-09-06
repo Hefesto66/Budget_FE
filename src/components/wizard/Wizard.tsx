@@ -70,12 +70,12 @@ const defaultValues: SolarCalculationInput = {
     rede_fases: "mono",
     irradiacao_psh_kwh_m2_dia: 5.7,
     potencia_modulo_wp: 550,
-    preco_modulo_reais: 0, // Vem da BOM
-    quantidade_modulos: 0, // Vem da BOM
+    preco_modulo_reais: 0,
+    quantidade_modulos: 0,
     eficiencia_inversor_percent: 97,
-    custo_inversor_reais: 0, // Vem da BOM
-    quantidade_inversores: 1, // Vem da BOM
-    custo_fixo_instalacao_reais: 0, // Vem da BOM
+    custo_inversor_reais: 0,
+    quantidade_inversores: 1,
+    custo_fixo_instalacao_reais: 0,
     fator_perdas_percent: 20,
     custo_om_anual_reais: 150,
     meta_compensacao_percent: 100,
@@ -145,8 +145,8 @@ export function Wizard() {
 
       if (draftData) {
           methods.reset({
-            ...{ calculationInput: defaultValues, billOfMaterials: [] }, // Start with full defaults
-            ...draftData.formData // Overlay with draft data
+            calculationInput: { ...defaultValues, ...(draftData.formData?.calculationInput || {}) },
+            billOfMaterials: draftData.formData?.billOfMaterials || [],
           });
           if (draftData.results) setResults(draftData.results);
           if (draftData.clientData) setClientData(draftData.clientData);
@@ -165,7 +165,6 @@ export function Wizard() {
         setProposalId(quoteId);
         const existingQuote = getQuoteById(quoteId);
         if (existingQuote) {
-          // Merge existing data with defaults to prevent uncontrolled inputs
           initialData = { ...defaultValues, ...existingQuote.formData };
           loadedResults = existingQuote.results;
           if (existingQuote.billOfMaterials) {
@@ -204,26 +203,50 @@ export function Wizard() {
     setIsLoading(true);
 
     const bom = data.billOfMaterials;
-    const panel = bom.find(item => item.type === 'PAINEL_SOLAR');
-    const inverter = bom.find(item => item.type === 'INVERSOR');
-    const service = bom.find(item => item.type === 'SERVICO');
+    const panelItem = bom.find(item => item.type === 'PAINEL_SOLAR');
+    const inverterItem = bom.find(item => item.type === 'INVERSOR');
+    const serviceItem = bom.find(item => item.type === 'SERVICO');
 
-    if (!panel || !inverter || !service) {
+    if (!panelItem || !inverterItem || !serviceItem) {
         toast({ title: "Itens Faltando", description: "A lista de materiais precisa conter pelo menos um Painel Solar, um Inversor e um item de Serviço.", variant: "destructive" });
         setIsLoading(false);
         return;
     }
     
-    const panelProduct = getProductById(panel.productId);
-    const inverterProduct = getProductById(inverter.productId);
+    const panelProduct = getProductById(panelItem.productId);
+    const inverterProduct = getProductById(inverterItem.productId);
     const totalCostFromBom = bom.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
+
+    if (!panelProduct || !inverterProduct) {
+         toast({ title: "Erro de Produto", description: "O painel solar ou o inversor selecionado não foi encontrado no inventário.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+    }
     
     const calculationData: SolarCalculationInput = {
         ...data.calculationInput,
-        potencia_modulo_wp: parseFloat(panelProduct?.technicalSpecifications?.['Potência'] || '0') || data.calculationInput.potencia_modulo_wp,
-        eficiencia_inversor_percent: parseFloat(inverterProduct?.technicalSpecifications?.['Eficiência'] || '0') || data.calculationInput.eficiencia_inversor_percent,
         custo_sistema_reais: totalCostFromBom,
-        quantidade_modulos: panel.quantity
+        
+        // Populate from Panel
+        quantidade_modulos: panelItem.quantity,
+        preco_modulo_reais: panelItem.cost,
+        potencia_modulo_wp: parseFloat(panelProduct.technicalSpecifications?.['Potência'] || '550'),
+        fabricante_modulo: panelProduct.technicalSpecifications?.['Fabricante'],
+        garantia_defeito_modulo_anos: 12, // Exemplo, idealmente viria do produto
+        garantia_geracao_modulo_anos: 25, // Exemplo, idealmente viria do produto
+
+        // Populate from Inverter
+        quantidade_inversores: inverterItem.quantity,
+        custo_inversor_reais: inverterItem.cost,
+        eficiencia_inversor_percent: parseFloat(inverterProduct.technicalSpecifications?.['Eficiência'] || '97'),
+        fabricante_inversor: inverterProduct.technicalSpecifications?.['Fabricante'],
+        modelo_inversor: inverterProduct.name, // Usar nome do produto como modelo
+        potencia_inversor_kw: 5, // Exemplo, idealmente viria do produto
+        tensao_inversor_v: 220, // Exemplo, idealmente viria do produto
+        garantia_inversor_anos: 5, // Exemplo, idealmente viria do produto
+
+        // Populate from Service
+        custo_fixo_instalacao_reais: serviceItem.cost,
     };
     
     const result = await getCalculation(calculationData);
