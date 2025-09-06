@@ -214,38 +214,38 @@ export function Wizard() {
     }
     
     const panelProduct = getProductById(panelItem.productId);
-    const inverterProduct = getProductById(inverterItem.productId);
-    const totalCostFromBom = bom.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
-
-    if (!panelProduct || !inverterProduct) {
-         toast({ title: "Erro de Produto", description: "O painel solar ou o inversor selecionado não foi encontrado no inventário.", variant: "destructive" });
+    if (!panelProduct) {
+         toast({ title: "Erro de Produto", description: `Painel Solar "${panelItem.name}" não encontrado no inventário. Verifique a lista.`, variant: "destructive" });
         setIsLoading(false);
         return;
     }
+
+    const inverterProduct = getProductById(inverterItem.productId);
+    if (!inverterProduct) {
+         toast({ title: "Erro de Produto", description: `Inversor "${inverterItem.name}" não encontrado no inventário. Verifique a lista.`, variant: "destructive" });
+        setIsLoading(false);
+        return;
+    }
+
+    const totalCostFromBom = bom.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
     
     const calculationData: SolarCalculationInput = {
         ...data.calculationInput,
         custo_sistema_reais: totalCostFromBom,
-        
-        // Populate from Panel
         quantidade_modulos: panelItem.quantity,
         preco_modulo_reais: panelItem.cost,
         potencia_modulo_wp: parseFloat(panelProduct.technicalSpecifications?.['Potência'] || '550'),
-        fabricante_modulo: panelProduct.technicalSpecifications?.['Fabricante'],
-        garantia_defeito_modulo_anos: 12, // Exemplo, idealmente viria do produto
-        garantia_geracao_modulo_anos: 25, // Exemplo, idealmente viria do produto
-
-        // Populate from Inverter
+        fabricante_modulo: panelProduct.technicalSpecifications?.['Fabricante'] || 'N/A',
+        garantia_defeito_modulo_anos: 12,
+        garantia_geracao_modulo_anos: 25,
         quantidade_inversores: inverterItem.quantity,
         custo_inversor_reais: inverterItem.cost,
         eficiencia_inversor_percent: parseFloat(inverterProduct.technicalSpecifications?.['Eficiência'] || '97'),
-        fabricante_inversor: inverterProduct.technicalSpecifications?.['Fabricante'],
-        modelo_inversor: inverterProduct.name, // Usar nome do produto como modelo
-        potencia_inversor_kw: 5, // Exemplo, idealmente viria do produto
-        tensao_inversor_v: 220, // Exemplo, idealmente viria do produto
-        garantia_inversor_anos: 5, // Exemplo, idealmente viria do produto
-
-        // Populate from Service
+        fabricante_inversor: inverterProduct.technicalSpecifications?.['Fabricante'] || 'N/A',
+        modelo_inversor: inverterProduct.name,
+        potencia_inversor_kw: 5,
+        tensao_inversor_v: 220,
+        garantia_inversor_anos: 5,
         custo_fixo_instalacao_reais: serviceItem.cost,
     };
     
@@ -349,7 +349,7 @@ export function Wizard() {
       currentStep
     };
     sessionStorage.setItem(DRAFT_QUOTE_SESSION_KEY, JSON.stringify(draftData));
-    router.push(`/inventario`);
+    router.push(`/inventario/${productId}`);
   };
 
   
@@ -682,7 +682,5 @@ export function Wizard() {
     </div>
   );
 }
-
-    
 
     
