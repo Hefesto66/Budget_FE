@@ -47,7 +47,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                 <FormItem>
                   <FormLabel>Consumo médio mensal (kWh) *</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="ex: 500" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))}/>
+                    <Input type="number" placeholder="ex: 500" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value, 10))}/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -60,7 +60,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                 <FormItem>
                   <FormLabel>Valor médio da fatura (R$) *</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="ex: 450.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value))}/>
+                    <Input type="number" placeholder="ex: 450.00" {...field} value={field.value || 0} onChange={e => field.onChange(parseFloat(e.target.value))}/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -97,7 +97,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                   <FormItem>
                     <FormLabel>Irradiação Solar Local (PSH) *</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="ex: 5.7" {...field} onChange={e => field.onChange(parseFloat(e.target.value))}/>
+                      <Input type="number" placeholder="ex: 5.7" {...field} value={field.value || 0} onChange={e => field.onChange(parseFloat(e.target.value))}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -110,7 +110,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                   <FormItem>
                     <FormLabel>Taxa de Iluminação Pública (R$)</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="ex: 25.50" {...field} onChange={e => field.onChange(parseFloat(e.target.value))}/>
+                      <Input type="number" placeholder="ex: 25.50" {...field} value={field.value || 0} onChange={e => field.onChange(parseFloat(e.target.value))}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -128,42 +128,42 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                        <FormField control={form.control} name="calculationInput.potencia_modulo_wp" render={({ field }) => (
                            <FormItem>
                               <FormLabel>Potência por Módulo (Wp)</FormLabel>
-                              <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                              <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
                               <FormMessage />
                           </FormItem>
                       )}/>
                        <FormField control={form.control} name="calculationInput.quantidade_modulos" render={({ field }) => (
                            <FormItem>
                               <FormLabel>Quantidade de Módulos</FormLabel>
-                              <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                              <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
                               <FormMessage />
                           </FormItem>
                       )}/>
                        <FormField control={form.control} name="calculationInput.eficiencia_inversor_percent" render={({ field }) => (
                            <FormItem>
                               <FormLabel>Eficiência do Inversor (%)</FormLabel>
-                              <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                              <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
                               <FormMessage />
                           </FormItem>
                       )}/>
                        <FormField control={form.control} name="calculationInput.fator_perdas_percent" render={({ field }) => (
                              <FormItem>
                                 <FormLabel>Fator de Perdas (%)</FormLabel>
-                                <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                                <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
                                 <FormMessage />
                             </FormItem>
                         )}/>
                          <FormField control={form.control} name="calculationInput.custo_om_anual_reais" render={({ field }) => (
                              <FormItem>
                                 <FormLabel>Custo O&M Anual (R$)</FormLabel>
-                                <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                                <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
                                 <FormMessage />
                             </FormItem>
                         )}/>
                         <FormField control={form.control} name="calculationInput.meta_compensacao_percent" render={({ field }) => (
                              <FormItem>
                                 <FormLabel>Meta de Compensação (%)</FormLabel>
-                                <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                                <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
                                 <FormMessage />
                             </FormItem>
                         )}/>
