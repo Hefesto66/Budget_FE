@@ -114,6 +114,9 @@ export function Wizard() {
   const [inventory, setInventory] = useState<Product[]>([]);
   const [openCombobox, setOpenCombobox] = useState<number | null>(null);
 
+  const watchedBOM = useWatch({ control: methods.control, name: 'billOfMaterials' });
+  const totalCost = watchedBOM.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
+
 
   useEffect(() => {
     // Load inventory
@@ -258,8 +261,6 @@ export function Wizard() {
     return <div className="flex items-center justify-center h-64">Carregando Orçamento...</div>;
   }
   
-  const watchedBOM = useWatch({ control: methods.control, name: 'billOfMaterials' });
-  const totalCost = watchedBOM.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
@@ -457,5 +458,3 @@ export function Wizard() {
     </div>
   );
 }
-
-    
