@@ -7,21 +7,7 @@
 
 import { ai } from '@/ai/genkit';
 import { solarCalculationSchema, type SolarCalculationInput } from '@/types';
-
-// Mock database for tariffs and irradiation. In a real app, this would be Firestore.
-const TARIFF_DATA: Record<string, any> = {
-    'Equatorial GO': {
-        residencial: {
-            // Placeholder: In a real app, this would be more detailed.
-            // For now, we derive it from user input.
-        }
-    },
-    'CHESP': {
-        residencial: {
-            // Placeholder
-        }
-    }
-};
+import { z } from 'zod';
 
 const DISPONIBILITY_COST_KWH: Record<string, number> = {
     mono: 30,
@@ -40,94 +26,98 @@ const calculateSolarFlow = ai.defineFlow(
     // Output schema is defined implicitly by the return type
   },
   async (data) => {
-    // 1. Calculate effective tariff from user input
+    // 1. Validate Inputs & Apply Defaults
+    if (!data.consumo_mensal_kwh || data.consumo_mensal_kwh <= 0) {
+      throw new Error("O consumo mensal (kWh) é um dado essencial e deve ser maior que zero.");
+    }
+    
+    const assumptions = {
+      eficiencia_inversor: (data.eficiencia_inversor_percent ?? 97) / 100,
+      fator_perdas: (data.fator_perdas_percent ?? 20) / 100,
+      psh_h_dia: data.irradiacao_psh_kwh_m2_dia,
+      dc_ac_ratio_default: 1.2
+    };
+
+    // 2. Calculate System Efficiency
+    const eficiencia_sistema = assumptions.eficiencia_inversor * (1 - assumptions.fator_perdas);
+
+    // 3. Determine Required System Size
+    const energia_necessaria_diaria_kwh = data.consumo_mensal_kwh / 30;
+    const potencia_pico_requerida_kw = energia_necessaria_diaria_kwh / (assumptions.psh_h_dia * eficiencia_sistema);
+    
+    // 4. Determine Number of Panels
+    let quantidade_modulos = data.quantidade_modulos;
+    if (!quantidade_modulos) {
+        if (!data.potencia_modulo_wp || data.potencia_modulo_wp <= 0) {
+            throw new Error("A potência do módulo (Wp) é necessária para dimensionar o sistema.");
+        }
+        quantidade_modulos = Math.ceil((potencia_pico_requerida_kw * 1000) / data.potencia_modulo_wp);
+    }
+     if (quantidade_modulos < 1) quantidade_modulos = 1;
+
+    // 5. Calculate Final System Specs
+    const potencia_modulo_kw = (data.potencia_modulo_wp || 550) / 1000;
+    const potencia_pico_final_kw = potencia_modulo_kw * quantidade_modulos;
+
+    // 6. Calculate Energy Generation
+    const geracao_diaria_kwh = potencia_pico_final_kw * assumptions.psh_h_dia * eficiencia_sistema;
+    const geracao_media_mensal_kwh = geracao_diaria_kwh * 30;
+
+    // 7. Calculate Financials
     const tarifa_energia_reais_kwh = data.valor_medio_fatura_reais / data.consumo_mensal_kwh;
     const tarifa_final_reais_kwh = tarifa_energia_reais_kwh + data.adicional_bandeira_reais_kwh;
-
-    // 2. Calculate Costs Before Solar
+    
     const conta_antes_reais = data.valor_medio_fatura_reais;
-
-    // 3. System Sizing & Efficiency
-    const consumo_anual_kwh = data.consumo_mensal_kwh * 12;
-    // Effective efficiency: inverter efficiency reduced by system losses
-    const eficiencia_efetiva_sistema = (data.eficiencia_inversor_percent / 100) * (1 - (data.fator_perdas_percent / 100));
-
-    // Energy produced per panel per month
-    const energia_produzida_por_modulo_mes_kwh = (data.potencia_modulo_wp / 1000) * data.irradiacao_psh_kwh_m2_dia * 30 * eficiencia_efetiva_sistema;
     
-    // Determine number of panels
-    let quantidade_modulos = data.quantidade_modulos ?? Math.ceil(data.consumo_mensal_kwh / energia_produzida_por_modulo_mes_kwh);
-    if (quantidade_modulos < 1) quantidade_modulos = 1;
-
-    // Total system power
-    const potencia_sistema_kwp = (quantidade_modulos * data.potencia_modulo_wp) / 1000;
-    
-    // 4. Generation Calculation
-    const geracao_media_mensal_kwh = energia_produzida_por_modulo_mes_kwh * quantidade_modulos;
-
-    // 5. Compensable Energy Calculation
     const custo_disponibilidade_kwh = DISPONIBILITY_COST_KWH[data.rede_fases];
-    
-    const parcela_consumo_compensavel_kwh = Math.max(0, data.consumo_mensal_kwh - custo_disponibilidade_kwh);
-    const meta_compensacao_kwh = parcela_consumo_compensavel_kwh * (data.meta_compensacao_percent / 100);
-    const energia_compensada_kwh = Math.min(geracao_media_mensal_kwh, meta_compensacao_kwh);
-
-    // 6. Calculate Costs After Solar
+    const energia_compensada_kwh = Math.min(geracao_media_mensal_kwh, Math.max(0, data.consumo_mensal_kwh - custo_disponibilidade_kwh));
     const consumo_nao_compensado_kwh = data.consumo_mensal_kwh - energia_compensada_kwh;
-    
-    // The bill after solar is the cost of non-compensated energy + availability cost + public lighting tax.
-    const custo_disponibilidade_reais = custo_disponibilidade_kwh * tarifa_final_reais_kwh;
-    // We assume the non-compensated part includes the availability cost.
-    const consumo_faturado_com_gd_reais = consumo_nao_compensado_kwh * tarifa_final_reais_kwh;
-    
-    // Ensure the billed consumption isn't negative and add the fixed costs
-    const conta_depois_reais = Math.max(custo_disponibilidade_reais, consumo_faturado_com_gd_reais) + data.cip_iluminacao_publica_reais;
 
-    // 7. Savings and Financial Analysis
+    const custo_disponibilidade_reais = custo_disponibilidade_kwh * tarifa_final_reais_kwh;
+    const consumo_faturado_com_gd_reais = consumo_nao_compensado_kwh * tarifa_final_reais_kwh;
+
+    const conta_depois_reais = Math.max(custo_disponibilidade_reais, consumo_faturado_com_gd_reais) + data.cip_iluminacao_publica_reais;
+    
     const economia_mensal_reais = Math.max(0, conta_antes_reais - conta_depois_reais);
     const economia_anual_reais = economia_mensal_reais * 12;
     const economia_primeiro_ano = (economia_mensal_reais * 12) - data.custo_om_anual_reais;
-
-
-    // Estimate system cost if not provided.
-    const custo_modulos = quantidade_modulos * data.preco_modulo_reais;
-    const custo_inversor = data.custo_inversor_reais;
-    const custo_sistema_reais = data.custo_sistema_reais ?? (custo_modulos + custo_inversor + data.custo_fixo_instalacao_reais);
     
+    const custo_sistema_reais = data.custo_sistema_reais ?? (
+        (quantidade_modulos * (data.preco_modulo_reais ?? 0)) + 
+        (data.custo_inversor_reais ?? 0) + 
+        (data.custo_fixo_instalacao_reais ?? 0)
+    );
+
     const payback_simples_anos = economia_anual_reais > 0 ? (custo_sistema_reais / economia_anual_reais) : Infinity;
 
+    // 8. DC/AC Ratio
+    const potencia_inversor_kw = data.potencia_inversor_kw ?? (potencia_pico_final_kw / assumptions.dc_ac_ratio_default);
+    const dc_ac_ratio = potencia_inversor_kw > 0 ? potencia_pico_final_kw / potencia_inversor_kw : 0;
+    
     return {
       parametros_entrada: data,
-      calculos_intermediarios: {
-        tarifa_final_reais_kwh,
-        custo_disponibilidade_kwh,
-        custo_disponibilidade_reais,
-        eficiencia_efetiva_sistema,
-        energia_produzida_por_modulo_mes_kwh,
+      premissas: assumptions,
+      resultados_geracao: {
+        potencia_pico_kw: Number(potencia_pico_final_kw.toFixed(2)),
+        quantidade_modulos: quantidade_modulos,
+        geracao_diaria_kwh: Number(geracao_diaria_kwh.toFixed(2)),
+        geracao_media_mensal_kwh: Number(geracao_media_mensal_kwh.toFixed(2)),
+        eficiencia_sistema: Number(eficiencia_sistema.toFixed(2)),
+        dc_ac_ratio: Number(dc_ac_ratio.toFixed(2))
       },
-      conta_media_mensal_reais: {
-        antes: conta_antes_reais,
-        depois: conta_depois_reais,
+      resultados_financeiros: {
+        conta_media_mensal_reais: {
+            antes: Number(conta_antes_reais.toFixed(2)),
+            depois: Number(conta_depois_reais.toFixed(2)),
+        },
+        economia_mensal_reais: Number(economia_mensal_reais.toFixed(2)),
+        economia_anual_reais: Number(economia_anual_reais.toFixed(2)),
+        economia_primeiro_ano: Number(economia_primeiro_ano.toFixed(2)),
+        payback_simples_anos: isFinite(payback_simples_anos) ? Number(payback_simples_anos.toFixed(1)) : Infinity,
+        custo_total_sistema_reais: Number(custo_sistema_reais.toFixed(2))
       },
-      dimensionamento: {
-        quantidade_modulos,
-        potencia_sistema_kwp,
-      },
-      geracao: {
-        media_mensal_kwh: geracao_media_mensal_kwh,
-      },
-      balanco_energetico: {
-        energia_compensada_kwh,
-        consumo_faturado_apos_gd_kwh: consumo_nao_compensado_kwh,
-        saldo_creditos_mes_kwh: Math.max(0, geracao_media_mensal_kwh - data.consumo_mensal_kwh),
-      },
-      economia_mensal_reais,
-      economia_anual_reais,
-      economia_primeiro_ano,
-      payback_simples_anos,
-      financeiro: {
-          custo_sistema_reais
-      }
+      warnings: [],
+      recommendations: ["Verificar limites de conexão, medição e DC/AC máximo aceito pela concessionária local."]
     };
   }
 );

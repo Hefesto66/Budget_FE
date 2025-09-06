@@ -38,12 +38,12 @@ export const solarCalculationSchema = z.object({
   custo_inversor_reais: z.number().positive().optional(),
 
   // Custos e Perdas
-  fator_perdas_percent: z.number().min(0).max(100).default(20),
+  fator_perdas_percent: z.number().min(0).max(100).optional(),
   custo_fixo_instalacao_reais: z.number().gte(0).optional(),
-  custo_om_anual_reais: z.number().gte(0).default(0),
+  custo_om_anual_reais: z.number().gte(0).optional(),
   
   // Avançado
-  meta_compensacao_percent: z.number().min(0).max(100).default(100),
+  meta_compensacao_percent: z.number().min(0).max(100).optional(),
   custo_sistema_reais: z.number().gte(0).optional(),
   
   // Vendas
