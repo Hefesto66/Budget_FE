@@ -62,6 +62,8 @@ export default function ProductForm() {
     },
   });
 
+  const productType = form.watch("type");
+
   useEffect(() => {
     if (isEditing) {
       const existingProduct = getProductById(productId);
@@ -99,7 +101,7 @@ export default function ProductForm() {
     if (!isEditing) {
         router.push(`/inventario/${productToSave.id}`);
     } else {
-        router.refresh(); // Refresh to show updated data if needed
+        router.refresh(); 
     }
     
     setIsSaving(false);
@@ -120,6 +122,10 @@ export default function ProductForm() {
         return newSpecs;
     });
   }
+
+  const handleSpecChange = (key: string, value: string) => {
+    setSpecifications(prev => ({ ...prev, [key]: value }));
+  };
 
   if (!isProductLoaded) return null;
 
@@ -144,7 +150,6 @@ export default function ProductForm() {
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Main Content */}
                 <div className="lg:col-span-3">
                     <Card className="shadow-lg">
                         <CardHeader>
@@ -157,7 +162,6 @@ export default function ProductForm() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            {/* General Info */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-1">
                                     <Label htmlFor="name">Nome do Produto *</Label>
@@ -189,7 +193,20 @@ export default function ProductForm() {
                                 </div>
                             </div>
                             
-                            {/* Descriptions */}
+                            {productType === 'PAINEL_SOLAR' && (
+                                <div className="space-y-1">
+                                    <Label htmlFor="spec-potencia">Potência (Wp)</Label>
+                                    <Input id="spec-potencia" type="number" placeholder="Ex: 550" value={specifications['Potência'] || ''} onChange={e => handleSpecChange('Potência', e.target.value)} />
+                                </div>
+                            )}
+
+                             {productType === 'INVERSOR' && (
+                                <div className="space-y-1">
+                                    <Label htmlFor="spec-eficiencia">Eficiência (%)</Label>
+                                    <Input id="spec-eficiencia" type="number" placeholder="Ex: 97.5" value={specifications['Eficiência'] || ''} onChange={e => handleSpecChange('Eficiência', e.target.value)} />
+                                </div>
+                            )}
+                            
                             <div className="space-y-1">
                                 <Label htmlFor="description">Descrição Pública</Label>
                                 <Textarea id="description" placeholder="Esta descrição pode aparecer em cotações e outros documentos." {...form.register("description")} />
@@ -199,11 +216,12 @@ export default function ProductForm() {
                                 <Textarea id="internalNotes" placeholder="Notas visíveis apenas para a sua equipe." {...form.register("internalNotes")} />
                             </div>
 
-                            {/* Specifications */}
                              <div className="space-y-4 rounded-lg border p-4">
-                                <h3 className="font-medium">Especificações Técnicas</h3>
+                                <h3 className="font-medium">Outras Especificações Técnicas</h3>
                                 <div className="space-y-2">
-                                {Object.entries(specifications).map(([key, value]) => (
+                                {Object.entries(specifications)
+                                    .filter(([key]) => (productType === 'PAINEL_SOLAR' && key !== 'Potência') || (productType === 'INVERSOR' && key !== 'Eficiência') || !['PAINEL_SOLAR', 'INVERSOR'].includes(productType))
+                                    .map(([key, value]) => (
                                     <div key={key} className="flex items-center gap-2 text-sm">
                                         <Input value={key} disabled className="font-semibold"/>
                                         <Input value={value} disabled />
@@ -216,11 +234,11 @@ export default function ProductForm() {
                                 <div className="flex items-end gap-2">
                                      <div className="flex-1 space-y-1">
                                         <Label htmlFor="new-spec-key">Característica</Label>
-                                        <Input id="new-spec-key" placeholder="Ex: Potência" value={newSpecKey} onChange={e => setNewSpecKey(e.target.value)} />
+                                        <Input id="new-spec-key" placeholder="Ex: Fabricante" value={newSpecKey} onChange={e => setNewSpecKey(e.target.value)} />
                                      </div>
                                       <div className="flex-1 space-y-1">
                                         <Label htmlFor="new-spec-value">Valor</Label>
-                                        <Input id="new-spec-value" placeholder="Ex: 550Wp" value={newSpecValue} onChange={e => setNewSpecValue(e.target.value)} />
+                                        <Input id="new-spec-value" placeholder="Ex: Growatt" value={newSpecValue} onChange={e => setNewSpecValue(e.target.value)} />
                                      </div>
                                     <Button type="button" size="icon" onClick={handleAddSpecification}>
                                         <PlusCircle className="h-5 w-5"/>
@@ -237,3 +255,5 @@ export default function ProductForm() {
     </div>
   );
 }
+
+    
