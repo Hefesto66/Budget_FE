@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { solarCalculationSchema } from "@/types";
 import { Button } from "../ui/button";
 import { ArrowLeft, Save, Sparkles, Calculator, Plus, Trash2, Check, ChevronsUpDown, CheckCircle, Loader2, FileDown, ChevronRight } from "lucide-react";
-import { getLeadById, getQuoteById, saveQuote, generateNewQuoteId, getClientById, addHistoryEntry, getProducts, Product } from "@/lib/storage";
+import { getLeadById, getQuoteById, saveQuote, generateNewQuoteId, getClientById, addHistoryEntry, getProducts, Product, getProductById } from "@/lib/storage";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "../ui/accordion";
 import {
@@ -41,6 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Step1DataInput } from "./Step1DataInput";
 
 
 const wizardSchema = z.object({
@@ -76,18 +77,6 @@ const defaultValues: SolarCalculationInput = {
     paymentTermId: "",
     priceListId: ""
 }
-
-const concessionariaOptions = [
-    { value: "Equatorial GO", label: "Equatorial - GO" },
-    { value: "CHESP", label: "CHESP" },
-];
-
-const phaseOptions = [
-    { value: "mono", label: "Monofásico" },
-    { value: "bi", label: "Bifásico" },
-    { value: "tri", label: "Trifásico" },
-];
-
 
 export function Wizard() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -390,7 +379,7 @@ export function Wizard() {
   const totalCost = watchedBOM.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
   
   if (!isReady) {
-    return <div className="flex items-center justify-center h-64">Carregando Orçamento...</div>;
+    return <div className="flex items-center justify-center h-64"><Loader2 className="mr-2 h-8 w-8 animate-spin" />Carregando Orçamento...</div>;
   }
   
   return (
@@ -428,6 +417,15 @@ export function Wizard() {
                     )}
                     
                     <div className="space-y-6">
+                       <Card>
+                          <CardHeader>
+                              <CardTitle className="font-headline">Simulador Manual</CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-4">
+                            <Step1DataInput isLoading={isLoading} />
+                          </CardContent>
+                        </Card>
+                        
                         <Card>
                           <CardHeader>
                               <CardTitle className="font-headline">Lista de Materiais</CardTitle>
@@ -490,7 +488,7 @@ export function Wizard() {
                                                           </Popover>
                                                       )}
                                                   />
-                                                   {field.productId && (
+                                                  {field.productId && (
                                                       <Button
                                                           type="button"
                                                           variant="ghost"
@@ -552,139 +550,6 @@ export function Wizard() {
                                   </div>
                               </div>
                           </CardContent>
-                        </Card>
-                         <Card>
-                            <CardContent className="p-4">
-                            <Accordion type="single" collapsible className="w-full">
-                                <AccordionItem value="simulador-manual" className="border-0">
-                                <AccordionTrigger>
-                                    <div className="flex items-center gap-2 text-lg font-semibold">
-                                    <Calculator className="h-5 w-5" /> Simulador Manual
-                                    </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="pt-4">
-                                   <div className="border p-6 rounded-lg">
-                                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                          <FormField
-                                            control={methods.control}
-                                            name="calculationInput.consumo_mensal_kwh"
-                                            render={({ field }) => (
-                                              <FormItem>
-                                                <FormLabel>Consumo médio mensal (kWh) *</FormLabel>
-                                                <FormControl>
-                                                  <Input type="number" placeholder="ex: 500" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))}/>
-                                                </FormControl>
-                                                <FormMessage />
-                                              </FormItem>
-                                            )}
-                                          />
-                                          <FormField
-                                            control={methods.control}
-                                            name="calculationInput.valor_medio_fatura_reais"
-                                            render={({ field }) => (
-                                              <FormItem>
-                                                <FormLabel>Valor médio da fatura (R$) *</FormLabel>
-                                                <FormControl>
-                                                  <Input type="number" placeholder="ex: 450.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value))}/>
-                                                </FormControl>
-                                                <FormMessage />
-                                              </FormItem>
-                                            )}
-                                          />
-                                          <FormField
-                                              control={methods.control}
-                                              name="calculationInput.rede_fases"
-                                              render={({ field }) => (
-                                                  <FormItem>
-                                                  <FormLabel>Tipo de Rede *</FormLabel>
-                                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                      <FormControl>
-                                                      <SelectTrigger>
-                                                          <SelectValue placeholder="Selecione o tipo de rede" />
-                                                      </SelectTrigger>
-                                                      </FormControl>
-                                                      <SelectContent>
-                                                      {phaseOptions.map((opt) => (
-                                                          <SelectItem key={opt.value} value={opt.value}>
-                                                              {opt.label}
-                                                          </SelectItem>
-                                                      ))}
-                                                      </SelectContent>
-                                                  </Select>
-                                                  <FormMessage />
-                                                  </FormItem>
-                                              )}
-                                          />
-                                           <FormField
-                                              control={methods.control}
-                                              name="calculationInput.irradiacao_psh_kwh_m2_dia"
-                                              render={({ field }) => (
-                                                <FormItem>
-                                                  <FormLabel>Irradiação Solar Local (PSH) *</FormLabel>
-                                                  <FormControl>
-                                                    <Input type="number" placeholder="ex: 5.7" {...field} onChange={e => field.onChange(parseFloat(e.target.value))}/>
-                                                  </FormControl>
-                                                  <FormMessage />
-                                                </FormItem>
-                                              )}
-                                            />
-                                            <FormField
-                                              control={methods.control}
-                                              name="calculationInput.cip_iluminacao_publica_reais"
-                                              render={({ field }) => (
-                                                <FormItem>
-                                                  <FormLabel>Taxa de Iluminação Pública (R$)</FormLabel>
-                                                  <FormControl>
-                                                    <Input type="number" placeholder="ex: 25.50" {...field} onChange={e => field.onChange(parseFloat(e.target.value))}/>
-                                                  </FormControl>
-                                                  <FormMessage />
-                                                </FormItem>
-                                              )}
-                                            />
-                                       </div>
-                                       
-                                      <Accordion type="single" collapsible className="w-full mt-6">
-                                          <AccordionItem value="advanced-params" className="border-t">
-                                              <AccordionTrigger className="pt-4">
-                                                  <span className="font-semibold text-primary">Parâmetros Avançados</span>
-                                              </AccordionTrigger>
-                                              <AccordionContent>
-                                                  <div className="space-y-6 pt-4">
-                                                      <div className="p-4 border rounded-md">
-                                                           <h4 className="font-medium mb-4 text-foreground">Parâmetros de Perdas e Custos Adicionais</h4>
-                                                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                             <FormField control={methods.control} name="calculationInput.fator_perdas_percent" render={({ field }) => (
-                                                                   <FormItem>
-                                                                      <FormLabel>Fator de Perdas (%)</FormLabel>
-                                                                      <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
-                                                                      <FormMessage />
-                                                                  </FormItem>
-                                                              )}/>
-                                                               <FormField control={methods.control} name="calculationInput.custo_om_anual_reais" render={({ field }) => (
-                                                                   <FormItem>
-                                                                      <FormLabel>Custo O&M Anual (R$)</FormLabel>
-                                                                      <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
-                                                                      <FormMessage />
-                                                                  </FormItem>
-                                                              )}/>
-                                                              <FormField control={methods.control} name="calculationInput.meta_compensacao_percent" render={({ field }) => (
-                                                                   <FormItem>
-                                                                      <FormLabel>Meta de Compensação (%)</FormLabel>
-                                                                      <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
-                                                                      <FormMessage />
-                                                                  </FormItem>
-                                                              )}/>
-                                                          </div>
-                                                      </div>
-                                                  </div>
-                                              </AccordionContent>
-                                          </AccordionItem>
-                                      </Accordion>
-                                  </div>
-                                </AccordionContent>
-                                </AccordionItem>
-                            </Accordion>
-                            </CardContent>
                         </Card>
                     </div>
 
@@ -784,5 +649,3 @@ export function Wizard() {
     </div>
   );
 }
-
-    
