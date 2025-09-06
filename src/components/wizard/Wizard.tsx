@@ -69,24 +69,20 @@ const defaultValues: SolarCalculationInput = {
     concessionaria: "Equatorial GO",
     rede_fases: "mono",
     irradiacao_psh_kwh_m2_dia: 5.7,
-    // Itens que vêm da BOM, mas precisam de um valor inicial
     potencia_modulo_wp: 550,
-    preco_modulo_reais: 750,
-    quantidade_modulos: 10, // Default, mas é recalculado se não informado
+    preco_modulo_reais: 0, // Vem da BOM
+    quantidade_modulos: 0, // Vem da BOM
     eficiencia_inversor_percent: 97,
-    custo_inversor_reais: 4200,
-    quantidade_inversores: 1,
-    custo_fixo_instalacao_reais: 1500,
-    // Parâmetros de cálculo com defaults
+    custo_inversor_reais: 0, // Vem da BOM
+    quantidade_inversores: 1, // Vem da BOM
+    custo_fixo_instalacao_reais: 0, // Vem da BOM
     fator_perdas_percent: 20,
     custo_om_anual_reais: 150,
     meta_compensacao_percent: 100,
-    custo_sistema_reais: 0, // Será sobreposto pelo cálculo da BOM
-    // Campos de Vendas
+    custo_sistema_reais: 0, 
     salespersonId: "",
     paymentTermId: "",
     priceListId: "",
-    // Campos que não estão no formulário, mas precisam de valor
     modelo_inversor: "",
     fabricante_inversor: "",
     potencia_inversor_kw: 0,
@@ -136,11 +132,22 @@ export function Wizard() {
     setInventory(getProducts());
     
     const initialize = async () => {
-      // 1. Check for a draft in session storage first
-      const draftDataStr = sessionStorage.getItem(DRAFT_QUOTE_SESSION_KEY);
-      if (draftDataStr) {
-          const draftData = JSON.parse(draftDataStr);
-          methods.reset(draftData.formData);
+      let draftData: any = null;
+      try {
+        const draftDataStr = sessionStorage.getItem(DRAFT_QUOTE_SESSION_KEY);
+        if (draftDataStr) {
+          draftData = JSON.parse(draftDataStr);
+        }
+      } catch (e) {
+        console.error("Could not parse draft data from session storage", e);
+        sessionStorage.removeItem(DRAFT_QUOTE_SESSION_KEY);
+      }
+
+      if (draftData) {
+          methods.reset({
+            ...{ calculationInput: defaultValues, billOfMaterials: [] }, // Start with full defaults
+            ...draftData.formData // Overlay with draft data
+          });
           if (draftData.results) setResults(draftData.results);
           if (draftData.clientData) setClientData(draftData.clientData);
           if (draftData.proposalId) setProposalId(draftData.proposalId);
@@ -149,7 +156,6 @@ export function Wizard() {
           return;
       }
 
-      // 2. If no draft, load from quote/lead params
       let initialData: SolarCalculationInput = { ...defaultValues };
       let clientToSet: any = null;
       let bomToSet: any[] = [];
@@ -159,7 +165,8 @@ export function Wizard() {
         setProposalId(quoteId);
         const existingQuote = getQuoteById(quoteId);
         if (existingQuote) {
-          initialData = existingQuote.formData;
+          // Merge existing data with defaults to prevent uncontrolled inputs
+          initialData = { ...defaultValues, ...existingQuote.formData };
           loadedResults = existingQuote.results;
           if (existingQuote.billOfMaterials) {
             bomToSet = existingQuote.billOfMaterials;
@@ -206,13 +213,17 @@ export function Wizard() {
         setIsLoading(false);
         return;
     }
-
+    
+    const panelProduct = getProductById(panel.productId);
+    const inverterProduct = getProductById(inverter.productId);
     const totalCostFromBom = bom.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
     
-    // Pass the form data directly, but override the total cost with the BOM calculation
     const calculationData: SolarCalculationInput = {
         ...data.calculationInput,
+        potencia_modulo_wp: parseFloat(panelProduct?.technicalSpecifications?.['Potência'] || '0') || data.calculationInput.potencia_modulo_wp,
+        eficiencia_inversor_percent: parseFloat(inverterProduct?.technicalSpecifications?.['Eficiência'] || '0') || data.calculationInput.eficiencia_inversor_percent,
         custo_sistema_reais: totalCostFromBom,
+        quantidade_modulos: panel.quantity
     };
     
     const result = await getCalculation(calculationData);
@@ -220,7 +231,7 @@ export function Wizard() {
 
     if (result.success && result.data) {
       setResults(result.data);
-      methods.setValue('calculationInput', calculationData); // Save the derived values back to the form
+      methods.setValue('calculationInput', calculationData); 
       setCurrentStep(1);
       toast({
         title: "Cálculo Concluído",
@@ -648,5 +659,7 @@ export function Wizard() {
     </div>
   );
 }
+
+    
 
     
