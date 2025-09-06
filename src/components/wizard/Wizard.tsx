@@ -151,7 +151,7 @@ export function Wizard() {
           if (draftData.results) setResults(draftData.results);
           if (draftData.clientData) setClientData(draftData.clientData);
           if (draftData.proposalId) setProposalId(draftData.proposalId);
-          setCurrentStep(draftData.currentStep);
+          if (draftData.currentStep) setCurrentStep(draftData.currentStep);
           setIsReady(true);
           return;
       }
@@ -204,6 +204,7 @@ export function Wizard() {
 
 
   const processForm = async (data: WizardFormData) => {
+    toast({ title: "Iniciando processo de cálculo...", description: "Aguarde, estamos a validar os dados." });
     setIsLoading(true);
 
     const bom = data.billOfMaterials;
@@ -212,50 +213,51 @@ export function Wizard() {
     const serviceItem = bom.find(item => item.type === 'SERVICO');
 
     if (!panelItem) {
-        toast({ title: "Item Faltando", description: "A lista de materiais precisa conter pelo menos um item do tipo 'Painel Solar'.", variant: "destructive" });
+        toast({ title: "Erro de Validação", description: "A lista de materiais precisa de conter um item do tipo 'Painel Solar'.", variant: "destructive" });
         setIsLoading(false);
         return;
     }
     if (!inverterItem) {
-        toast({ title: "Item Faltando", description: "A lista de materiais precisa conter um item do tipo 'Inversor'.", variant: "destructive" });
+        toast({ title: "Erro de Validação", description: "A lista de materiais precisa de conter um item do tipo 'Inversor'.", variant: "destructive" });
         setIsLoading(false);
         return;
     }
     if (!serviceItem) {
-        toast({ title: "Item Faltando", description: "A lista de materiais precisa conter um item do tipo 'Serviço' para o custo de instalação.", variant: "destructive" });
+        toast({ title: "Erro de Validação", description: "A lista de materiais precisa de conter um item do tipo 'Serviço' para o custo de instalação.", variant: "destructive" });
         setIsLoading(false);
         return;
     }
-    
+    toast({ description: "Itens essenciais (Painel, Inversor, Serviço) validados." });
+
     const panelProduct = getProductById(panelItem.productId);
     const inverterProduct = getProductById(inverterItem.productId);
-    
+
     if (!panelProduct) {
-        toast({ title: "Erro de Produto", description: `Painel Solar "${panelItem.name}" não foi encontrado no inventário. Verifique a lista.`, variant: "destructive" });
+        toast({ title: "Erro de Inventário", description: `O produto "${panelItem.name}" não foi encontrado. Verifique se o item foi selecionado corretamente.`, variant: "destructive" });
         setIsLoading(false);
         return;
     }
-     if (!inverterProduct) {
-        toast({ title: "Erro de Produto", description: `Inversor "${inverterItem.name}" não foi encontrado no inventário. Verifique a lista.`, variant: "destructive" });
+    if (!inverterProduct) {
+        toast({ title: "Erro de Inventário", description: `O produto "${inverterItem.name}" não foi encontrado. Verifique se o item foi selecionado corretamente.`, variant: "destructive" });
         setIsLoading(false);
         return;
     }
+     toast({ description: "Produtos encontrados no inventário." });
 
     const panelPowerWp = parseFloat(panelProduct.technicalSpecifications?.['Potência (Wp)'] || '0');
-    if (panelPowerWp === 0) {
-      console.error("[CÁLCULO-ERRO] Potência (Wp) do painel não encontrada ou é zero para o produto:", panelProduct);
-      toast({ title: "Dado Faltando", description: `O produto "${panelProduct.name}" não tem a especificação "Potência (Wp)".`, variant: "destructive" });
+    if (!panelPowerWp || panelPowerWp === 0) {
+      toast({ title: "Erro de Especificação", description: `O produto "${panelProduct.name}" não tem a especificação "Potência (Wp)" ou o valor é zero.`, variant: "destructive" });
       setIsLoading(false);
       return;
     }
 
     const inverterEfficiency = parseFloat(inverterProduct.technicalSpecifications?.['Eficiência (%)'] || '0');
-     if (inverterEfficiency === 0) {
-      console.error("[CÁLCULO-ERRO] Eficiência (%) do inversor não encontrada ou é zero para o produto:", inverterProduct);
-      toast({ title: "Dado Faltando", description: `O produto "${inverterProduct.name}" não tem a especificação "Eficiência (%)".`, variant: "destructive" });
+    if (!inverterEfficiency || inverterEfficiency === 0) {
+      toast({ title: "Erro de Especificação", description: `O produto "${inverterProduct.name}" não tem a especificação "Eficiência (%)" ou o valor é zero.`, variant: "destructive" });
       setIsLoading(false);
       return;
     }
+    toast({ description: "Especificações críticas (Potência e Eficiência) encontradas." });
 
     const totalCostFromBom = bom.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
 
@@ -266,24 +268,25 @@ export function Wizard() {
         preco_modulo_reais: panelItem.cost,
         potencia_modulo_wp: panelPowerWp,
         fabricante_modulo: panelProduct.technicalSpecifications?.['Fabricante'] || 'N/A',
-        garantia_defeito_modulo_anos: 12, 
-        garantia_geracao_modulo_anos: 25, 
+        garantia_defeito_modulo_anos: 12,
+        garantia_geracao_modulo_anos: 25,
         quantidade_inversores: inverterItem.quantity,
         custo_inversor_reais: inverterItem.cost,
         eficiencia_inversor_percent: inverterEfficiency,
         fabricante_inversor: inverterProduct.technicalSpecifications?.['Fabricante'] || 'N/A',
         modelo_inversor: inverterProduct.name,
         potencia_inversor_kw: parseFloat(inverterProduct.technicalSpecifications?.['Potência de Saída (kW)'] || '5'),
-        tensao_inversor_v: 220, 
-        garantia_inversor_anos: 5, 
+        tensao_inversor_v: 220,
+        garantia_inversor_anos: 5,
         custo_fixo_instalacao_reais: serviceItem.cost,
     };
     
-    console.log("[CÁLCULO-LOG] Enviando para cálculo:", calculationData);
+    console.log("[WIZARD-LOG] Objeto enviado para cálculo:", calculationData);
+    toast({ title: "Enviando para o servidor...", description: "Os dados foram validados e estão a ser processados." });
     
     const result = await getCalculation(calculationData);
     
-    console.log("[CÁLCULO-LOG] Resposta do cálculo:", result);
+    console.log("[WIZARD-LOG] Resposta do cálculo:", result);
 
     setIsLoading(false);
 
@@ -292,14 +295,14 @@ export function Wizard() {
       methods.setValue('calculationInput', calculationData); 
       setCurrentStep(1);
       toast({
-        title: "Cálculo Concluído",
-        description: "Os resultados foram gerados com base nos seus dados.",
+        title: "Cálculo Concluído!",
+        description: "Os resultados foram gerados. A avançar para a próxima etapa.",
       });
 
     } else {
       toast({
         title: "Erro no Cálculo",
-        description: result.error,
+        description: result.error || "Ocorreu uma falha no servidor ao processar a cotação.",
         variant: "destructive",
       });
     }

@@ -173,46 +173,26 @@ export function Step2Results({
 
       const htmlString = ReactDOMServer.renderToString(docToRender);
       
-      const container = document.createElement('div');
-      container.style.position = 'absolute';
-      container.style.left = '-9999px';
-      container.style.width = '800px'; 
-      container.innerHTML = htmlString;
-      document.body.appendChild(container);
+      // Store data in session storage for the print page
+      sessionStorage.setItem('proposalHtmlToPrint', htmlString);
       
-      const images = Array.from(container.querySelectorAll('img'));
-      const imagePromises = images.map(img => new Promise(resolve => {
-        if (img.complete) {
-            resolve(true);
-        } else {
-            img.onload = () => resolve(true);
-            img.onerror = () => resolve(false);
-        }
-      }));
-
-      await Promise.all(imagePromises);
-
-      const canvas = await html2canvas(container, {
-          scale: 2, 
-          useCORS: true,
-          logging: false,
-      });
-
-      document.body.removeChild(container);
-      
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`proposta-${proposalId}.pdf`);
+      // Open the print page
+      const printWindow = window.open('/orcamento/imprimir', '_blank');
+      if (printWindow) {
+        printWindow.focus();
+      } else {
+        toast({
+          title: "Bloqueador de Pop-up Ativado",
+          description: "Por favor, desative o bloqueador de pop-ups para este site para gerar o PDF.",
+          variant: "destructive",
+        });
+      }
 
     } catch (error) {
-      console.error("Failed to export PDF:", error);
+      console.error("Failed to prepare for PDF export:", error);
       toast({
-        title: "Erro ao Exportar",
-        description: "Não foi possível gerar o PDF. Verifique o console para mais detalhes.",
+        title: "Erro ao Preparar para Exportação",
+        description: "Não foi possível preparar os dados para o PDF. Verifique o console para mais detalhes.",
         variant: "destructive",
       });
     }
@@ -383,7 +363,7 @@ export function Step2Results({
             </Button>
             <Button type="button" onClick={handleExportPdf} disabled={isExporting}>
                 {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                {isExporting ? "Exportando..." : "Exportar PDF"}
+                {isExporting ? "A Preparar..." : "Gerar PDF"}
             </Button>
           </div>
       </div>
