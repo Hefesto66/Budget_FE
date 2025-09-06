@@ -187,7 +187,11 @@ export function Wizard() {
           }
       }
       
-      methods.reset({ calculationInput: initialData, billOfMaterials: bomToSet });
+      methods.reset({ 
+        calculationInput: {...defaultValues, ...initialData}, 
+        billOfMaterials: bomToSet 
+      });
+
       if(clientToSet) setClientData(clientToSet);
       if(loadedResults) setResults(loadedResults);
       if(quoteId && loadedResults) setCurrentStep(1);
@@ -207,22 +211,32 @@ export function Wizard() {
     const inverterItem = bom.find(item => item.type === 'INVERSOR');
     const serviceItem = bom.find(item => item.type === 'SERVICO');
 
-    if (!panelItem || !inverterItem || !serviceItem) {
-        toast({ title: "Itens Faltando", description: "A lista de materiais precisa conter pelo menos um Painel Solar, um Inversor e um item de Serviço.", variant: "destructive" });
+    if (!panelItem) {
+        toast({ title: "Item Faltando", description: "A lista de materiais precisa conter pelo menos um item do tipo 'Painel Solar'.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+    }
+    if (!inverterItem) {
+        toast({ title: "Item Faltando", description: "A lista de materiais precisa conter pelo menos um item do tipo 'Inversor'.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+    }
+    if (!serviceItem) {
+        toast({ title: "Item Faltando", description: "A lista de materiais precisa conter pelo menos um item do tipo 'Serviço' para o custo de instalação.", variant: "destructive" });
         setIsLoading(false);
         return;
     }
     
     const panelProduct = getProductById(panelItem.productId);
+    const inverterProduct = getProductById(inverterItem.productId);
+
     if (!panelProduct) {
-         toast({ title: "Erro de Produto", description: `Painel Solar "${panelItem.name}" não encontrado no inventário. Verifique a lista.`, variant: "destructive" });
+         toast({ title: "Erro de Produto", description: `Painel Solar "${panelItem.name}" não foi encontrado no inventário. Verifique a lista.`, variant: "destructive" });
         setIsLoading(false);
         return;
     }
-
-    const inverterProduct = getProductById(inverterItem.productId);
-    if (!inverterProduct) {
-         toast({ title: "Erro de Produto", description: `Inversor "${inverterItem.name}" não encontrado no inventário. Verifique a lista.`, variant: "destructive" });
+     if (!inverterProduct) {
+         toast({ title: "Erro de Produto", description: `Inversor "${inverterItem.name}" não foi encontrado no inventário. Verifique a lista.`, variant: "destructive" });
         setIsLoading(false);
         return;
     }
@@ -243,7 +257,7 @@ export function Wizard() {
         eficiencia_inversor_percent: parseFloat(inverterProduct.technicalSpecifications?.['Eficiência'] || '97'),
         fabricante_inversor: inverterProduct.technicalSpecifications?.['Fabricante'] || 'N/A',
         modelo_inversor: inverterProduct.name,
-        potencia_inversor_kw: 5,
+        potencia_inversor_kw: parseFloat(inverterProduct.technicalSpecifications?.['Potência'] || '5'),
         tensao_inversor_v: 220,
         garantia_inversor_anos: 5,
         custo_fixo_instalacao_reais: serviceItem.cost,
@@ -682,5 +696,7 @@ export function Wizard() {
     </div>
   );
 }
+
+    
 
     
