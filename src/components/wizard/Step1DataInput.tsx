@@ -125,27 +125,6 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                 </AccordionTrigger>
                 <AccordionContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
-                       <FormField control={form.control} name="calculationInput.potencia_modulo_wp" render={({ field }) => (
-                           <FormItem>
-                              <FormLabel>Potência por Módulo (Wp)</FormLabel>
-                              <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
-                              <FormMessage />
-                          </FormItem>
-                      )}/>
-                       <FormField control={form.control} name="calculationInput.quantidade_modulos" render={({ field }) => (
-                           <FormItem>
-                              <FormLabel>Quantidade de Módulos</FormLabel>
-                              <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
-                              <FormMessage />
-                          </FormItem>
-                      )}/>
-                       <FormField control={form.control} name="calculationInput.eficiencia_inversor_percent" render={({ field }) => (
-                           <FormItem>
-                              <FormLabel>Eficiência do Inversor (%)</FormLabel>
-                              <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
-                              <FormMessage />
-                          </FormItem>
-                      )}/>
                        <FormField control={form.control} name="calculationInput.fator_perdas_percent" render={({ field }) => (
                              <FormItem>
                                 <FormLabel>Fator de Perdas (%)</FormLabel>
