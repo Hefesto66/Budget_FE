@@ -121,36 +121,52 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
         <Accordion type="single" collapsible className="w-full mt-6">
             <AccordionItem value="advanced-params" className="border-t">
                 <AccordionTrigger className="pt-4">
-                    <span className="font-semibold text-primary">Parâmetros Avançados</span>
+                    <span className="font-semibold text-primary">Parâmetros Técnicos e de Custo</span>
                 </AccordionTrigger>
                 <AccordionContent>
-                    <div className="space-y-6 pt-4">
-                        <div className="p-4 border rounded-md">
-                             <h4 className="font-medium mb-4 text-foreground">Parâmetros de Perdas e Custos Adicionais</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                               <FormField control={form.control} name="calculationInput.fator_perdas_percent" render={({ field }) => (
-                                     <FormItem>
-                                        <FormLabel>Fator de Perdas (%)</FormLabel>
-                                        <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
-                                        <FormMessage />
-                                    </FormItem>
-                                )}/>
-                                 <FormField control={form.control} name="calculationInput.custo_om_anual_reais" render={({ field }) => (
-                                     <FormItem>
-                                        <FormLabel>Custo O&M Anual (R$)</FormLabel>
-                                        <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
-                                        <FormMessage />
-                                    </FormItem>
-                                )}/>
-                                <FormField control={form.control} name="calculationInput.meta_compensacao_percent" render={({ field }) => (
-                                     <FormItem>
-                                        <FormLabel>Meta de Compensação (%)</FormLabel>
-                                        <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
-                                        <FormMessage />
-                                    </FormItem>
-                                )}/>
-                            </div>
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
+                       <FormField control={form.control} name="calculationInput.potencia_modulo_wp" render={({ field }) => (
+                           <FormItem>
+                              <FormLabel>Potência por Módulo (Wp)</FormLabel>
+                              <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                              <FormMessage />
+                          </FormItem>
+                      )}/>
+                       <FormField control={form.control} name="calculationInput.quantidade_modulos" render={({ field }) => (
+                           <FormItem>
+                              <FormLabel>Quantidade de Módulos</FormLabel>
+                              <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                              <FormMessage />
+                          </FormItem>
+                      )}/>
+                       <FormField control={form.control} name="calculationInput.eficiencia_inversor_percent" render={({ field }) => (
+                           <FormItem>
+                              <FormLabel>Eficiência do Inversor (%)</FormLabel>
+                              <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                              <FormMessage />
+                          </FormItem>
+                      )}/>
+                       <FormField control={form.control} name="calculationInput.fator_perdas_percent" render={({ field }) => (
+                             <FormItem>
+                                <FormLabel>Fator de Perdas (%)</FormLabel>
+                                <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                                <FormMessage />
+                            </FormItem>
+                        )}/>
+                         <FormField control={form.control} name="calculationInput.custo_om_anual_reais" render={({ field }) => (
+                             <FormItem>
+                                <FormLabel>Custo O&M Anual (R$)</FormLabel>
+                                <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                                <FormMessage />
+                            </FormItem>
+                        )}/>
+                        <FormField control={form.control} name="calculationInput.meta_compensacao_percent" render={({ field }) => (
+                             <FormItem>
+                                <FormLabel>Meta de Compensação (%)</FormLabel>
+                                <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                                <FormMessage />
+                            </FormItem>
+                        )}/>
                     </div>
                 </AccordionContent>
             </AccordionItem>
@@ -165,3 +181,5 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
     </div>
   );
 }
+
+    

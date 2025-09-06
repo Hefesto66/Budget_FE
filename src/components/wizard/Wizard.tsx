@@ -69,6 +69,13 @@ const defaultValues: SolarCalculationInput = {
     concessionaria: "Equatorial GO",
     rede_fases: "mono",
     irradiacao_psh_kwh_m2_dia: 5.7,
+    potencia_modulo_wp: 550,
+    preco_modulo_reais: 750,
+    quantidade_modulos: 10,
+    eficiencia_inversor_percent: 97,
+    custo_inversor_reais: 4200,
+    quantidade_inversores: 1,
+    custo_fixo_instalacao_reais: 1500,
     fator_perdas_percent: 20,
     custo_om_anual_reais: 150,
     meta_compensacao_percent: 100,
@@ -181,38 +188,18 @@ export function Wizard() {
     const inverter = bom.find(item => item.type === 'INVERSOR');
     const service = bom.find(item => item.type === 'SERVICO');
 
-    if (!panel) {
-        toast({ title: "Item Faltando", description: "Por favor, adicione pelo menos um 'Painel Solar' à lista de materiais.", variant: "destructive" });
-        setIsLoading(false);
-        return;
-    }
-     if (!inverter) {
-        toast({ title: "Item Faltando", description: "Por favor, adicione um 'Inversor' à lista de materiais.", variant: "destructive" });
-        setIsLoading(false);
-        return;
-    }
-     if (!service) {
-        toast({ title: "Item Faltando", description: "Por favor, adicione um item de 'Serviço' (instalação) à lista de materiais.", variant: "destructive" });
+    if (!panel || !inverter || !service) {
+        toast({ title: "Itens Faltando", description: "A lista de materiais precisa conter pelo menos um Painel Solar, um Inversor e um item de Serviço.", variant: "destructive" });
         setIsLoading(false);
         return;
     }
 
-    const panelProduct = getProductById(panel.productId);
-    const inverterProduct = getProductById(inverter.productId);
-
+    const totalCostFromBom = bom.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
+    
+    // Pass the form data directly, but override the total cost with the BOM calculation
     const calculationData: SolarCalculationInput = {
         ...data.calculationInput,
-        potencia_modulo_wp: panelProduct?.technicalSpecifications?.['Potência'] ? parseFloat(panelProduct.technicalSpecifications['Potência']) : undefined,
-        preco_modulo_reais: panel.cost,
-        quantidade_modulos: panel.quantity,
-        
-        eficiencia_inversor_percent: inverterProduct?.technicalSpecifications?.['Eficiência'] ? parseFloat(inverterProduct.technicalSpecifications['Eficiência']) : 97,
-        custo_inversor_reais: inverter.cost,
-        quantidade_inversores: inverter.quantity,
-
-        custo_fixo_instalacao_reais: service.cost * service.quantity,
-
-        custo_sistema_reais: bom.reduce((acc, item) => acc + (item.cost * item.quantity), 0),
+        custo_sistema_reais: totalCostFromBom,
     };
     
     const result = await getCalculation(calculationData);
@@ -418,6 +405,15 @@ export function Wizard() {
                     <div className="space-y-6">
                         <Card>
                           <CardHeader>
+                              <CardTitle className="font-headline">Dados de Consumo e do Local</CardTitle>
+                              <CardDescription>Informações básicas para o cálculo da viabilidade.</CardDescription>
+                          </CardHeader>
+                          <CardContent className="p-4">
+                            <Step1DataInput isLoading={isLoading} />
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardHeader>
                               <CardTitle className="font-headline">Lista de Materiais</CardTitle>
                               <CardDescription>Insumos que irão compor a proposta comercial.</CardDescription>
                           </CardHeader>
@@ -541,14 +537,6 @@ export function Wizard() {
                               </div>
                           </CardContent>
                         </Card>
-                        <Card>
-                          <CardHeader>
-                              <CardTitle className="font-headline">Simulador Manual</CardTitle>
-                          </CardHeader>
-                          <CardContent className="p-4">
-                            <Step1DataInput isLoading={isLoading} />
-                          </CardContent>
-                        </Card>
                     </div>
 
                     <div className="mt-8 flex justify-end">
@@ -647,3 +635,5 @@ export function Wizard() {
     </div>
   );
 }
+
+    
