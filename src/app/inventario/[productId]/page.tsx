@@ -47,8 +47,6 @@ export default function ProductForm() {
   const [isProductLoaded, setIsProductLoaded] = useState(false);
 
   const [specifications, setSpecifications] = useState<Record<string, string>>({});
-  const [newSpecKey, setNewSpecKey] = useState("");
-  const [newSpecValue, setNewSpecValue] = useState("");
   
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
@@ -101,27 +99,11 @@ export default function ProductForm() {
     if (!isEditing) {
         router.push(`/inventario/${productToSave.id}`);
     } else {
-        router.refresh(); 
+        // No need to refresh, state is handled locally
     }
     
     setIsSaving(false);
   };
-  
-  const handleAddSpecification = () => {
-    if (newSpecKey && newSpecValue) {
-        setSpecifications(prev => ({...prev, [newSpecKey]: newSpecValue}));
-        setNewSpecKey("");
-        setNewSpecValue("");
-    }
-  }
-
-  const handleDeleteSpecification = (key: string) => {
-    setSpecifications(prev => {
-        const newSpecs = {...prev};
-        delete newSpecs[key];
-        return newSpecs;
-    });
-  }
 
   const handleSpecChange = (key: string, value: string) => {
     setSpecifications(prev => ({ ...prev, [key]: value }));
@@ -215,37 +197,10 @@ export default function ProductForm() {
                                 <Label htmlFor="internalNotes">Notas Internas</Label>
                                 <Textarea id="internalNotes" placeholder="Notas visíveis apenas para a sua equipe." {...form.register("internalNotes")} />
                             </div>
-
-                             <div className="space-y-4 rounded-lg border p-4">
-                                <h3 className="font-medium">Outras Especificações Técnicas</h3>
-                                <div className="space-y-2">
-                                {Object.entries(specifications)
-                                    .filter(([key]) => (productType === 'PAINEL_SOLAR' && key !== 'Potência') || (productType === 'INVERSOR' && key !== 'Eficiência') || !['PAINEL_SOLAR', 'INVERSOR'].includes(productType))
-                                    .map(([key, value]) => (
-                                    <div key={key} className="flex items-center gap-2 text-sm">
-                                        <Input value={key} disabled className="font-semibold"/>
-                                        <Input value={value} disabled />
-                                        <Button type="button" variant="ghost" size="icon" onClick={() => handleDeleteSpecification(key)} className="text-destructive">
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                ))}
-                                </div>
-                                <div className="flex items-end gap-2">
-                                     <div className="flex-1 space-y-1">
-                                        <Label htmlFor="new-spec-key">Característica</Label>
-                                        <Input id="new-spec-key" placeholder="Ex: Fabricante" value={newSpecKey} onChange={e => setNewSpecKey(e.target.value)} />
-                                     </div>
-                                      <div className="flex-1 space-y-1">
-                                        <Label htmlFor="new-spec-value">Valor</Label>
-                                        <Input id="new-spec-value" placeholder="Ex: Growatt" value={newSpecValue} onChange={e => setNewSpecValue(e.target.value)} />
-                                     </div>
-                                    <Button type="button" size="icon" onClick={handleAddSpecification}>
-                                        <PlusCircle className="h-5 w-5"/>
-                                    </Button>
-                                </div>
-                             </div>
-
+                             <div className="space-y-1">
+                                <Label htmlFor="specs">Especificações Adicionais</Label>
+                                <Textarea id="specs" placeholder="Ex: Fabricante: Growatt, Garantia: 10 anos" value={specifications['notas'] || ''} onChange={e => handleSpecChange('notas', e.target.value)} />
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
@@ -255,5 +210,3 @@ export default function ProductForm() {
     </div>
   );
 }
-
-    
