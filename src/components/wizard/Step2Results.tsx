@@ -176,8 +176,9 @@ export function Step2Results({
       formMethods.setValue(`billOfMaterials.${panelIndex}.quantity`, nova_quantidade_paineis);
       toast({
           title: "Sugestão Aplicada!",
-          description: `Quantidade de painéis ajustada para ${nova_quantidade_paineis}. Retorne e recalcule para ver o impacto.`,
+          description: `Quantidade de painéis ajustada para ${nova_quantidade_paineis}. Recalcule para ver o impacto.`,
       });
+      onGoToDataInput(); // Go back to the previous step
     } else {
         toast({ title: "Erro", description: "Nenhum painel solar encontrado na lista para aplicar a sugestão.", variant: "destructive" });
     }
