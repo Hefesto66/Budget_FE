@@ -24,16 +24,16 @@ export const solarCalculationSchema = z.object({
   preco_modulo_reais: z.number().gte(0).optional(),
   quantidade_modulos: z.number().int().gte(0).optional(),
   fabricante_modulo: z.string().optional(),
-  garantia_defeito_modulo_anos: z.number().int().positive().optional(),
-  garantia_geracao_modulo_anos: z.number().int().positive().optional(),
+  garantia_defeito_modulo_anos: z.number().int().gte(0).optional(),
+  garantia_geracao_modulo_anos: z.number().int().gte(0).optional(),
   
   // Inversor
   modelo_inversor: z.string().optional(),
   fabricante_inversor: z.string().optional(),
-  potencia_inversor_kw: z.number().positive().optional(),
-  tensao_inversor_v: z.number().positive().optional(),
-  quantidade_inversores: z.number().int().positive().optional(),
-  garantia_inversor_anos: z.number().int().positive().optional(),
+  potencia_inversor_kw: z.number().gte(0).optional(),
+  tensao_inversor_v: z.number().gte(0).optional(),
+  quantidade_inversores: z.number().int().gte(0).optional(),
+  garantia_inversor_anos: z.number().int().gte(0).optional(),
   eficiencia_inversor_percent: z.number().min(0).max(99).optional(), // Allow 0
   custo_inversor_reais: z.number().gte(0).optional(),
 
