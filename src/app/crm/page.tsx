@@ -281,7 +281,7 @@ export default function CrmPage() {
       <div className="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-950">
           <Header />
           <main className="flex-1 p-6 flex flex-col">
-              <div className="mb-6 flex items-center justify-end">
+              <div className="mb-6 flex items-center justify-start">
                   <Button size="lg" asChild>
                       <Link href="/crm/new-lead">
                           <PlusCircle className="mr-2 h-5 w-5"/>
@@ -421,5 +421,7 @@ export default function CrmPage() {
     </DragDropContext>
   );
 }
+
+    
 
     
