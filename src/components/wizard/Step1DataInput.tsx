@@ -150,15 +150,6 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                 </AccordionContent>
             </AccordionItem>
         </Accordion>
-
-        <div className="flex justify-end pt-6">
-            <Button type="submit" size="lg" disabled={isLoading} className="bg-transparent hover:bg-transparent text-transparent">
-                {/* This button is hidden, form is submitted by parent */}
-                Calcular e Adicionar
-            </Button>
-        </div>
     </div>
   );
 }
-
-    
