@@ -1,4 +1,3 @@
-
 // src/ai/flows/suggest-refined-panel-config.ts
 'use server';
 
@@ -65,7 +64,6 @@ const suggestRefinedPanelConfigFlow = ai.defineFlow(
     name: 'suggestRefinedPanelConfigFlow',
     inputSchema: SuggestRefinedPanelConfigInputSchema,
     outputSchema: SuggestRefinedPanelConfigOutputSchema,
-    model: googleAI('gemini-1.5-flash-latest'),
   },
   async (input) => {
     
@@ -84,7 +82,7 @@ const suggestRefinedPanelConfigFlow = ai.defineFlow(
 
     if (panelPowerWp === 0) throw new Error("Painel solar na lista não possui a especificação 'Potência (Wp)'.");
 
-    // 2. Perform the sizing calculation
+    // 2. Perform the sizing calculation (LOGIC MOVED TO CODE)
     const systemEfficiency = (inverterEfficiencyPercent / 100) * (1 - (calculationInput.fator_perdas_percent ?? 20) / 100);
     const dailyEnergyPerPanelKwh = (panelPowerWp / 1000) * irradiacao_psh_kwh_m2_dia * systemEfficiency;
     const monthlyEnergyPerPanelKwh = dailyEnergyPerPanelKwh * 30;
@@ -93,7 +91,7 @@ const suggestRefinedPanelConfigFlow = ai.defineFlow(
 
     const idealPanelQuantity = Math.ceil(consumo_mensal_kwh / monthlyEnergyPerPanelKwh);
     
-    // 3. Calculate new total cost and payback
+    // 3. Calculate new total cost and payback (LOGIC MOVED TO CODE)
     const otherItemsCost = billOfMaterials
       .filter(item => item.type !== 'PAINEL_SOLAR')
       .reduce((sum, item) => sum + (item.cost * item.quantity), 0);
@@ -101,13 +99,14 @@ const suggestRefinedPanelConfigFlow = ai.defineFlow(
     const newPanelsCost = panel.cost * idealPanelQuantity;
     const newTotalCost = newPanelsCost + otherItemsCost;
     
-    const annualSavings = (valor_medio_fatura_reais * 0.9) * 12; // Simplified savings estimate
+    // Simplified savings calculation for payback estimation
+    const annualSavings = (valor_medio_fatura_reais * 12) * 0.90; // Assume 90% savings for simplicity
     const newPaybackYears = annualSavings > 0 ? newTotalCost / annualSavings : Infinity;
     
-    // 4. Ask the AI to generate only the analysis text based on the results.
+    // 4. Ask the AI to generate ONLY the analysis text based on the results.
     const prompt = `
       Você é um engenheiro especialista em sistemas de energia solar.
-      Um sistema foi dimensionado para um cliente. A sua tarefa é apenas gerar uma breve análise sobre o novo dimensionamento.
+      Um sistema foi dimensionado para um cliente. Sua tarefa é apenas gerar uma breve análise sobre o novo dimensionamento.
 
       **Dados:**
       - Consumo do Cliente: ${consumo_mensal_kwh} kWh/mês.
@@ -120,10 +119,11 @@ const suggestRefinedPanelConfigFlow = ai.defineFlow(
     `;
 
     const { text } = await ai.generate({
+      model: googleAI('gemini-1.5-flash-latest'),
       prompt: prompt,
     });
 
-    // 5. Return the final structured object
+    // 5. Return the final structured object with calculated data
     return {
       analise_texto: text,
       configuracao_otimizada: {
