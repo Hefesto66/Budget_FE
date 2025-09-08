@@ -195,25 +195,35 @@ export function Wizard() {
   const processForm = async (data: WizardFormData) => {
     setIsLoading(true);
     try {
+      console.log("--- INÍCIO DA DEPURAÇÃO ---");
       console.log("1. Dados brutos recebidos do formulário:", data);
 
       const wizardData = wizardSchema.parse(data);
       console.log("2. Validação inicial bem-sucedida. Dados validados:", wizardData);
       
-      const validBom = wizardData.billOfMaterials.filter(item => item.productId && item.productId !== '');
+      const billOfMaterials = wizardData.billOfMaterials;
+      console.log("1. Conteúdo completo da Lista de Materiais:", billOfMaterials);
       
-      const panelItem = validBom.find(item => item.category === 'PAINEL_SOLAR');
-      const inverterItem = validBom.find(item => item.category === 'INVERSOR');
-      const serviceItem = validBom.find(item => item.category === 'SERVICO');
+      const panelItem = billOfMaterials.find(item => item.category === 'PAINEL_SOLAR');
+      console.log("2. Resultado da busca por 'PAINEL_SOLAR':", panelItem);
       
-      // Extrai os valores diretamente da BOM, convertendo para número. Se não existir, o valor será NaN.
+      const inverterItem = billOfMaterials.find(item => item.category === 'INVERSOR');
+      console.log("3. Resultado da busca por 'INVERSOR':", inverterItem);
+
+      const serviceItem = billOfMaterials.find(item => item.category === 'SERVICO');
+      
       const panelPowerWp = parseFloat(panelItem?.technicalSpecifications?.['Potência (Wp)']!);
+      console.log("4. Potência extraída do painel:", panelPowerWp);
+
       const inverterEfficiency = parseFloat(inverterItem?.technicalSpecifications?.['Eficiência (%)']!);
+      console.log("5. Eficiência extraída do inversor:", inverterEfficiency);
+      console.log("--- FIM DA DEPURAÇÃO ---");
+
       const inverterPowerKw = parseFloat(inverterItem?.technicalSpecifications?.['Potência de Saída (kW)']!);
 
       const calculationData: SolarCalculationInput = {
           ...(wizardData.calculationInput as SolarCalculationInput),
-          custo_sistema_reais: validBom.reduce((acc, item) => acc + (item.cost * item.quantity), 0),
+          custo_sistema_reais: billOfMaterials.reduce((acc, item) => acc + (item.cost * item.quantity), 0),
           quantidade_modulos: panelItem?.quantity,
           potencia_modulo_wp: !isNaN(panelPowerWp) ? panelPowerWp : undefined,
           eficiencia_inversor_percent: !isNaN(inverterEfficiency) ? inverterEfficiency : undefined,
@@ -581,3 +591,5 @@ export function Wizard() {
     </div>
   );
 }
+
+    
