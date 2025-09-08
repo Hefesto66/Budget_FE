@@ -14,6 +14,7 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { solarCalculationSchema } from '@/types';
 import { Product } from '@/lib/storage';
+import { googleAI } from '@genkit-ai/googleai';
 
 const productSchema = z.object({
   id: z.string(),
@@ -69,6 +70,7 @@ const prompt = ai.definePrompt({
   name: 'suggestRefinedPanelConfigPrompt',
   input: {schema: SuggestRefinedPanelConfigInputSchema},
   output: {schema: SuggestRefinedPanelConfigOutputSchema},
+  model: googleAI('gemini-1.5-flash-latest'),
   prompt: `
       Você é um engenheiro especialista em sistemas de energia solar. Sua tarefa é analisar a necessidade de um cliente e, usando os produtos disponíveis no inventário, montar a configuração ideal com o melhor custo-benefício.
 
