@@ -1,57 +1,70 @@
-# Relatório Técnico: Diagnóstico de Erros na Geração de PDF
+# Relatório Técnico: Diagnóstico de Erros na Geração de PDF e Bloqueios de Segurança da IA
 
 **Data:** 24/07/2024
 **Autor:** Assistente de IA - Firebase Studio
 
 ## 1. Resumo Executivo
 
-O objetivo de gerar um PDF profissional e bem formatado a partir dos dados do orçamento enfrentou múltiplos desafios técnicos. Este relatório documenta a evolução do problema, as arquiteturas tentadas e as razões pelas quais falharam, culminando na situação atual.
+O objetivo de criar uma experiência de utilizador fluida e inteligente na aplicação Solaris tem enfrentado dois desafios técnicos principais e persistentes:
+1.  A **geração de um documento PDF** profissional a partir dos dados da proposta.
+2.  O **bloqueio consistente por filtros de segurança** da funcionalidade "Refinar com IA".
 
-As abordagens podem ser divididas em três fases principais:
-1.  **Geração Client-Side (html2canvas):** Falhou devido a quebras de página incorretas e erros de renderização.
-2.  **Geração Server-Side (Puppeteer):** Falhou devido a conflitos de arquitetura e erros de build do Next.js.
-3.  **Impressão Nativa do Navegador (Comunicação Inter-Abas):** Falhou devido a inconsistências e *race conditions* na comunicação entre a aba da aplicação e a aba de impressão.
-
----
-
-## 2. Fase 1: Geração Client-Side com `html2canvas`
-
-- **Estratégia:** Utilizar a biblioteca `html2canvas` para tirar uma "fotografia" do conteúdo da proposta e a `jspdf` para fatiar essa imagem em páginas PDF.
-- **Problema Fundamental:** `html2canvas` não interpreta as regras de impressão do CSS (`@media print`). A diretiva `page-break-inside: avoid`, crucial para evitar que secções sejam cortadas ao meio, era completamente ignorada. A biblioteca simplesmente criava uma imagem longa que era depois cortada de forma "cega" pela `jspdf`.
-- **Erro Manifestado:** "Unable to find element in cloned iframe". Este erro ocorria consistentemente porque o `html2canvas` tinha dificuldade em renderizar elementos complexos (como os gráficos da `recharts`) dentro do seu `<iframe>` de captura.
-- **Conclusão da Fase:** A abordagem de "fotografar e fatiar" no cliente é inerentemente falha para documentos complexos que exigem controlo de paginação.
+Este relatório documenta a evolução de cada problema, as arquiteturas tentadas e as razões pelas quais falharam, culminando na situação atual.
 
 ---
 
-## 3. Fase 2: Geração Server-Side com `Puppeteer`
+## 2. Desafio 1: A Geração do PDF
 
-- **Estratégia:** Mover a lógica de geração para o servidor, utilizando um *headless browser* (Puppeteer) que consegue interpretar HTML/CSS como um navegador real, incluindo as regras de impressão.
-- **Implementação:** Foi criada uma Server Action (`generatePdfAction`) que renderizava o componente da proposta para HTML estático (`renderToStaticMarkup`) e usava o Puppeteer para converter esse HTML num PDF.
+### Fase 1: Geração Client-Side com `html2canvas`
+- **Estratégia:** Utilizar `html2canvas` para "fotografar" o conteúdo da proposta e `jspdf` para fatiar essa imagem em páginas PDF.
+- **Problema Fundamental:** `html2canvas` não interpreta as regras de impressão do CSS (`@media print`). A diretiva `page-break-inside: avoid`, crucial para evitar que secções sejam cortadas, era ignorada.
+- **Conclusão:** A abordagem de "fotografar e fatiar" é inerentemente falha para documentos complexos que exigem controlo de paginação.
+
+### Fase 2: Geração Server-Side com `Puppeteer`
+- **Estratégia:** Mover a lógica para o servidor, usando um *headless browser* (Puppeteer) que interpreta CSS corretamente.
 - **Problema Fundamental:** Conflito com a fronteira cliente-servidor do Next.js.
 - **Erro Manifestado:** **`You're importing a component that imports react-dom/server...`**
-- **Análise do Erro:**
-    1.  O ficheiro que continha a lógica do Puppeteer (`actions.tsx`) precisava de importar `react-dom/server` para renderizar o componente React para HTML.
-    2.  Um componente de cliente (`"use client"`), `Step2Results.tsx`, precisava de importar uma função desse mesmo ficheiro para iniciar a geração do PDF.
-    3.  O sistema de build do Next.js detetou esta cadeia de importação e bloqueou-a para impedir que código exclusivo de servidor (como `puppeteer` e `react-dom/server`) fosse incluído no pacote de código enviado para o navegador do cliente.
-- **Conclusão da Fase:** Embora a lógica do Puppeteer fosse correta, a complexidade de isolar o código do servidor dentro da arquitetura do Next.js tornou esta abordagem inviável e frágil.
+- **Análise:** O sistema de *build* do Next.js impediu que código de servidor (`puppeteer`) fosse incluído no pacote do cliente, e as tentativas de isolar o código falharam.
+- **Conclusão:** A complexidade de isolar o código do servidor na arquitetura do Next.js tornou a abordagem inviável.
+
+### Fase 3: Impressão Nativa do Navegador (Atual)
+- **Estratégia:** Alavancar a funcionalidade "Imprimir para PDF" do navegador, que respeita as regras de CSS, passando os dados para uma nova aba (`/orcamento/imprimir`).
+- **Problema Fundamental:** Falha na transferência de dados para a nova aba de impressão.
+- **Análise das Falhas:** Tentativas com `localStorage` e `sessionStorage` falharam devido a *race conditions* (a nova aba lia os dados antes de serem escritos) e à complexidade de garantir a sincronização. A abordagem de injetar o HTML dinamicamente também se mostrou frágil.
+- **Conclusão:** A impressão nativa é a mais promissora, mas requer uma solução 100% confiável para a transferência de dados no momento da abertura da página.
 
 ---
 
-## 4. Fase 3: Impressão Nativa via Comunicação Inter-Abas
+## 3. Desafio 2: Bloqueios de Segurança na IA ("Refinar com IA")
 
-- **Estratégia:** Abandonar a geração de ficheiros e, em vez disso, alavancar a funcionalidade "Imprimir para PDF" do próprio navegador, que respeita perfeitamente as regras de CSS. O desafio era passar os dados da proposta da aba principal para uma nova aba dedicada à impressão (`/orcamento/imprimir`).
-- **Problema Fundamental:** Falha na transferência de dados da página principal para a nova aba de impressão.
-- **Erro Manifestado:** A página de impressão exibia "Dados da proposta não encontrados".
+O erro **"Falha ao obter sugestão da IA. A resposta pode ter sido bloqueada por filtros de segurança"** tem sido a constante, apesar de múltiplas refatorações.
 
-- **Análise das Tentativas Falhadas:**
-    1.  **`localStorage` com `setTimeout`:** A primeira abordagem foi guardar os dados no `localStorage` e depois abrir a nova aba. Isto falhou devido a uma *race condition*: a nova aba carregava e tentava ler os dados *antes* de o `localStorage` terminar a escrita. Adicionar um `setTimeout` não foi uma solução robusta.
-    2.  **`localStorage` com `EventListener`:** A segunda abordagem foi mais sofisticada. A nova aba de impressão adicionava um "ouvinte" (`addEventListener('storage', ...)`) e ficava à espera que a aba principal escrevesse os dados.
-        - **Causa da Falha:** A especificação da `Storage API` dita que o evento `storage` **não é acionado na aba que o origina**. Como o navegador tratou a nova aba como parte do mesmo contexto da que a abriu, o evento nunca foi disparado, e a página de impressão ficou à espera indefinidamente.
+### Tentativa 1: Simplificação do Prompt
+- **Hipótese:** O *prompt* original, que pedia uma longa cadeia de pensamento, era demasiado complexo.
+- **Ação:** O *prompt* foi simplificado para pedir apenas uma análise curta e direta.
+- **Resultado:** **Falhou.** O erro persistiu, indicando que o problema não era o comprimento do *prompt*, mas o seu conteúdo.
 
-- **Conclusão da Fase:** A comunicação entre abas *após* a sua criação demonstrou ser inerentemente frágil e sujeita a inconsistências entre navegadores. A solução mais confiável deve ser uma que **não dependa de eventos de comunicação post-facto**.
+### Tentativa 2: Simplificação do Input de Dados
+- **Hipótese:** Enviar um objeto JSON complexo (`technicalSpecifications`) dentro do *prompt* poderia estar a ser confundido com código malicioso.
+- **Ação:** Em vez de enviar o JSON completo, o *prompt* foi alterado para enviar apenas o valor numérico da potência do painel (ex: `Potência: 550`).
+- **Resultado:** **Falhou.** O erro persistiu.
+
+### Tentativa 3: Mudança de Modelo de IA
+- **Hipótese:** O modelo `gemini-2.5-flash` poderia ser excessivamente sensível para este caso de uso.
+- **Ação:** O fluxo foi forçado a usar um modelo diferente e mais robusto, o `gemini-1.5-flash-latest`.
+- **Resultado:** **Falhou.** O erro persistiu, demonstrando que o problema é fundamental para a política de segurança da plataforma, independentemente do modelo.
+
+### Tentativa 4: Separação de Responsabilidades (Cálculo no Código, Análise na IA)
+- **Hipótese:** Pedir à IA para realizar qualquer tipo of cálculo ou análise financeira era o gatilho.
+- **Ação:** A arquitetura foi refatorada. O código TypeScript tornou-se responsável por todos os cálculos (quantidade ideal de painéis, novo custo, etc.). A IA recebia apenas os números já calculados e a sua única tarefa era gerar o texto da análise.
+- **Resultado:** **Falhou.** Mesmo com esta separação, o contexto de "produtos", "custos" e "otimização" parece ser suficiente para acionar os filtros.
 
 ---
 
-## 5. Conclusão Geral e Próximos Passos
+## 4. Conclusão Geral e Hipótese Atual
 
-O erro `414 URI Too Large` que recebemos numa tentativa anterior (não documentada aqui) de usar parâmetros de URL, juntamente com as falhas de comunicação, indica que o desafio atual não está na lógica de renderização, mas sim no **volume dos dados** que estamos a tentar transferir para a página de impressão no momento da sua criação. A próxima abordagem deve focar-se em resolver este problema de transferência de dados de forma eficiente.
+A análise de todas as tentativas falhadas leva a uma conclusão central:
+
+**A combinação de um contexto comercial (produtos, custos, dimensionamento) com a tarefa de geração de texto, por mais simplificada que seja, está a ser consistentemente interpretada pelos modelos de linguagem como uma violação das políticas de segurança, provavelmente relacionadas com a proibição de dar aconselhamento financeiro ou comercial automatizado.**
+
+O sistema de segurança não está apenas a olhar para palavras-chave, mas para o *padrão de uso* completo. A nossa abordagem, independentemente da implementação, encaixa-se neste padrão proibido. A próxima tentativa terá de abandonar completamente a ideia de usar uma IA generativa para analisar ou comentar sobre os dados da proposta, focando-se em soluções puramente algorítmicas ou em interfaces que permitam ao próprio utilizador fazer a comparação, sem a intervenção da IA.
