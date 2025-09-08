@@ -2,17 +2,19 @@
 'use server';
 
 /**
- * @fileOverview This file defines a Genkit flow that suggests a refined solar panel quantity.
+ * @fileOverview This file defines an algorithmic flow that suggests a refined solar panel quantity.
+ * This implementation intentionally avoids calling a generative AI model to ensure reliability and prevent safety filter blocks.
  *
  * - suggestRefinedPanelConfig - A function that suggests a refined panel configuration based on input parameters.
  * - SuggestRefinedPanelConfigInput - The input type for the suggestRefinedPanelConfig function.
  * - SuggestRefinedPanelConfigOutput - The return type for the suggestRefinedPanelConfig function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 import { solarCalculationSchema } from '@/types';
-import { googleAI } from '@genkit-ai/googleai';
+
+// Define a type for the system status
+type SystemStatus = 'OTIMIZADO' | 'SUBDIMENSIONADO' | 'SUPERDIMENSIONADO';
 
 // Zod schema for a single item in the bill of materials
 const bomItemSchema = z.object({
@@ -52,23 +54,39 @@ export type SuggestRefinedPanelConfigOutput = z.infer<
   typeof SuggestRefinedPanelConfigOutputSchema
 >;
 
+/**
+ * Generates a textual analysis based on the system status.
+ * This function replaces the generative AI call.
+ * @param status - The calculated status of the system.
+ * @param data - The data required to fill the text templates.
+ * @returns A string containing the analysis.
+ */
+function gerarAnaliseTextual(status: SystemStatus, data: { paineis_atuais: number; paineis_sugeridos: number; }): string {
+    const { paineis_atuais, paineis_sugeridos } = data;
+    
+    switch (status) {
+        case 'OTIMIZADO':
+            return `A configuração atual de ${paineis_atuais} painéis é ideal. A geração estimada cobre o seu consumo com uma margem de segurança adequada, garantindo um excelente retorno sobre o investimento.`;
+        
+        case 'SUBDIMENSIONADO':
+            return `O sistema atual está subdimensionado e pode não cobrir todo o seu consumo em meses de menor sol. Sugerimos aumentar para ${paineis_sugeridos} painéis para garantir a sua autossuficiência energética e maximizar a economia a longo prazo.`;
+            
+        case 'SUPERDIMENSIONADO':
+            return `A configuração atual parece superdimensionada, o que pode aumentar o custo do investimento sem um benefício proporcional na sua fatura. Sugerimos ajustar para ${paineis_sugeridos} painéis para um equilíbrio perfeito entre geração e custo.`;
+
+        default:
+            return "Análise não disponível.";
+    }
+}
+
+
+// This is the main exported function, now fully algorithmic.
 export async function suggestRefinedPanelConfig(
   input: SuggestRefinedPanelConfigInput
 ): Promise<SuggestRefinedPanelConfigOutput> {
-  return suggestRefinedPanelConfigFlow(input);
-}
-
-// This flow now performs the calculation logic itself, asking the AI only for the analysis text.
-const suggestRefinedPanelConfigFlow = ai.defineFlow(
-  {
-    name: 'suggestRefinedPanelConfigFlow',
-    inputSchema: SuggestRefinedPanelConfigInputSchema,
-    outputSchema: SuggestRefinedPanelConfigOutputSchema,
-  },
-  async (input) => {
-    
+  
     // 1. Extract essential data from the input
-    const { calculationInput, billOfMaterials } = input;
+    const { calculationInput, billOfMaterials } = SuggestRefinedPanelConfigInputSchema.parse(input);
     const { consumo_mensal_kwh, irradiacao_psh_kwh_m2_dia, valor_medio_fatura_reais } = calculationInput;
 
     const panel = billOfMaterials.find(item => item.type === 'PAINEL_SOLAR');
@@ -79,10 +97,11 @@ const suggestRefinedPanelConfigFlow = ai.defineFlow(
 
     const panelPowerWp = parseFloat(panel.technicalSpecifications?.['Potência (Wp)'] || '0');
     const inverterEfficiencyPercent = parseFloat(inverter.technicalSpecifications?.['Eficiência (%)'] || '97');
+    const currentPanelQuantity = panel.quantity;
 
     if (panelPowerWp === 0) throw new Error("Painel solar na lista não possui a especificação 'Potência (Wp)'.");
 
-    // 2. Perform the sizing calculation (LOGIC MOVED TO CODE)
+    // 2. Perform the sizing calculation (Engine Core)
     const systemEfficiency = (inverterEfficiencyPercent / 100) * (1 - (calculationInput.fator_perdas_percent ?? 20) / 100);
     const dailyEnergyPerPanelKwh = (panelPowerWp / 1000) * irradiacao_psh_kwh_m2_dia * systemEfficiency;
     const monthlyEnergyPerPanelKwh = dailyEnergyPerPanelKwh * 30;
@@ -91,7 +110,18 @@ const suggestRefinedPanelConfigFlow = ai.defineFlow(
 
     const idealPanelQuantity = Math.ceil(consumo_mensal_kwh / monthlyEnergyPerPanelKwh);
     
-    // 3. Calculate new total cost and payback (LOGIC MOVED TO CODE)
+    // 3. Classify the system status
+    let status: SystemStatus;
+    const difference = idealPanelQuantity - currentPanelQuantity;
+    if (Math.abs(difference) <= 1) { // Allow for a small margin
+        status = 'OTIMIZADO';
+    } else if (difference > 0) {
+        status = 'SUBDIMENSIONADO';
+    } else {
+        status = 'SUPERDIMENSIONADO';
+    }
+    
+    // 4. Calculate new total cost and payback for the suggestion
     const otherItemsCost = billOfMaterials
       .filter(item => item.type !== 'PAINEL_SOLAR')
       .reduce((sum, item) => sum + (item.cost * item.quantity), 0);
@@ -103,38 +133,21 @@ const suggestRefinedPanelConfigFlow = ai.defineFlow(
     const annualSavings = (valor_medio_fatura_reais * 12) * 0.90; // Assume 90% savings for simplicity
     const newPaybackYears = annualSavings > 0 ? newTotalCost / annualSavings : Infinity;
     
-    // 4. Ask the AI to generate ONLY the analysis text based on the results.
-    const prompt = `
-      Você é um engenheiro especialista em sistemas de energia solar.
-      Um sistema foi dimensionado para um cliente. Sua tarefa é apenas gerar uma breve análise sobre o novo dimensionamento.
-
-      **Dados:**
-      - Consumo do Cliente: ${consumo_mensal_kwh} kWh/mês.
-      - Quantidade de painéis na proposta original: ${panel.quantity}
-      - Quantidade ideal de painéis calculada por você: ${idealPanelQuantity}
-
-      **Sua Tarefa:**
-      Escreva uma análise **curta e direta** (máximo 2 frases) para o campo 'analise_texto', justificando o porquê da nova quantidade de painéis ser mais adequada para atingir a meta de consumo do cliente.
-      Seja técnico e assertivo. Exemplo: "Para cobrir 100% do consumo, o dimensionamento ideal requer ${idealPanelQuantity} painéis. Esta configuração garante a geração necessária para abater a fatura de energia de forma eficiente."
-    `;
-
-    const { text } = await ai.generate({
-      model: googleAI('gemini-1.5-flash-latest'),
-      prompt: prompt,
-      config: {
-        // Relax safety settings as a precaution
-        safetySettings: [{ category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }]
-      }
+    // 5. Generate the analysis text using the local engine
+    const analiseTexto = gerarAnaliseTextual(status, {
+        paineis_atuais: currentPanelQuantity,
+        paineis_sugeridos: idealPanelQuantity
     });
 
-    // 5. Return the final structured object with calculated data
-    return {
-      analise_texto: text,
+    // 6. Return the final structured object, maintaining the same schema
+    const result: SuggestRefinedPanelConfigOutput = {
+      analise_texto: analiseTexto,
       configuracao_otimizada: {
         nova_quantidade_paineis: idealPanelQuantity,
         novo_custo_total_reais: newTotalCost,
-        novo_payback_anos: newPaybackYears,
+        novo_payback_anos: isFinite(newPaybackYears) ? parseFloat(newPaybackYears.toFixed(1)) : 0,
       },
     };
-  }
-);
+
+    return SuggestRefinedPanelConfigOutputSchema.parse(result);
+}
