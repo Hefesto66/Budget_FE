@@ -49,7 +49,7 @@ const calculateSolarFlow = ai.defineFlow(
     const geracao_media_mensal_kwh = geracao_diaria_kwh * 30;
 
     // 5. Calculate Financials
-    const tarifa_energia_reais_kwh = data.valor_medio_fatura_reais / data.consumo_mensal_kwh;
+    const tarifa_energia_reais_kwh = data.consumo_mensal_kwh > 0 ? data.valor_medio_fatura_reais / data.consumo_mensal_kwh : 0;
     const tarifa_final_reais_kwh = tarifa_energia_reais_kwh + data.adicional_bandeira_reais_kwh;
     
     const conta_antes_reais = data.valor_medio_fatura_reais;

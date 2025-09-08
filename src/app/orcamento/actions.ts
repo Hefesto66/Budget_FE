@@ -33,7 +33,7 @@ export async function getCalculation(input: SolarCalculationInput) {
     console.error(error);
     console.error("==========================================================");
     const errorMessage =
-      error.cause?.message || "Falha ao calcular. Verifique os dados.";
+      error?.message || error.cause?.message || "Falha ao calcular. Verifique os dados.";
     return { success: false, error: errorMessage };
   }
 }
