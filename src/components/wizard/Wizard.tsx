@@ -54,6 +54,8 @@ const wizardSchema = z.object({
         cost: z.number(),
         unit: z.string(),
         quantity: z.number().min(1, "A quantidade deve ser pelo menos 1."),
+        // Add technicalSpecifications to the schema to hold product specs
+        technicalSpecifications: z.record(z.string()).optional(),
     }))
 });
 
@@ -186,6 +188,7 @@ export function Wizard() {
 
   const processForm = async (data: WizardFormData) => {
     setIsLoading(true);
+    toast({ title: "Iniciando cálculo...", description: "Validando dados de entrada." });
 
     const bom = data.billOfMaterials;
     const panelItem = bom.find(item => item.type === 'PAINEL_SOLAR');
@@ -198,25 +201,16 @@ export function Wizard() {
         return;
     }
 
-    const panelProduct = getProductById(panelItem.productId);
-    const inverterProduct = getProductById(inverterItem.productId);
-
-    if (!panelProduct || !inverterProduct) {
-        toast({ title: "Erro de Inventário", description: "Um ou mais produtos da lista não foram encontrados no inventário.", variant: "destructive" });
-        setIsLoading(false);
-        return;
-    }
-    
-    const panelPowerWp = parseFloat(panelProduct.technicalSpecifications?.['Potência (Wp)'] || '0');
-    const inverterEfficiency = parseFloat(inverterProduct.technicalSpecifications?.['Eficiência (%)'] || '0');
-
-    if (!panelPowerWp) {
-      toast({ title: "Erro de Especificação", description: `O painel "${panelProduct.name}" não tem a especificação "Potência (Wp)".`, variant: "destructive" });
+    const panelPowerWp = parseFloat(panelItem.technicalSpecifications?.['Potência (Wp)'] || '0');
+    if (!panelPowerWp || panelPowerWp === 0) {
+      toast({ title: "Erro de Especificação", description: `O painel "${panelItem.name}" não tem a especificação "Potência (Wp)".`, variant: "destructive" });
       setIsLoading(false);
       return;
     }
-     if (!inverterEfficiency) {
-      toast({ title: "Erro de Especificação", description: `O inversor "${inverterProduct.name}" não tem a especificação "Eficiência (%)".`, variant: "destructive" });
+
+    const inverterEfficiency = parseFloat(inverterItem.technicalSpecifications?.['Eficiência (%)'] || '0');
+     if (!inverterEfficiency || inverterEfficiency === 0) {
+      toast({ title: "Erro de Especificação", description: `O inversor "${inverterItem.name}" não tem a especificação "Eficiência (%)".`, variant: "destructive" });
       setIsLoading(false);
       return;
     }
@@ -229,26 +223,29 @@ export function Wizard() {
         quantidade_modulos: panelItem.quantity,
         potencia_modulo_wp: panelPowerWp,
         eficiencia_inversor_percent: inverterEfficiency,
-        // Pass other details for the PDF document
         preco_modulo_reais: panelItem.cost,
-        fabricante_modulo: panelProduct.technicalSpecifications?.['Fabricante'] || 'N/A',
+        fabricante_modulo: panelItem.manufacturer,
         garantia_defeito_modulo_anos: 12,
         garantia_geracao_modulo_anos: 25,
         quantidade_inversores: inverterItem.quantity,
         custo_inversor_reais: inverterItem.cost,
-        fabricante_inversor: inverterProduct.technicalSpecifications?.['Fabricante'] || 'N/A',
-        modelo_inversor: inverterProduct.name,
-        potencia_inversor_kw: parseFloat(inverterProduct.technicalSpecifications?.['Potência de Saída (kW)'] || '5'),
-        tensao_inversor_v: 220,
-        garantia_inversor_anos: 5,
+        fabricante_inversor: inverterItem.manufacturer,
+        modelo_inversor: inverterItem.name,
+        potencia_inversor_kw: 5, // Placeholder, not used in calculation
+        tensao_inversor_v: 220, // Placeholder
+        garantia_inversor_anos: 5, // Placeholder
         custo_fixo_instalacao_reais: serviceItem.cost,
     };
     
+    toast({ title: "Enviando para o servidor...", description: "Os dados foram validados." });
+    console.log("Submitting to server:", calculationData);
+
     const result = await getCalculation(calculationData);
 
     setIsLoading(false);
 
     if (result.success && result.data) {
+      toast({ title: "Cálculo bem-sucedido!", description: "A exibir análise financeira." });
       setResults(result.data);
       methods.setValue('calculationInput', calculationData); 
       setCurrentStep(1);
@@ -258,6 +255,7 @@ export function Wizard() {
         description: result.error || "Ocorreu uma falha no servidor ao processar a cotação.",
         variant: "destructive",
       });
+      console.error("Server-side calculation failed:", result.error);
     }
   };
   
@@ -323,12 +321,13 @@ export function Wizard() {
         cost: product.salePrice,
         unit: product.unit,
         quantity: 1,
+        technicalSpecifications: product.technicalSpecifications || {},
     });
     setOpenCombobox(null);
   }
   
   const handleAddNewItem = () => {
-    append({ productId: '', name: '', type: 'OUTRO', manufacturer: '', cost: 0, unit: '', quantity: 1 });
+    append({ productId: '', name: '', type: 'OUTRO', manufacturer: '', cost: 0, unit: '', quantity: 1, technicalSpecifications: {} });
   }
 
   const navigateToProduct = (productId: string) => {
@@ -348,12 +347,8 @@ export function Wizard() {
     setIsRefining(true);
     setRefinedSuggestion(null);
 
-    const formData = methods.getValues('calculationInput');
-    const allProducts = getProducts();
-    const panels = allProducts.filter(p => p.type === 'PAINEL_SOLAR');
-    const inverters = allProducts.filter(p => p.type === 'INVERSOR');
-    
-    const response = await getRefinedSuggestions({ ...formData, inventory: { panels, inverters }});
+    const data = methods.getValues();
+    const response = await getRefinedSuggestions(data);
 
     if (response.success && response.data) {
       setRefinedSuggestion(response.data);
@@ -368,35 +363,25 @@ export function Wizard() {
     setIsRefining(false);
   };
   
-  const handleApplySuggestion = async () => {
+ const handleApplySuggestion = () => {
     if (!refinedSuggestion) return;
+
+    const { nova_quantidade_paineis } = refinedSuggestion.configuracao_otimizada;
     
-    const service = inventory.find(p => p.type === 'SERVICO');
+    const bom = methods.getValues('billOfMaterials');
+    const panelIndex = bom.findIndex(item => item.type === 'PAINEL_SOLAR');
 
-    const bomFromAI = refinedSuggestion.configuracao_otimizada.itens.map(item => {
-        const product = getProductById(item.produtoId);
-        return {
-            productId: item.produtoId,
-            name: item.nomeProduto,
-            type: product?.type || 'OUTRO',
-            manufacturer: product?.technicalSpecifications?.['Fabricante'] || 'N/A',
-            cost: product?.salePrice || 0,
-            unit: product?.unit || 'UN',
-            quantity: item.quantidade,
-        };
-    });
-
-    if(service) {
-      bomFromAI.push({ productId: service.id, name: service.name, type: service.type, manufacturer: 'N/A', cost: service.salePrice, unit: service.unit, quantity: 1 });
+    if (panelIndex !== -1) {
+      methods.setValue(`billOfMaterials.${panelIndex}.quantity`, nova_quantidade_paineis);
+      toast({
+          title: "Sugestão Aplicada!",
+          description: `Quantidade de painéis ajustada para ${nova_quantidade_paineis}. Recalcule para ver o impacto.`,
+      });
+    } else {
+        toast({ title: "Erro", description: "Nenhum painel solar encontrado na lista para aplicar a sugestão.", variant: "destructive" });
     }
     
-    methods.setValue('billOfMaterials', bomFromAI);
     setRefinedSuggestion(null);
-    
-    toast({
-        title: "Sugestão Aplicada!",
-        description: "A lista de materiais foi atualizada com a sugestão da IA.",
-      });
   };
 
   const watchedBOM = useWatch({ control: methods.control, name: 'billOfMaterials' });
@@ -619,40 +604,38 @@ export function Wizard() {
                 <AlertDialogHeader>
                     <AlertDialogTitle className="font-headline text-2xl flex items-center gap-2">
                     <Sparkles className="h-6 w-6 text-accent" />
-                    Sugestão Otimizada por IA
+                    Sugestão de Dimensionamento
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                    Analisamos seu perfil e os produtos em seu inventário para encontrar a configuração com melhor custo-benefício.
+                      Com base nos dados e produtos selecionados, este é o dimensionamento ideal para atender 100% do consumo.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <div className="max-h-[60vh] overflow-y-auto p-1 pr-4">
-                    {refinedSuggestion && (
+                    {isRefining ? (
+                         <div className="text-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /></div>
+                    ) : refinedSuggestion && (
                     <div className="space-y-6 text-sm">
                         <div>
-                            <h3 className="font-semibold mb-2 text-foreground">Análise da IA</h3>
+                            <h3 className="font-semibold mb-2 text-foreground">Análise do Engenheiro Virtual</h3>
                             <p className="text-muted-foreground bg-secondary/50 p-4 rounded-md border">{refinedSuggestion.analise_texto}</p>
                         </div>
                         
                         <Separator />
                         
                         <div>
-                            <h4 className="font-semibold text-foreground mb-4">Configuração Otimizada Sugerida</h4>
-                             <div className="rounded-md border border-primary bg-primary/5 p-4 space-y-2">
-                               {refinedSuggestion.configuracao_otimizada.itens.map(item => (
-                                <div key={item.produtoId} className="flex justify-between items-center">
-                                    <span>{item.nomeProduto}</span>
-                                    <span className="font-bold">{item.quantidade} UN</span>
+                            <h4 className="font-semibold text-foreground mb-4">Comparativo de Configuração</h4>
+                            <div className="grid grid-cols-2 gap-x-6">
+                                <div className="space-y-3">
+                                    <h5 className="font-medium text-muted-foreground">Sua Configuração</h5>
+                                     <ComparisonItem label="Painéis" value={`${methods.getValues('billOfMaterials').find(i => i.type === 'PAINEL_SOLAR')?.quantity} UN`} />
+                                     <ComparisonItem label="Custo Total" value={formatCurrency(totalCost)} />
                                 </div>
-                               ))}
-                               <Separator className="my-2 bg-primary/20"/>
-                                <div className="flex justify-between items-center text-base font-bold text-primary">
-                                    <span>Novo Custo Total</span>
-                                    <span>{formatCurrency(refinedSuggestion.configuracao_otimizada.custo_total)}</span>
-                                 </div>
-                                <div className="flex justify-between items-center text-sm">
-                                    <span>Novo Payback Estimado</span>
-                                    <span>{refinedSuggestion.configuracao_otimizada.payback.toFixed(1)} anos</span>
-                                 </div>
+                                <div className="space-y-3 rounded-md border border-primary bg-primary/5 p-4">
+                                     <h5 className="font-medium text-primary">Sugestão Otimizada</h5>
+                                     <ComparisonItem label="Painéis" value={`${refinedSuggestion.configuracao_otimizada.nova_quantidade_paineis} UN`} highlight />
+                                     <ComparisonItem label="Custo Total" value={formatCurrency(refinedSuggestion.configuracao_otimizada.novo_custo_total_reais)} highlight />
+                                     <ComparisonItem label="Payback" value={`${formatNumber(refinedSuggestion.configuracao_otimizada.novo_payback_anos, 1)} anos`} highlight />
+                                </div>
                             </div>
                         </div>
 
@@ -660,10 +643,10 @@ export function Wizard() {
                     )}
                 </div>
                 <AlertDialogFooter>
-                    <Button variant="ghost" onClick={() => setRefinedSuggestion(null)}>Cancelar</Button>
+                    <Button variant="ghost" onClick={() => setRefinedSuggestion(null)}>Ignorar</Button>
                     <Button onClick={handleApplySuggestion}>
                         <CheckCircle className="mr-2" />
-                        Aplicar e Usar Itens
+                        Aplicar Quantidade
                     </Button>
                 </AlertDialogFooter>
                 </AlertDialogContent>
@@ -673,3 +656,12 @@ export function Wizard() {
     </div>
   );
 }
+
+const ComparisonItem = ({ label, value, highlight = false }: { label: string, value: string, highlight?: boolean }) => (
+    <div>
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className={`font-semibold text-base ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
+    </div>
+)
+
+    
