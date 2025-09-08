@@ -9,7 +9,7 @@ import { z } from "zod";
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import type { SolarCalculationResult, SolarCalculationInput, ClientFormData, Quote } from "@/types";
-import { getCalculation, getRefinedSuggestions } from "@/app/orcamento/actions";
+import { getCalculation } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { solarCalculationSchema } from "@/types";
@@ -30,9 +30,6 @@ import { Input } from "../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
 import { cn, formatCurrency } from "@/lib/utils";
-import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
-import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../ui/alert-dialog";
-import { Separator } from "../ui/separator";
 import { Step1DataInput } from "./Step1DataInput";
 
 const Step2Results = dynamic(() => import('./Step2Results').then(mod => mod.Step2Results), {
@@ -105,9 +102,6 @@ export function Wizard() {
   const [inventory, setInventory] = useState<Product[]>([]);
   const [openCombobox, setOpenCombobox] = useState<number | null>(null);
   
-  const [isRefining, setIsRefining] = useState(false);
-  const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
-
   useEffect(() => {
     setInventory(getProducts());
     
@@ -354,50 +348,6 @@ export function Wizard() {
   };
 
   
-  const handleAiRefinement = async () => {
-    setIsRefining(true);
-    setRefinedSuggestion(null);
-
-    const data = methods.getValues();
-    const response = await getRefinedSuggestions({
-        calculationInput: data.calculationInput,
-        billOfMaterials: data.billOfMaterials,
-    });
-
-    if (response.success && response.data) {
-      setRefinedSuggestion(response.data);
-    } else {
-      toast({
-        title: "Erro na Sugestão",
-        description: response.error || "Não foi possível obter uma sugestão da IA. Tente novamente.",
-        variant: "destructive",
-      });
-    }
-
-    setIsRefining(false);
-  };
-  
- const handleApplySuggestion = () => {
-    if (!refinedSuggestion) return;
-
-    const { nova_quantidade_paineis } = refinedSuggestion.configuracao_otimizada;
-    
-    const bom = methods.getValues('billOfMaterials');
-    const panelIndex = bom.findIndex(item => item.type === 'PAINEL_SOLAR');
-
-    if (panelIndex !== -1) {
-      methods.setValue(`billOfMaterials.${panelIndex}.quantity`, nova_quantidade_paineis);
-      toast({
-          title: "Sugestão Aplicada!",
-          description: `Quantidade de painéis ajustada para ${nova_quantidade_paineis}. Recalcule para ver o impacto.`,
-      });
-    } else {
-        toast({ title: "Erro", description: "Nenhum painel solar encontrado na lista para aplicar a sugestão.", variant: "destructive" });
-    }
-    
-    setRefinedSuggestion(null);
-  };
-
   const watchedBOM = useWatch({ control: methods.control, name: 'billOfMaterials' });
   const totalCost = watchedBOM.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
   
@@ -431,9 +381,6 @@ export function Wizard() {
                                 </Button>
                                 <Button type="button" onClick={handleSaveQuote}>
                                     <Save /> {quoteId ? "Atualizar Cotação" : "Salvar Cotação"}
-                                </Button>
-                                <Button type="button" variant="outline" size="icon" onClick={handleAiRefinement} disabled={isRefining} title="Refinar com IA">
-                                    <Sparkles className={`h-4 w-4 ${isRefining ? 'animate-spin' : ''}`} />
                                 </Button>
                             </div>
                         </div>
@@ -612,68 +559,8 @@ export function Wizard() {
               )
             )}
           </AnimatePresence>
-            
-             <AlertDialog open={!!refinedSuggestion} onOpenChange={(isOpen) => !isOpen && setRefinedSuggestion(null)}>
-                <AlertDialogContent className="max-w-2xl">
-                <AlertDialogHeader>
-                    <AlertDialogTitle className="font-headline text-2xl flex items-center gap-2">
-                    <Sparkles className="h-6 w-6 text-accent" />
-                    Sugestão de Dimensionamento
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Com base nos dados e produtos selecionados, este é o dimensionamento ideal para atender 100% do consumo.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <div className="max-h-[60vh] overflow-y-auto p-1 pr-4">
-                    {isRefining ? (
-                         <div className="text-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /></div>
-                    ) : refinedSuggestion && (
-                    <div className="space-y-6 text-sm">
-                        <div>
-                            <h3 className="font-semibold mb-2 text-foreground">Análise do Engenheiro Virtual</h3>
-                            <p className="text-muted-foreground bg-secondary/50 p-4 rounded-md border">{refinedSuggestion.analise_texto}</p>
-                        </div>
-                        
-                        <Separator />
-                        
-                        <div>
-                            <h4 className="font-semibold text-foreground mb-4">Comparativo de Configuração</h4>
-                            <div className="grid grid-cols-2 gap-x-6">
-                                <div className="space-y-3">
-                                    <h5 className="font-medium text-muted-foreground">Sua Configuração</h5>
-                                     <ComparisonItem label="Painéis" value={`${methods.getValues('billOfMaterials').find(i => i.type === 'PAINEL_SOLAR')?.quantity} UN`} />
-                                     <ComparisonItem label="Custo Total" value={formatCurrency(totalCost)} />
-                                </div>
-                                <div className="space-y-3 rounded-md border border-primary bg-primary/5 p-4">
-                                     <h5 className="font-medium text-primary">Sugestão Otimizada</h5>
-                                     <ComparisonItem label="Painéis" value={`${refinedSuggestion.configuracao_otimizada.nova_quantidade_paineis} UN`} highlight />
-                                     <ComparisonItem label="Custo Total" value={formatCurrency(refinedSuggestion.configuracao_otimizada.novo_custo_total_reais)} highlight />
-                                     <ComparisonItem label="Payback" value={`${formatNumber(refinedSuggestion.configuracao_otimizada.novo_payback_anos, 1)} anos`} highlight />
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                    )}
-                </div>
-                <AlertDialogFooter>
-                    <Button variant="ghost" onClick={() => setRefinedSuggestion(null)}>Ignorar</Button>
-                    <Button onClick={handleApplySuggestion}>
-                        <CheckCircle className="mr-2" />
-                        Aplicar Quantidade
-                    </Button>
-                </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </form>
       </FormProvider>
     </div>
   );
 }
-
-const ComparisonItem = ({ label, value, highlight = false }: { label: string, value: string, highlight?: boolean }) => (
-    <div>
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className={`font-semibold text-base ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
-    </div>
-)

@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
-import { getCalculation } from "@/app/orcamento/actions";
+import { getCalculation, getRefinedSuggestions } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, BarChart, Zap, Calendar, FileDown, Loader2, FileSignature, CheckCircle, Pencil } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
@@ -34,6 +34,7 @@ import { format, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useFormContext } from "react-hook-form";
+import type { WizardFormData } from "./Wizard";
 
 const COMPANY_DATA_KEY = "companyData";
 const CUSTOMIZATION_KEY = "proposalCustomization";
@@ -60,13 +61,17 @@ export function Step2Results({
   isEditing 
 }: Step2ResultsProps) {
   const { toast } = useToast();
-  const formMethods = useFormContext(); // Correctly get the context
+  const formMethods = useFormContext<WizardFormData>(); // Correctly get the context
   
   const [isExporting, setIsExporting] = useState(false);
   
   // State for the editable document details
   const [proposalDate, setProposalDate] = useState<Date>(new Date());
   const [proposalValidity, setProposalValidity] = useState<Date>(addDays(new Date(), 20));
+
+  // State for AI Refinement
+  const [isRefining, setIsRefining] = useState(false);
+  const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
 
   useEffect(() => {
     // Automatically update validity date when proposal date changes
@@ -135,15 +140,52 @@ export function Step2Results({
     }
     setIsExporting(false);
   };
+  
+  const handleAiRefinement = async () => {
+    setIsRefining(true);
+    setRefinedSuggestion(null);
 
-  const handleRefineWithAI = () => {
-    // Since the button is removed, we show a toast explaining it.
-    // In a real scenario, you might have a different flow or remove this logic entirely.
-    toast({
-      title: "Função em Manutenção",
-      description: "A funcionalidade de refinar com IA está temporariamente desativada.",
+    const data = formMethods.getValues();
+    const response = await getRefinedSuggestions({
+        calculationInput: data.calculationInput,
+        billOfMaterials: data.billOfMaterials,
     });
+
+    if (response.success && response.data) {
+      setRefinedSuggestion(response.data);
+    } else {
+      toast({
+        title: "Erro na Sugestão",
+        description: response.error || "Não foi possível obter uma sugestão da IA. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+
+    setIsRefining(false);
   };
+
+  const handleApplySuggestion = () => {
+    if (!refinedSuggestion) return;
+
+    const { nova_quantidade_paineis } = refinedSuggestion.configuracao_otimizada;
+    
+    const bom = formMethods.getValues('billOfMaterials');
+    const panelIndex = bom.findIndex(item => item.type === 'PAINEL_SOLAR');
+
+    if (panelIndex !== -1) {
+      formMethods.setValue(`billOfMaterials.${panelIndex}.quantity`, nova_quantidade_paineis);
+      toast({
+          title: "Sugestão Aplicada!",
+          description: `Quantidade de painéis ajustada para ${nova_quantidade_paineis}. Retorne e recalcule para ver o impacto.`,
+      });
+    } else {
+        toast({ title: "Erro", description: "Nenhum painel solar encontrado na lista para aplicar a sugestão.", variant: "destructive" });
+    }
+    
+    setRefinedSuggestion(null);
+  };
+
+  const totalCostFromBom = formMethods.watch('billOfMaterials').reduce((acc, item) => acc + (item.cost * item.quantity), 0);
 
 
   return (
@@ -300,16 +342,73 @@ export function Step2Results({
             {isEditing && (
               <Button type="button" variant="outline" onClick={onGoToDataInput}>
                   <Pencil className="mr-2 h-4 w-4" />
-                  Dados de Consumo
+                  Editar Dados
               </Button>
             )}
 
+            <Button type="button" variant="outline" onClick={handleAiRefinement} disabled={isRefining}>
+                {isRefining ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                Refinar com IA
+            </Button>
+            
             <Button type="button" onClick={handleExportPdf} disabled={isExporting}>
                 {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                 {isExporting ? "A Preparar..." : "Gerar PDF"}
             </Button>
           </div>
       </div>
+       <AlertDialog open={!!refinedSuggestion} onOpenChange={(isOpen) => !isOpen && setRefinedSuggestion(null)}>
+        <AlertDialogContent className="max-w-2xl">
+        <AlertDialogHeader>
+            <AlertDialogTitle className="font-headline text-2xl flex items-center gap-2">
+            <Sparkles className="h-6 w-6 text-accent" />
+            Sugestão de Dimensionamento
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+                Com base nos dados e produtos selecionados, este é o dimensionamento ideal para atender 100% do consumo.
+            </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="max-h-[60vh] overflow-y-auto p-1 pr-4">
+            {isRefining ? (
+                    <div className="text-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /></div>
+            ) : refinedSuggestion && (
+            <div className="space-y-6 text-sm">
+                <div>
+                    <h3 className="font-semibold mb-2 text-foreground">Análise do Engenheiro Virtual</h3>
+                    <p className="text-muted-foreground bg-secondary/50 p-4 rounded-md border">{refinedSuggestion.analise_texto}</p>
+                </div>
+                
+                <Separator />
+                
+                <div>
+                    <h4 className="font-semibold text-foreground mb-4">Comparativo de Configuração</h4>
+                    <div className="grid grid-cols-2 gap-x-6">
+                        <div className="space-y-3">
+                            <h5 className="font-medium text-muted-foreground">Sua Configuração</h5>
+                                <ComparisonItem label="Painéis" value={`${formMethods.getValues('billOfMaterials').find(i => i.type === 'PAINEL_SOLAR')?.quantity} UN`} />
+                                <ComparisonItem label="Custo Total" value={formatCurrency(totalCostFromBom)} />
+                        </div>
+                        <div className="space-y-3 rounded-md border border-primary bg-primary/5 p-4">
+                                <h5 className="font-medium text-primary">Sugestão Otimizada</h5>
+                                <ComparisonItem label="Painéis" value={`${refinedSuggestion.configuracao_otimizada.nova_quantidade_paineis} UN`} highlight />
+                                <ComparisonItem label="Custo Total" value={formatCurrency(refinedSuggestion.configuracao_otimizada.novo_custo_total_reais)} highlight />
+                                <ComparisonItem label="Payback" value={`${formatNumber(refinedSuggestion.configuracao_otimizada.novo_payback_anos, 1)} anos`} highlight />
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            )}
+        </div>
+        <AlertDialogFooter>
+            <Button variant="ghost" onClick={() => setRefinedSuggestion(null)}>Ignorar</Button>
+            <Button onClick={handleApplySuggestion}>
+                <CheckCircle className="mr-2" />
+                Aplicar e Voltar
+            </Button>
+        </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }
@@ -331,3 +430,10 @@ const defaultCustomization: CustomizationSettings = {
     showTimeline: false,
   },
 };
+
+const ComparisonItem = ({ label, value, highlight = false }: { label: string, value: string, highlight?: boolean }) => (
+    <div>
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className={`font-semibold text-base ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
+    </div>
+);
