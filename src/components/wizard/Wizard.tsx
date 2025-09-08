@@ -41,7 +41,7 @@ const Step2Results = dynamic(() => import('./Step2Results').then(mod => mod.Step
 const wizardSchema = z.object({
     calculationInput: solarCalculationSchema,
     billOfMaterials: z.array(z.object({
-        productId: z.string(), // Allow empty string initially
+        productId: z.string(), // Allow empty string
         name: z.string(),
         category: z.string(),
         manufacturer: z.string(),
@@ -156,7 +156,7 @@ export function Wizard() {
               };
               if (foundClient.salespersonId) initialData.salespersonId = foundClient.salespersonId;
               if (foundClient.paymentTermId) initialData.paymentTermId = foundClient.paymentTermId;
-              if (foundClient.priceListId) initialData.priceListId = foundClient.priceListId;
+              if (foundClient.priceListId) initialData.priceListId = found.priceListId;
           }
       }
       
@@ -179,40 +179,34 @@ export function Wizard() {
   const processForm = async (data: WizardFormData) => {
     setIsLoading(true);
 
-    // Filter out any BOM items where a product hasn't been selected
     const validBom = data.billOfMaterials.filter(item => item.productId && item.productId !== '');
     
-    toast({ title: "Iniciando cálculo...", description: "A validar a lista de materiais..." });
-
     const panelItem = validBom.find(item => item.category === 'PAINEL_SOLAR');
     const inverterItem = validBom.find(item => item.category === 'INVERSOR');
     const serviceItem = validBom.find(item => item.category === 'SERVICO');
 
-    // Show warnings instead of blocking
-    if (!panelItem) {
-        toast({ title: "Aviso: Painel Solar em Falta", description: "O cálculo pode ser impreciso sem um painel solar na lista.", variant: "default" });
-    }
-    if (!inverterItem) {
-        toast({ title: "Aviso: Inversor em Falta", description: "O cálculo pode ser impreciso sem um inversor na lista.", variant: "default" });
-    }
-    if (!serviceItem) {
-        toast({ title: "Aviso: Serviço em Falta", description: "O custo da instalação não será contabilizado.", variant: "default" });
-    }
-
-    const panelPowerWp = panelItem ? parseFloat(panelItem.technicalSpecifications?.['Potência (Wp)'] || '0') : 0;
-    if (panelItem && (!panelPowerWp || panelPowerWp === 0)) {
-      toast({ title: "Erro de Especificação", description: `O painel "${panelItem.name}" não tem a especificação "Potência (Wp)" definida no inventário.`, variant: "destructive" });
-      setIsLoading(false);
-      return;
+    // Explicit validation with user feedback
+    if (panelItem) {
+        const panelPowerWp = parseFloat(panelItem.technicalSpecifications?.['Potência (Wp)'] || '0');
+        if (!panelPowerWp || panelPowerWp <= 0) {
+            toast({ title: "Especificação em Falta", description: `O painel "${panelItem.name}" não tem a especificação "Potência (Wp)" definida no inventário. O cálculo não pode continuar.`, variant: "destructive", duration: 6000 });
+            setIsLoading(false);
+            return;
+        }
     }
 
-    const inverterEfficiency = inverterItem ? parseFloat(inverterItem.technicalSpecifications?.['Eficiência (%)'] || '0') : 0;
-    if (inverterItem && (!inverterEfficiency || inverterEfficiency === 0)) {
-      toast({ title: "Erro de Especificação", description: `O inversor "${inverterItem.name}" não tem a especificação "Eficiência (%)" definida no inventário.`, variant: "destructive" });
-      setIsLoading(false);
-      return;
+    if (inverterItem) {
+        const inverterEfficiency = parseFloat(inverterItem.technicalSpecifications?.['Eficiência (%)'] || '0');
+        if (!inverterEfficiency || inverterEfficiency <= 0) {
+            toast({ title: "Especificação em Falta", description: `O inversor "${inverterItem.name}" não tem a especificação "Eficiência (%)" definida no inventário. O cálculo não pode continuar.`, variant: "destructive", duration: 6000 });
+            setIsLoading(false);
+            return;
+        }
     }
 
+    // Now, derive values safely AFTER validation
+    const panelPowerWp = panelItem ? parseFloat(panelItem.technicalSpecifications!['Potência (Wp)']) : 0;
+    const inverterEfficiency = inverterItem ? parseFloat(inverterItem.technicalSpecifications!['Eficiência (%)']) : 0;
     const totalCostFromBom = validBom.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
 
     const calculationData: SolarCalculationInput = {
@@ -221,8 +215,6 @@ export function Wizard() {
         quantidade_modulos: panelItem?.quantity ?? 0,
         potencia_modulo_wp: panelPowerWp,
         eficiencia_inversor_percent: inverterEfficiency,
-        
-        // The following fields are for the PDF and don't block the calculation if missing
         preco_modulo_reais: panelItem?.cost ?? 0,
         fabricante_modulo: panelItem?.manufacturer ?? '',
         garantia_defeito_modulo_anos: 12,
@@ -231,9 +223,9 @@ export function Wizard() {
         custo_inversor_reais: inverterItem?.cost ?? 0,
         fabricante_inversor: inverterItem?.manufacturer ?? '',
         modelo_inversor: inverterItem?.name ?? '',
-        potencia_inversor_kw: 5, // Placeholder, not used in calculation
-        tensao_inversor_v: 220, // Placeholder
-        garantia_inversor_anos: 5, // Placeholder
+        potencia_inversor_kw: 5,
+        tensao_inversor_v: 220,
+        garantia_inversor_anos: 5,
         custo_fixo_instalacao_reais: serviceItem?.cost ?? 0,
     };
     
