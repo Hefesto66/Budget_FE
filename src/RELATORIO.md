@@ -1,70 +1,67 @@
-# Relatório Técnico: Diagnóstico de Erros na Geração de PDF e Bloqueios de Segurança da IA
+# Relatório de Incidente: Falha Crítica no Fluxo de Cálculo do Orçamento
 
 **Data:** 24/07/2024
 **Autor:** Assistente de IA - Firebase Studio
+**Status:** **Crítico - Não Resolvido**
 
 ## 1. Resumo Executivo
 
-O objetivo de criar uma experiência de utilizador fluida e inteligente na aplicação Solaris tem enfrentado dois desafios técnicos principais e persistentes:
-1.  A **geração de um documento PDF** profissional a partir dos dados da proposta.
-2.  O **bloqueio consistente por filtros de segurança** da funcionalidade "Refinar com IA".
+O fluxo de criação de orçamentos, funcionalidade central da aplicação, encontra-se num estado de falha persistente e crítico. O sintoma principal é a total ausência de reação do botão "Avançar para Resultados" quando a lista de materiais (`billOfMaterials`) contém itens, especificamente o painel solar e o inversor. Paradoxalmente, o cálculo é processado corretamente quando a lista de materiais está vazia.
 
-Este relatório documenta a evolução de cada problema, as arquiteturas tentadas e as razões pelas quais falharam, culminando na situação atual.
+Este comportamento indica um erro fundamental na validação dos dados no *frontend* (navegador), que bloqueia a submissão do formulário de forma silenciosa, sem fornecer qualquer feedback ao utilizador. Este relatório documenta as tentativas de correção, as razões pelas quais falharam e apresenta uma análise estruturada do problema.
 
 ---
 
-## 2. Desafio 1: A Geração do PDF
+## 2. Anatomia do Problema
 
-### Fase 1: Geração Client-Side com `html2canvas`
-- **Estratégia:** Utilizar `html2canvas` para "fotografar" o conteúdo da proposta e `jspdf` para fatiar essa imagem em páginas PDF.
-- **Problema Fundamental:** `html2canvas` não interpreta as regras de impressão do CSS (`@media print`). A diretiva `page-break-inside: avoid`, crucial para evitar que secções sejam cortadas, era ignorada.
-- **Conclusão:** A abordagem de "fotografar e fatiar" é inerentemente falha para documentos complexos que exigem controlo de paginação.
+O fluxo de trabalho pretendido é o seguinte:
+1.  O utilizador preenche os dados de consumo e a lista de materiais no Passo 1 (`Wizard.tsx`).
+2.  Ao clicar em "Avançar para Resultados", a função `processForm` é acionada.
+3.  `processForm` recolhe os dados, valida-os usando um *schema* da biblioteca Zod, e envia-os para a ação de servidor `getCalculation`.
+4.  O servidor executa a lógica de negócio em `calculateSolarFlow` e retorna os resultados.
+5.  O frontend exibe os resultados no Passo 2.
 
-### Fase 2: Geração Server-Side com `Puppeteer`
-- **Estratégia:** Mover a lógica para o servidor, usando um *headless browser* (Puppeteer) que interpreta CSS corretamente.
-- **Problema Fundamental:** Conflito com a fronteira cliente-servidor do Next.js.
-- **Erro Manifestado:** **`You're importing a component that imports react-dom/server...`**
-- **Análise:** O sistema de *build* do Next.js impediu que código de servidor (`puppeteer`) fosse incluído no pacote do cliente, e as tentativas de isolar o código falharam.
-- **Conclusão:** A complexidade de isolar o código do servidor na arquitetura do Next.js tornou a abordagem inviável.
-
-### Fase 3: Impressão Nativa do Navegador (Atual)
-- **Estratégia:** Alavancar a funcionalidade "Imprimir para PDF" do navegador, que respeita as regras de CSS, passando os dados para uma nova aba (`/orcamento/imprimir`).
-- **Problema Fundamental:** Falha na transferência de dados para a nova aba de impressão.
-- **Análise das Falhas:** Tentativas com `localStorage` e `sessionStorage` falharam devido a *race conditions* (a nova aba lia os dados antes de serem escritos) e à complexidade de garantir a sincronização. A abordagem de injetar o HTML dinamicamente também se mostrou frágil.
-- **Conclusão:** A impressão nativa é a mais promissora, mas requer uma solução 100% confiável para a transferência de dados no momento da abertura da página.
+**O Ponto de Falha:** O processo está a ser interrompido **antes do passo 3**. A validação do Zod no *frontend* está a falhar silenciosamente, impedindo que a função `processForm` seja executada.
 
 ---
 
-## 3. Desafio 2: Bloqueios de Segurança na IA ("Refinar com IA")
+## 3. Histórico de Tentativas de Correção e Análise de Falhas
 
-O erro **"Falha ao obter sugestão da IA. A resposta pode ter sido bloqueada por filtros de segurança"** tem sido a constante, apesar de múltiplas refatorações.
+### Tentativa 1: Flexibilização da Validação no Backend
+- **Ação:** Modifiquei o fluxo `calculateSolarFlow` no *backend* para aceitar valores `0` para campos como `potencia_modulo_wp`, pensando que o erro era uma rejeição do servidor.
+- **Por que Falhou:** O problema não estava no *backend*. A submissão dos dados nunca chegava a acontecer. O erro estava a ocorrer no *frontend*, antes da chamada de rede.
 
-### Tentativa 1: Simplificação do Prompt
-- **Hipótese:** O *prompt* original, que pedia uma longa cadeia de pensamento, era demasiado complexo.
-- **Ação:** O *prompt* foi simplificado para pedir apenas uma análise curta e direta.
-- **Resultado:** **Falhou.** O erro persistiu, indicando que o problema não era o comprimento do *prompt*, mas o seu conteúdo.
+### Tentativa 2: Remoção do Botão Duplicado
+- **Ação:** Identifiquei um botão de *submit* escondido no componente `Step1DataInput.tsx` e removi-o, acreditando que poderia estar a causar um conflito de formulário.
+- **Por que Falhou:** Embora fosse uma boa prática de higiene do código, não era a causa raiz. O problema de validação subjacente persistiu.
 
-### Tentativa 2: Simplificação do Input de Dados
-- **Hipótese:** Enviar um objeto JSON complexo (`technicalSpecifications`) dentro do *prompt* poderia estar a ser confundido com código malicioso.
-- **Ação:** Em vez de enviar o JSON completo, o *prompt* foi alterado para enviar apenas o valor numérico da potência do painel (ex: `Potência: 550`).
-- **Resultado:** **Falhou.** O erro persistiu.
+### Tentativa 3: Ajuste do Schema para `.gte(0)`
+- **Ação:** Alterei a validação de `consumo_mensal_kwh` de `.positive()` para `.gte(0)`, suspeitando que a inserção de um `0` temporário pelo utilizador estava a invalidar o formulário.
+- **Por que Falhou:** Esta foi uma correção válida para um problema secundário, mas não resolveu o problema principal. O bloqueio continuou quando a lista de materiais era preenchida, indicando que o conflito de validação era mais complexo.
 
-### Tentativa 3: Mudança de Modelo de IA
-- **Hipótese:** O modelo `gemini-2.5-flash` poderia ser excessivamente sensível para este caso de uso.
-- **Ação:** O fluxo foi forçado a usar um modelo diferente e mais robusto, o `gemini-1.5-flash-latest`.
-- **Resultado:** **Falhou.** O erro persistiu, demonstrando que o problema é fundamental para a política de segurança da plataforma, independentemente do modelo.
-
-### Tentativa 4: Separação de Responsabilidades (Cálculo no Código, Análise na IA)
-- **Hipótese:** Pedir à IA para realizar qualquer tipo of cálculo ou análise financeira era o gatilho.
-- **Ação:** A arquitetura foi refatorada. O código TypeScript tornou-se responsável por todos os cálculos (quantidade ideal de painéis, novo custo, etc.). A IA recebia apenas os números já calculados e a sua única tarefa era gerar o texto da análise.
-- **Resultado:** **Falhou.** Mesmo com esta separação, o contexto de "produtos", "custos" e "otimização" parece ser suficiente para acionar os filtros.
+### Tentativa 4: Simplificação do `wizardSchema` e Validação Lógica
+- **Ação:** A minha hipótese era que o *schema* aninhado (`solarCalculationSchema` dentro do `wizardSchema`) estava a criar um conflito. Tentei simplificá-lo e mover a lógica de validação para dentro da função `processForm`.
+- **Por que Falhou:** A abordagem foi correta na intenção, mas a execução foi falha. Eu não consegui desacoplar completamente a dependência entre a `billOfMaterials` e a `calculationInput` a nível da validação do Zod. O formulário ainda tentava validar um estado inconsistente de dados, onde os valores da lista de materiais (ex: potência) ainda não tinham sido formalmente transferidos para os campos correspondentes do `calculationInput` no momento da validação.
 
 ---
 
-## 4. Conclusão Geral e Hipótese Atual
+## 4. Hipótese Atual e Causa Raiz Provável
 
-A análise de todas as tentativas falhadas leva a uma conclusão central:
+**O problema é um conflito de validação no frontend causado por uma dependência circular implícita.**
 
-**A combinação de um contexto comercial (produtos, custos, dimensionamento) com a tarefa de geração de texto, por mais simplificada que seja, está a ser consistentemente interpretada pelos modelos de linguagem como uma violação das políticas de segurança, provavelmente relacionadas com a proibição de dar aconselhamento financeiro ou comercial automatizado.**
+1.  O nosso formulário principal (`Wizard.tsx`) usa um único *schema* Zod (`wizardSchema`) para validar todo o seu estado.
+2.  Este *schema* inclui o `solarCalculationSchema`, que contém campos como `potencia_modulo_wp`.
+3.  O valor de `potencia_modulo_wp` **só pode ser conhecido depois de processar a `billOfMaterials`**.
+4.  No entanto, o Zod tenta validar **tudo de uma só vez**. No momento da validação, o campo `potencia_modulo_wp` dentro do objeto do formulário está vazio ou com o valor padrão, mesmo que um painel solar já tenha sido adicionado à `billOfMaterials`.
+5.  Esta discrepância — ter um painel na lista, mas não ter a sua potência refletida no campo `potencia_modulo_wp` no mesmo instante — invalida o formulário.
+6.  Como não há uma mensagem de erro explicitamente ligada a este campo no Passo 1, a falha é **silenciosa**. O botão não faz nada.
 
-O sistema de segurança não está apenas a olhar para palavras-chave, mas para o *padrão de uso* completo. A nossa abordagem, independentemente da implementação, encaixa-se neste padrão proibido. A próxima tentativa terá de abandonar completamente a ideia de usar uma IA generativa para analisar ou comentar sobre os dados da proposta, focando-se em soluções puramente algorítmicas ou em interfaces que permitam ao próprio utilizador fazer a comparação, sem a intervenção da IA.
+Em suma, estamos a pedir ao Zod para validar o resultado de um processamento que ainda não aconteceu.
+
+**Próximos Passos Sugeridos:**
+A solução definitiva exige o total desacoplamento da validação dos dados de entrada do utilizador da validação dos dados processados. Devemos:
+1.  Simplificar radicalmente o `wizardSchema` para validar apenas os campos que o utilizador insere diretamente.
+2.  Construir o objeto `calculationData` final dentro da função `processForm` **após** a validação bem-sucedida dos dados de entrada.
+3.  Só então, opcionalmente, validar este objeto `calculationData` final contra o `solarCalculationSchema` antes de o enviar para o servidor.
+
+Isto quebra a dependência circular e garante que a validação ocorra apenas em dados consistentes e totalmente processados.
