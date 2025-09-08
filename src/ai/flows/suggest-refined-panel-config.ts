@@ -66,13 +66,13 @@ function gerarAnaliseTextual(status: SystemStatus, data: { paineis_atuais: numbe
     
     switch (status) {
         case 'OTIMIZADO':
-            return `A configuração atual de ${paineis_atuais} painéis é ideal. A geração estimada cobre o seu consumo com uma margem de segurança adequada, garantindo um excelente retorno sobre o investimento.`;
+            return `A sua configuração atual de ${paineis_atuais} painéis já é a ideal. A geração estimada cobre o seu consumo com uma margem de segurança adequada, garantindo um excelente retorno sobre o investimento. Nenhuma alteração é necessária.`;
         
         case 'SUBDIMENSIONADO':
-            return `O sistema atual está subdimensionado e pode não cobrir todo o seu consumo em meses de menor sol. Sugerimos aumentar para ${paineis_sugeridos} painéis para garantir a sua autossuficiência energética e maximizar a economia a longo prazo.`;
+            return `O sistema atual com ${paineis_atuais} painéis está subdimensionado e pode não cobrir todo o seu consumo em meses de menor sol. Sugerimos aumentar para ${paineis_sugeridos} painéis para garantir a sua autossuficiência energética e maximizar a economia a longo prazo.`;
             
         case 'SUPERDIMENSIONADO':
-            return `A configuração atual parece superdimensionada, o que pode aumentar o custo do investimento sem um benefício proporcional na sua fatura. Sugerimos ajustar para ${paineis_sugeridos} painéis para um equilíbrio perfeito entre geração e custo.`;
+            return `A configuração atual com ${paineis_atuais} painéis parece superdimensionada, o que pode aumentar o custo do investimento sem um benefício proporcional na sua fatura. Sugerimos ajustar para ${paineis_sugeridos} painéis para um equilíbrio perfeito entre geração e custo.`;
 
         default:
             return "Análise não disponível.";
@@ -108,25 +108,32 @@ export async function suggestRefinedPanelConfig(
     
     if (monthlyEnergyPerPanelKwh === 0) throw new Error("Cálculo de energia por painel resultou em zero. Verifique os dados de irradiação e potência.");
 
-    const idealPanelQuantity = Math.ceil(consumo_mensal_kwh / monthlyEnergyPerPanelKwh);
+    const idealPanelQuantityRaw = consumo_mensal_kwh / monthlyEnergyPerPanelKwh;
+    // Adiciona uma pequena margem (ex: 5%) antes de arredondar para cima, para garantir que o consumo seja coberto.
+    const idealPanelQuantity = Math.ceil(idealPanelQuantityRaw * 1.05);
+
     
     // 3. Classify the system status
     let status: SystemStatus;
     const difference = idealPanelQuantity - currentPanelQuantity;
-    if (Math.abs(difference) <= 1) { // Allow for a small margin
+    // Allow for a small margin of +/- 1 panel to be considered "optimized"
+    if (Math.abs(difference) <= 1) { 
         status = 'OTIMIZADO';
     } else if (difference > 0) {
         status = 'SUBDIMENSIONADO';
     } else {
         status = 'SUPERDIMENSIONADO';
     }
+
+    // Determine the final suggested quantity
+    const suggestedPanelQuantity = status === 'OTIMIZADO' ? currentPanelQuantity : idealPanelQuantity;
     
     // 4. Calculate new total cost and payback for the suggestion
     const otherItemsCost = billOfMaterials
       .filter(item => item.type !== 'PAINEL_SOLAR')
       .reduce((sum, item) => sum + (item.cost * item.quantity), 0);
     
-    const newPanelsCost = panel.cost * idealPanelQuantity;
+    const newPanelsCost = panel.cost * suggestedPanelQuantity;
     const newTotalCost = newPanelsCost + otherItemsCost;
     
     // Simplified savings calculation for payback estimation
@@ -136,14 +143,14 @@ export async function suggestRefinedPanelConfig(
     // 5. Generate the analysis text using the local engine
     const analiseTexto = gerarAnaliseTextual(status, {
         paineis_atuais: currentPanelQuantity,
-        paineis_sugeridos: idealPanelQuantity
+        paineis_sugeridos: suggestedPanelQuantity
     });
 
     // 6. Return the final structured object, maintaining the same schema
     const result: SuggestRefinedPanelConfigOutput = {
       analise_texto: analiseTexto,
       configuracao_otimizada: {
-        nova_quantidade_paineis: idealPanelQuantity,
+        nova_quantidade_paineis: suggestedPanelQuantity,
         novo_custo_total_reais: newTotalCost,
         novo_payback_anos: isFinite(newPaybackYears) ? parseFloat(newPaybackYears.toFixed(1)) : 0,
       },
