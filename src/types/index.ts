@@ -5,8 +5,8 @@ import { z } from "zod";
 
 export const solarCalculationSchema = z.object({
   // Seção 1: Consumo e Fatura
-  consumo_mensal_kwh: z.number().positive({ message: "O consumo mensal deve ser um número maior que zero." }),
-  valor_medio_fatura_reais: z.number().positive({ message: "O valor da fatura deve ser maior que zero." }),
+  consumo_mensal_kwh: z.number().gte(0, { message: "O consumo mensal não pode ser negativo." }),
+  valor_medio_fatura_reais: z.number().gte(0, { message: "O valor da fatura não pode ser negativo." }),
   cip_iluminacao_publica_reais: z.number().gte(0, { message: "O valor da CIP não pode ser negativo." }),
   adicional_bandeira_reais_kwh: z.number().gte(0).default(0),
   
