@@ -19,7 +19,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { getLeadById, getQuotesByLeadId, type Lead, type Quote } from '@/lib/storage';
+import { getLeadById, getQuotesByLeadId, type Lead, type Quote, getStages, type Stage, saveLead, addHistoryEntry } from '@/lib/storage';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { dispararFogos } from '@/lib/confetti';
 
 export default function LeadDetailPage() {
   const router = useRouter();
@@ -28,13 +31,16 @@ export default function LeadDetailPage() {
   
   const [lead, setLead] = useState<Lead | null>(null);
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [stages, setStages] = useState<Stage[]>([]);
   const [isClient, setIsClient] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     setIsClient(true);
     if (leadId) {
       const foundLead = getLeadById(leadId);
       setLead(foundLead || null);
+      setStages(getStages());
       if (foundLead) {
         const foundQuotes = getQuotesByLeadId(leadId);
         setQuotes(foundQuotes);
@@ -50,6 +56,39 @@ export default function LeadDetailPage() {
   const handleQuoteClick = (quoteId: string) => {
     router.push(`/orcamento?leadId=${leadId}&quoteId=${quoteId}&clienteId=${lead?.clientId}`);
   };
+
+  const handleStageChange = (newStageId: string) => {
+    if (!lead) return;
+
+    const newStage = stages.find(s => s.id === newStageId);
+    if (!newStage) return;
+
+    const updatedLead = { ...lead, stage: newStageId };
+    saveLead(updatedLead);
+    setLead(updatedLead);
+
+    addHistoryEntry({ 
+        clientId: lead.clientId, 
+        text: `Oportunidade "${lead.title}" teve a etapa alterada para "${newStage.title}".`, 
+        type: 'log-stage',
+        refId: lead.id
+    });
+
+    if (newStage.isWon) {
+        dispararFogos();
+        toast({
+            title: "🎉 Parabéns!",
+            description: `Você ganhou a oportunidade "${lead.title}"!`,
+            duration: 5000,
+        });
+    } else {
+        toast({
+            title: "Etapa Atualizada",
+            description: `A oportunidade foi movida para "${newStage.title}".`,
+        });
+    }
+  };
+
 
   if (!isClient) {
     // Render a skeleton or loading state while waiting for client-side hydration
@@ -87,7 +126,19 @@ export default function LeadDetailPage() {
                             <CardTitle className="font-headline text-3xl text-foreground">{lead.title}</CardTitle>
                             <div className="flex items-center gap-4 text-muted-foreground text-sm pt-2">
                                 <div className="flex items-center gap-1.5"><DollarSign className="h-4 w-4" /><span>{formatCurrency(lead.value)}</span></div>
-                                <div className="flex items-center gap-1.5"><Tag className="h-4 w-4" /><span>{lead.stage}</span></div>
+                                <div className="flex items-center gap-1.5">
+                                    <Tag className="h-4 w-4" />
+                                    <Select value={lead.stage} onValueChange={handleStageChange}>
+                                        <SelectTrigger className="h-auto p-0 border-0 bg-transparent focus:ring-0 w-auto">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {stages.map(stage => (
+                                                <SelectItem key={stage.id} value={stage.id}>{stage.title}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         </CardHeader>
                         <CardContent>

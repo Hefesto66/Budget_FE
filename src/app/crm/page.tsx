@@ -29,7 +29,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { Confetti } from '@/components/ui/confetti';
+import { dispararFogos } from '@/lib/confetti';
 
 // Importa o DragDropContext dinamicamente para evitar problemas de SSR
 const DragDropContext = dynamic(
@@ -109,7 +109,6 @@ export default function CrmPage() {
   // State for editing a stage
   const [editingStage, setEditingStage] = useState<Stage | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
   
   const { toast } = useToast();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -267,13 +266,12 @@ export default function CrmPage() {
 
         // Check for "Won" stage celebration
         if (destStage.isWon) {
-            setShowConfetti(true);
+            dispararFogos();
             toast({
                 title: "🎉 Parabéns!",
                 description: `Você ganhou a oportunidade "${movedLead.title}"!`,
                 duration: 5000,
             });
-            setTimeout(() => setShowConfetti(false), 6000); // Hide confetti after 6 seconds
         }
       }
 
@@ -295,7 +293,6 @@ export default function CrmPage() {
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-950">
-          {showConfetti && <Confetti />}
           <Header />
           <main className="flex-1 p-6 flex flex-col">
               <div className="mb-6 flex items-center justify-start">
@@ -438,5 +435,3 @@ export default function CrmPage() {
     </DragDropContext>
   );
 }
-
-    
