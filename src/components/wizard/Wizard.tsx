@@ -40,17 +40,17 @@ const Step2Results = dynamic(() => import('./Step2Results').then(mod => mod.Step
 
 // Etapa 1: Simplificar o wizardSchema
 const wizardSchema = z.object({
-    calculationInput: z.any(), // A validação específica será feita depois
-    billOfMaterials: z.array(z.object({
-        productId: z.string(),
-        name: z.string(),
-        category: z.string(),
-        manufacturer: z.string(),
-        cost: z.number(),
-        unit: z.string(),
-        quantity: z.number().min(1, "A quantidade deve ser pelo menos 1."),
-        technicalSpecifications: z.record(z.string()).optional(),
-    }))
+  calculationInput: z.any(), // A validação específica será feita depois
+  billOfMaterials: z.array(z.object({
+      productId: z.string(),
+      name: z.string(),
+      category: z.string(),
+      manufacturer: z.string(),
+      cost: z.number(),
+      unit: z.string(),
+      quantity: z.number().min(1, "A quantidade deve ser pelo menos 1."),
+      technicalSpecifications: z.record(z.string()).optional(),
+  }))
 });
 
 
@@ -181,69 +181,66 @@ export function Wizard() {
   // Etapa 2: Refatorar a função de processamento
   const processForm = async (data: WizardFormData) => {
     setIsLoading(true);
+    try {
+        console.log("1. Dados brutos recebidos do formulário:", data);
 
-    const validBom = data.billOfMaterials.filter(item => item.productId && item.productId !== '');
-    
-    const panelItem = validBom.find(item => item.category === 'PAINEL_SOLAR');
-    const inverterItem = validBom.find(item => item.category === 'INVERSOR');
-    const serviceItem = validBom.find(item => item.category === 'SERVICO');
+        const validBom = data.billOfMaterials.filter(item => item.productId && item.productId !== '');
+        console.log("2. Validação inicial bem-sucedida (filtragem da BOM). Itens válidos:", validBom);
+        
+        const panelItem = validBom.find(item => item.category === 'PAINEL_SOLAR');
+        const inverterItem = validBom.find(item => item.category === 'INVERSOR');
+        const serviceItem = validBom.find(item => item.category === 'SERVICO');
 
-    // Construção do objeto de cálculo
-    const calculationData: SolarCalculationInput = {
-      ...data.calculationInput,
-      custo_sistema_reais: validBom.reduce((acc, item) => acc + (item.cost * item.quantity), 0),
-      
-      quantidade_modulos: panelItem?.quantity,
-      potencia_modulo_wp: panelItem ? parseFloat(panelItem.technicalSpecifications?.['Potência (Wp)'] || '0') : undefined,
-      eficiencia_inversor_percent: inverterItem ? parseFloat(inverterItem.technicalSpecifications?.['Eficiência (%)'] || '0') : undefined,
-      
-      preco_modulo_reais: panelItem?.cost,
-      fabricante_modulo: panelItem?.manufacturer,
-      
-      quantidade_inversores: inverterItem?.quantity,
-      custo_inversor_reais: inverterItem?.cost,
-      fabricante_inversor: inverterItem?.manufacturer,
-      modelo_inversor: inverterItem?.name,
-      
-      custo_fixo_instalacao_reais: serviceItem?.cost,
+        const calculationData: SolarCalculationInput = {
+            ...data.calculationInput,
+            custo_sistema_reais: validBom.reduce((acc, item) => acc + (item.cost * item.quantity), 0),
+            quantidade_modulos: panelItem?.quantity,
+            potencia_modulo_wp: panelItem ? parseFloat(panelItem.technicalSpecifications?.['Potência (Wp)'] || '0') : undefined,
+            eficiencia_inversor_percent: inverterItem ? parseFloat(inverterItem.technicalSpecifications?.['Eficiência (%)'] || '0') : undefined,
+            preco_modulo_reais: panelItem?.cost,
+            fabricante_modulo: panelItem?.manufacturer,
+            quantidade_inversores: inverterItem?.quantity,
+            custo_inversor_reais: inverterItem?.cost,
+            fabricante_inversor: inverterItem?.manufacturer,
+            modelo_inversor: inverterItem?.name,
+            custo_fixo_instalacao_reais: serviceItem?.cost,
+            garantia_defeito_modulo_anos: 12,
+            garantia_geracao_modulo_anos: 25,
+            potencia_inversor_kw: inverterItem ? parseFloat(inverterItem.technicalSpecifications?.['Potência de Saída (kW)'] || '0') : 5,
+            tensao_inversor_v: 220,
+            garantia_inversor_anos: 5,
+        };
+        console.log("3. Objeto de cálculo construído:", calculationData);
+        
+        const validationResult = solarCalculationSchema.parse(calculationData);
+        console.log("4. Validação final bem-sucedida. Dados finais:", validationResult);
+        
+        console.log("5. A enviar dados para o servidor...");
+        const result = await getCalculation(validationResult);
 
-      // Valores que podem ser mantidos ou tornados opcionais no schema do backend
-      garantia_defeito_modulo_anos: 12,
-      garantia_geracao_modulo_anos: 25,
-      potencia_inversor_kw: 5,
-      tensao_inversor_v: 220,
-      garantia_inversor_anos: 5,
-    };
-    
-    // Validação final dos dados processados
-    const validationResult = solarCalculationSchema.safeParse(calculationData);
-    if (!validationResult.success) {
-      toast({
-        title: "Erro de Validação",
-        description: "Os dados dos materiais estão incompletos ou inválidos. " + validationResult.error.issues.map(i => i.message).join(' '),
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      return;
-    }
-    
-    // Submissão para o servidor
-    const result = await getCalculation(validationResult.data);
+        setIsLoading(false);
 
-    setIsLoading(false);
-
-    if (result.success && result.data) {
-      toast({ title: "Cálculo bem-sucedido!", description: "A exibir análise financeira." });
-      setResults(result.data);
-      methods.setValue('calculationInput', validationResult.data); 
-      setCurrentStep(1);
-    } else {
-      toast({
-        title: "Erro no Cálculo",
-        description: result.error || "Ocorreu uma falha no servidor ao processar a cotação.",
-        variant: "destructive",
-      });
-      console.error("Server-side calculation failed:", result.error);
+        if (result.success && result.data) {
+          toast({ title: "Cálculo bem-sucedido!", description: "A exibir análise financeira." });
+          setResults(result.data);
+          methods.setValue('calculationInput', validationResult);
+          setCurrentStep(1);
+        } else {
+          toast({
+            title: "Erro no Cálculo",
+            description: result.error || "Ocorreu uma falha no servidor ao processar a cotação.",
+            variant: "destructive",
+          });
+          console.error("Server-side calculation failed:", result.error);
+        }
+    } catch (error) {
+        console.error("ERRO DE VALIDAÇÃO ZOD:", error);
+        toast({
+            title: "Erro de Validação",
+            description: "Verifique os campos do formulário. A consola pode ter mais detalhes.",
+            variant: "destructive",
+        });
+        setIsLoading(false);
     }
   };
   
