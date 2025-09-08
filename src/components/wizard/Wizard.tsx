@@ -312,17 +312,27 @@ export function Wizard() {
         manufacturer: product.technicalSpecifications?.['Fabricante'] || 'N/A',
         cost: product.salePrice,
         unit: product.unit,
-        quantity: 1,
+        quantity: 1, // Default quantity to 1 when a new product is selected
         technicalSpecifications: product.technicalSpecifications || {},
     });
     setOpenCombobox(null);
   }
   
   const handleAddNewItem = () => {
-    append({ productId: '', name: '', category: 'OUTRO', manufacturer: '', cost: 0, unit: '', quantity: 1, technicalSpecifications: {} });
+    append({ 
+        productId: '', 
+        name: '', 
+        category: 'OUTRO', 
+        manufacturer: '', 
+        cost: 0, 
+        unit: 'UN', 
+        quantity: 1, 
+        technicalSpecifications: {} 
+    });
   }
 
   const navigateToProduct = (productId: string) => {
+    if (!productId) return;
     const draftData = {
       formData: methods.getValues(),
       results,
@@ -345,7 +355,7 @@ export function Wizard() {
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
       <FormProvider {...methods}>
-        <form onSubmit={(e) => { e.preventDefault(); handleManualSubmit(); }}>
+        <form onSubmit={(e) => { e.preventDefault(); }}>
           <AnimatePresence mode="wait">
             {currentStep === 0 ? (
                <motion.div
