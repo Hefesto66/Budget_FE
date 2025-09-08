@@ -75,7 +75,7 @@ export function Step2Results({
     setProposalValidity(addDays(proposalDate, 20));
   }, [proposalDate]);
 
-  const paybackYears = results.resultados_financeiros.payback_simples_anos;
+  const paybackYears = results.financeiro.payback_simples_anos;
   const paybackText = isFinite(paybackYears) ? `${formatNumber(paybackYears, 1)} anos` : "N/A";
 
   const handleAiRefinement = async () => {
@@ -210,23 +210,23 @@ export function Step2Results({
                 <ResultCard
                   icon={<Wallet />}
                   title="Fatura Mensal SEM Sistema"
-                  value={formatCurrency(results.resultados_financeiros.conta_media_mensal_reais.antes)}
+                  value={formatCurrency(results.conta_media_mensal_reais.antes)}
                 />
                 <ResultCard
                   icon={<TrendingUp />}
                   title="Fatura Mensal COM Sistema"
-                  value={formatCurrency(results.resultados_financeiros.conta_media_mensal_reais.depois)}
+                  value={formatCurrency(results.conta_media_mensal_reais.depois)}
                   className="bg-accent/10 border-accent"
                 />
                 <ResultCard
                   icon={<DollarSign />}
                   title="Economia Média Mensal"
-                  value={formatCurrency(results.resultados_financeiros.economia_mensal_reais)}
+                  value={formatCurrency(results.financeiro.economia_mensal_reais)}
                 />
                  <ResultCard
                   icon={<BarChart />}
                   title="Economia no 1º Ano"
-                  value={formatCurrency(results.resultados_financeiros.economia_primeiro_ano)}
+                  value={formatCurrency(results.financeiro.economia_primeiro_ano)}
                   className="bg-accent/10 border-accent"
                 />
               </div>
@@ -235,8 +235,8 @@ export function Step2Results({
                 <ResultCard
                     icon={<Zap />}
                     title="Sistema Sugerido"
-                    value={`${results.resultados_geracao.quantidade_modulos} painéis`}
-                    description={`${formMethods.getValues().calculationInput.potencia_modulo_wp}Wp | ${formatNumber(results.resultados_geracao.geracao_media_mensal_kwh, 0)} kWh/mês`}
+                    value={`${results.dimensionamento.quantidade_modulos} painéis`}
+                    description={`${formMethods.getValues().calculationInput.potencia_modulo_wp}Wp | ${formatNumber(results.geracao.media_mensal_kwh, 0)} kWh/mês`}
                 />
                 <ResultCard
                   icon={<Calendar />}
@@ -247,7 +247,7 @@ export function Step2Results({
                 <ResultCard
                   icon={<BarChart />}
                   title="Custo Total Estimado"
-                  value={formatCurrency(results.resultados_financeiros.custo_total_sistema_reais)}
+                  value={formatCurrency(results.financeiro.custo_sistema_reais)}
                   description="Valor do sistema + instalação"
                 />
               </div>
@@ -260,7 +260,7 @@ export function Step2Results({
                 <CardDescription>Este gráfico mostra como sua economia cresce ao longo de 25 anos.</CardDescription>
             </CardHeader>
             <CardContent>
-                <SavingsChart annualSavings={results.resultados_financeiros.economia_anual_reais} />
+                <SavingsChart annualSavings={results.financeiro.economia_anual_reais} />
             </CardContent>
         </Card>
 
@@ -390,8 +390,8 @@ export function Step2Results({
                     <div className="grid grid-cols-2 gap-x-6">
                         <div className="space-y-3">
                             <h5 className="font-medium text-muted-foreground">Configuração Atual</h5>
-                             <ComparisonItem label="Painéis" value={`${results.resultados_geracao.quantidade_modulos} de ${formMethods.getValues().calculationInput.potencia_modulo_wp}Wp`} />
-                             <ComparisonItem label="Custo Total" value={formatCurrency(results.resultados_financeiros.custo_total_sistema_reais)} />
+                             <ComparisonItem label="Painéis" value={`${results.dimensionamento.quantidade_modulos} de ${formMethods.getValues().calculationInput.potencia_modulo_wp}Wp`} />
+                             <ComparisonItem label="Custo Total" value={formatCurrency(results.financeiro.custo_sistema_reais)} />
                              <ComparisonItem label="Payback" value={paybackText} />
                         </div>
                         <div className="space-y-3 rounded-md border border-primary bg-primary/5 p-4">
@@ -468,5 +468,3 @@ const defaultCustomization: CustomizationSettings = {
     showTimeline: false,
   },
 };
-
-    

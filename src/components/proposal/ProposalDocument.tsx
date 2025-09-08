@@ -28,9 +28,9 @@ export function ProposalDocument({
     proposalValidity
 }: ProposalDocumentProps) {
   
-  const custoModulos = results.dimensionamento.quantidade_modulos * formData.preco_modulo_reais;
-  const custoInversor = formData.custo_inversor_reais;
-  const custoInstalacao = formData.custo_fixo_instalacao_reais;
+  const custoModulos = (formData.quantidade_modulos ?? 0) * (formData.preco_modulo_reais ?? 0);
+  const custoInversor = (formData.custo_inversor_reais ?? 0);
+  const custoInstalacao = (formData.custo_fixo_instalacao_reais ?? 0);
 
   const { colors, content } = customization;
 
@@ -118,7 +118,7 @@ export function ProposalDocument({
                             <p style={{ fontSize: '9pt', color: '#666', margin: 0 }}>Potência: {formData.potencia_modulo_wp}Wp | Garantia: {formData.garantia_defeito_modulo_anos} anos (produto), {formData.garantia_geracao_modulo_anos} anos (geração)</p>
                         </td>
                         <td style={{ padding: '8px 0', textAlign: 'center' }}>{results.dimensionamento.quantidade_modulos}</td>
-                        <td style={{ padding: '8px 0', textAlign: 'right' }}>{formatCurrency(formData.preco_modulo_reais)}</td>
+                        <td style={{ padding: '8px 0', textAlign: 'right' }}>{formatCurrency(formData.preco_modulo_reais ?? 0)}</td>
                         <td style={{ padding: '8px 0', textAlign: 'right' }}>{formatCurrency(custoModulos)}</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #EEE' }}>
@@ -128,7 +128,7 @@ export function ProposalDocument({
                         </td>
                         <td style={{ padding: '8px 0', textAlign: 'center' }}>{formData.quantidade_inversores}</td>
                         <td style={{ padding: '8px 0', textAlign: 'right' }}>{formatCurrency(custoInversor)}</td>
-                        <td style={{ padding: '8px 0', textAlign: 'right' }}>{formatCurrency(custoInversor * formData.quantidade_inversores)}</td>
+                        <td style={{ padding: '8px 0', textAlign: 'right' }}>{formatCurrency(custoInversor * (formData.quantidade_inversores ?? 1))}</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #EEE' }}>
                         <td style={{ padding: '8px 0' }}>
@@ -162,9 +162,9 @@ export function ProposalDocument({
                         <div style={{ fontSize: '10pt', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             <InfoRow label="Conta de Luz Média Atual" value={formatCurrency(results.conta_media_mensal_reais.antes)} />
                             <InfoRow label="Conta de Luz Média Estimada" value={formatCurrency(results.conta_media_mensal_reais.depois)} highlightColor={colors.primary} />
-                            <InfoRow label="Economia Mensal Estimada" value={formatCurrency(results.economia_mensal_reais)} />
-                            <InfoRow label="Economia no 1º Ano" value={formatCurrency(results.economia_primeiro_ano)} />
-                            <InfoRow label="Tempo de Retorno (Payback)" value={`${formatNumber(results.payback_simples_anos, 1)} anos`} highlightColor={colors.primary} />
+                            <InfoRow label="Economia Mensal Estimada" value={formatCurrency(results.financeiro.economia_mensal_reais)} />
+                            <InfoRow label="Economia no 1º Ano" value={formatCurrency(results.financeiro.economia_primeiro_ano)} />
+                            <InfoRow label="Tempo de Retorno (Payback)" value={`${formatNumber(results.financeiro.payback_simples_anos, 1)} anos`} highlightColor={colors.primary} />
                         </div>
                     </div>
                  )}
@@ -191,7 +191,3 @@ const InfoRow = ({ label, value, highlightColor }: { label: string; value: strin
         <span style={{ color: highlightColor || 'inherit' }}>{value}</span>
     </div>
 )
-
-    
-
-    

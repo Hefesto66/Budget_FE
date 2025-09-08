@@ -30,40 +30,28 @@ const calculateSolarFlow = ai.defineFlow(
     if (!data.consumo_mensal_kwh || data.consumo_mensal_kwh <= 0) {
       throw new Error("O consumo mensal (kWh) é um dado essencial e deve ser maior que zero.");
     }
-    
-    const assumptions = {
-      eficiencia_inversor: (data.eficiencia_inversor_percent ?? 97) / 100,
-      fator_perdas: (data.fator_perdas_percent ?? 20) / 100,
-      psh_h_dia: data.irradiacao_psh_kwh_m2_dia,
-      dc_ac_ratio_default: 1.2
-    };
-
-    // 2. Calculate System Efficiency
-    const eficiencia_sistema = assumptions.eficiencia_inversor * (1 - assumptions.fator_perdas);
-
-    // 3. Determine Required System Size
-    const energia_necessaria_diaria_kwh = data.consumo_mensal_kwh / 30;
-    const potencia_pico_requerida_kw = energia_necessaria_diaria_kwh / (assumptions.psh_h_dia * eficiencia_sistema);
-    
-    // 4. Determine Number of Panels
-    let quantidade_modulos = data.quantidade_modulos;
-    if (!quantidade_modulos || quantidade_modulos <= 0) {
-        if (!data.potencia_modulo_wp || data.potencia_modulo_wp <= 0) {
-            throw new Error("A potência do módulo (Wp) é necessária para dimensionar o sistema.");
-        }
-        quantidade_modulos = Math.ceil((potencia_pico_requerida_kw * 1000) / data.potencia_modulo_wp);
+    if (!data.potencia_modulo_wp || data.potencia_modulo_wp <= 0) {
+        throw new Error("A potência do módulo (Wp) é necessária para dimensionar o sistema.");
     }
-     if (quantidade_modulos < 1) quantidade_modulos = 1;
+     if (!data.quantidade_modulos || data.quantidade_modulos <= 0) {
+        throw new Error("A quantidade de módulos é necessária para dimensionar o sistema.");
+    }
+    
+    const eficiencia_inversor = (data.eficiencia_inversor_percent ?? 97) / 100;
+    const fator_perdas = (data.fator_perdas_percent ?? 20) / 100;
+    
+    // 2. Calculate System Efficiency
+    const eficiencia_sistema = eficiencia_inversor * (1 - fator_perdas);
 
-    // 5. Calculate Final System Specs
-    const potencia_modulo_kw = (data.potencia_modulo_wp || 550) / 1000;
-    const potencia_pico_final_kw = potencia_modulo_kw * quantidade_modulos;
+    // 3. Calculate Final System Specs
+    const potencia_modulo_kw = data.potencia_modulo_wp / 1000;
+    const potencia_pico_final_kw = potencia_modulo_kw * data.quantidade_modulos;
 
-    // 6. Calculate Energy Generation
-    const geracao_diaria_kwh = potencia_pico_final_kw * assumptions.psh_h_dia * eficiencia_sistema;
+    // 4. Calculate Energy Generation
+    const geracao_diaria_kwh = potencia_pico_final_kw * data.irradiacao_psh_kwh_m2_dia * eficiencia_sistema;
     const geracao_media_mensal_kwh = geracao_diaria_kwh * 30;
 
-    // 7. Calculate Financials
+    // 5. Calculate Financials
     const tarifa_energia_reais_kwh = data.valor_medio_fatura_reais / data.consumo_mensal_kwh;
     const tarifa_final_reais_kwh = tarifa_energia_reais_kwh + data.adicional_bandeira_reais_kwh;
     
@@ -82,39 +70,30 @@ const calculateSolarFlow = ai.defineFlow(
     const economia_anual_reais = economia_mensal_reais * 12;
     const economia_primeiro_ano = (economia_mensal_reais * 12) - (data.custo_om_anual_reais ?? 0);
     
-    const custo_sistema_reais = data.custo_sistema_reais ?? (
-        (quantidade_modulos * (data.preco_modulo_reais ?? 0)) + 
-        (data.custo_inversor_reais ?? 0) + 
-        (data.custo_fixo_instalacao_reais ?? 0)
-    );
+    const custo_sistema_reais = data.custo_sistema_reais ?? 0;
 
     const payback_simples_anos = economia_anual_reais > 0 ? (custo_sistema_reais / economia_anual_reais) : Infinity;
 
-    // 8. DC/AC Ratio
-    const potencia_inversor_kw = data.potencia_inversor_kw ?? (potencia_pico_final_kw / assumptions.dc_ac_ratio_default);
-    const dc_ac_ratio = potencia_inversor_kw > 0 ? potencia_pico_final_kw / potencia_inversor_kw : 0;
-    
     return {
-      parametros_entrada: data,
-      premissas: assumptions,
-      resultados_geracao: {
-        potencia_pico_kw: Number(potencia_pico_final_kw.toFixed(2)),
-        quantidade_modulos: quantidade_modulos,
-        geracao_diaria_kwh: Number(geracao_diaria_kwh.toFixed(2)),
-        geracao_media_mensal_kwh: Number(geracao_media_mensal_kwh.toFixed(2)),
-        eficiencia_sistema: Number(eficiencia_sistema.toFixed(2)),
-        dc_ac_ratio: Number(dc_ac_ratio.toFixed(2))
+      dimensionamento: {
+        potencia_sistema_kwp: Number(potencia_pico_final_kw.toFixed(2)),
+        quantidade_modulos: data.quantidade_modulos,
       },
-      resultados_financeiros: {
-        conta_media_mensal_reais: {
-            antes: Number(conta_antes_reais.toFixed(2)),
-            depois: Number(conta_depois_reais.toFixed(2)),
-        },
+      geracao: {
+        media_diaria_kwh: Number(geracao_diaria_kwh.toFixed(2)),
+        media_mensal_kwh: Number(geracao_media_mensal_kwh.toFixed(2)),
+        eficiencia_sistema: Number(eficiencia_sistema.toFixed(2)),
+      },
+      financeiro: {
         economia_mensal_reais: Number(economia_mensal_reais.toFixed(2)),
         economia_anual_reais: Number(economia_anual_reais.toFixed(2)),
         economia_primeiro_ano: Number(economia_primeiro_ano.toFixed(2)),
         payback_simples_anos: isFinite(payback_simples_anos) ? Number(payback_simples_anos.toFixed(1)) : Infinity,
-        custo_total_sistema_reais: Number(custo_sistema_reais.toFixed(2))
+        custo_sistema_reais: Number(custo_sistema_reais.toFixed(2))
+      },
+      conta_media_mensal_reais: {
+          antes: Number(conta_antes_reais.toFixed(2)),
+          depois: Number(conta_depois_reais.toFixed(2)),
       },
       warnings: [],
       recommendations: ["Verificar limites de conexão, medição e DC/AC máximo aceito pela concessionária local."]
