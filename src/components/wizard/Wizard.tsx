@@ -200,7 +200,7 @@ export function Wizard() {
         console.log("2. Validação inicial bem-sucedida. Dados validados:", wizardData);
 
         const billOfMaterials = wizardData.billOfMaterials;
-        console.log("2a. Conteúdo completo da Lista de Materiais:", billOfMaterials);
+        console.log("2a. Conteúdo completo da Lista de Materiais:", JSON.stringify(billOfMaterials, null, 2));
 
         const panelItem = billOfMaterials.find(item => item.category === 'PAINEL_SOLAR');
         console.log("3. Resultado da busca por 'PAINEL_SOLAR':", panelItem);
@@ -409,9 +409,6 @@ export function Wizard() {
                             <div className="flex gap-2">
                                 <Button type="button" variant="outline" onClick={handleGoBackToLead}>
                                     <ArrowLeft /> Voltar para a Oportunidade
-                                </Button>
-                                <Button type="button" onClick={handleSaveQuote}>
-                                    <Save /> {quoteId ? "Atualizar Cotação" : "Salvar Cotação"}
                                 </Button>
                             </div>
                         </div>

@@ -18,7 +18,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { getCalculation, getRefinedSuggestions } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, BarChart, Zap, Calendar, FileDown, Loader2, FileSignature, CheckCircle, Pencil } from "lucide-react";
+import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, BarChart, Zap, Calendar, FileDown, Loader2, FileSignature, CheckCircle, Pencil, Save } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
 import { formatCurrency, formatNumber } from "@/lib/utils";
@@ -337,9 +337,6 @@ export function Step2Results({
             Voltar
           </Button>
           <div className="flex flex-col-reverse gap-4 sm:flex-row">
-            {/* Hidden button to be triggered by the parent Wizard component */}
-            <Button id="save-quote-button" onClick={onSave} className="hidden" />
-
             {isEditing && (
               <Button type="button" variant="outline" onClick={onGoToDataInput}>
                   <Pencil className="mr-2 h-4 w-4" />
@@ -352,6 +349,11 @@ export function Step2Results({
                 Refinar com IA
             </Button>
             
+            <Button type="button" onClick={onSave} disabled={isExporting}>
+                <Save className="mr-2 h-4 w-4" />
+                {isEditing ? "Atualizar Cotação" : "Salvar Cotação"}
+            </Button>
+
             <Button type="button" onClick={handleExportPdf} disabled={isExporting}>
                 {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                 {isExporting ? "A Preparar..." : "Gerar PDF"}
