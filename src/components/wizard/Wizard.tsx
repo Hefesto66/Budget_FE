@@ -190,63 +190,80 @@ export function Wizard() {
     initialize();
   }, [leadId, quoteId, clienteId, methods, router]);
 
-  const processForm = async (data: WizardFormData) => {
+ const processForm = async (data: WizardFormData) => {
     setIsLoading(true);
     try {
-      const wizardData = wizardSchema.parse(data);
-      
-      const billOfMaterials = wizardData.billOfMaterials;
-      
-      const panelItem = billOfMaterials.find(item => item.category === 'PAINEL_SOLAR');
-      const inverterItem = billOfMaterials.find(item => item.category === 'INVERSOR');
-      const serviceItem = billOfMaterials.find(item => item.category === 'SERVICO');
-      
-      const panelPowerWp = panelItem ? parseFloat(panelItem.technicalSpecifications?.['Potência (Wp)'] || '0') : undefined;
-      const inverterEfficiency = inverterItem ? parseFloat(inverterItem.technicalSpecifications?.['Eficiência (%)'] || '0') : undefined;
-      const inverterPowerKw = inverterItem ? parseFloat(inverterItem.technicalSpecifications?.['Potência de Saída (kW)'] || '0') : undefined;
+        console.log("--- INÍCIO DA DEPURAÇÃO ---");
+        console.log("1. Dados brutos recebidos do formulário:", data);
 
-      const calculationData: SolarCalculationInput = {
-          ...(wizardData.calculationInput as SolarCalculationInput),
-          custo_sistema_reais: billOfMaterials.reduce((acc, item) => acc + (item.cost * item.quantity), 0),
-          
-          quantidade_modulos: panelItem?.quantity,
-          potencia_modulo_wp: !isNaN(panelPowerWp!) ? panelPowerWp : undefined,
-          preco_modulo_reais: panelItem?.cost,
-          fabricante_modulo: panelItem?.manufacturer,
-          
-          quantidade_inversores: inverterItem?.quantity,
-          eficiencia_inversor_percent: !isNaN(inverterEfficiency!) ? inverterEfficiency : undefined,
-          custo_inversor_reais: inverterItem?.cost,
-          fabricante_inversor: inverterItem?.manufacturer,
-          modelo_inversor: inverterItem?.name,
-          potencia_inversor_kw: !isNaN(inverterPowerKw!) ? inverterPowerKw : undefined,
-          
-          custo_fixo_instalacao_reais: serviceItem?.cost,
+        const wizardData = wizardSchema.parse(data);
+        console.log("2. Validação inicial bem-sucedida. Dados validados:", wizardData);
 
-          // Placeholders - ideally these would also come from product specs
-          garantia_defeito_modulo_anos: 12, 
-          garantia_geracao_modulo_anos: 25, 
-          tensao_inversor_v: 220, 
-          garantia_inversor_anos: 5,
-      };
-      
-      const finalValidatedData = solarCalculationSchema.parse(calculationData);
-      
-      const result = await getCalculation(finalValidatedData);
+        const billOfMaterials = wizardData.billOfMaterials;
+        console.log("2a. Conteúdo completo da Lista de Materiais:", billOfMaterials);
 
-      if (result.success && result.data) {
-        toast({ title: "Cálculo bem-sucedido!", description: "A exibir análise financeira." });
-        setResults(result.data);
-        methods.setValue('calculationInput', finalValidatedData as any);
-        setCurrentStep(1);
-      } else {
-        toast({
-          title: "Erro no Cálculo",
-          description: result.error || "Ocorreu uma falha no servidor ao processar a cotação.",
-          variant: "destructive",
-        });
-        console.error("Server-side calculation failed:", result.error);
-      }
+        const panelItem = billOfMaterials.find(item => item.category === 'PAINEL_SOLAR');
+        console.log("3. Resultado da busca por 'PAINEL_SOLAR':", panelItem);
+
+        const inverterItem = billOfMaterials.find(item => item.category === 'INVERSOR');
+        console.log("4. Resultado da busca por 'INVERSOR':", inverterItem);
+        
+        const panelPowerWp = parseFloat(panelItem?.technicalSpecifications?.['Potência (Wp)'] || '0');
+        console.log("5. Potência extraída do painel:", panelPowerWp);
+        
+        const inverterEfficiency = parseFloat(inverterItem?.technicalSpecifications?.['Eficiência (%)'] || '0');
+        console.log("6. Eficiência extraída do inversor:", inverterEfficiency);
+
+        const inverterPowerKw = parseFloat(inverterItem?.technicalSpecifications?.['Potência de Saída (kW)'] || '0');
+
+        const serviceItem = billOfMaterials.find(item => item.category === 'SERVICO');
+
+        const calculationData: SolarCalculationInput = {
+            ...(wizardData.calculationInput as SolarCalculationInput),
+            custo_sistema_reais: billOfMaterials.reduce((acc, item) => acc + (item.cost * item.quantity), 0),
+            
+            quantidade_modulos: panelItem?.quantity,
+            potencia_modulo_wp: !isNaN(panelPowerWp) ? panelPowerWp : undefined,
+            preco_modulo_reais: panelItem?.cost,
+            fabricante_modulo: panelItem?.manufacturer,
+            
+            quantidade_inversores: inverterItem?.quantity,
+            eficiencia_inversor_percent: !isNaN(inverterEfficiency) ? inverterEfficiency : undefined,
+            custo_inversor_reais: inverterItem?.cost,
+            fabricante_inversor: inverterItem?.manufacturer,
+            modelo_inversor: inverterItem?.name,
+            potencia_inversor_kw: !isNaN(inverterPowerKw) ? inverterPowerKw : undefined,
+            
+            custo_fixo_instalacao_reais: serviceItem?.cost,
+
+            garantia_defeito_modulo_anos: 12, 
+            garantia_geracao_modulo_anos: 25, 
+            tensao_inversor_v: 220, 
+            garantia_inversor_anos: 5,
+        };
+
+        console.log("7. Objeto de cálculo construído:", calculationData);
+        
+        const finalValidatedData = solarCalculationSchema.parse(calculationData);
+        console.log("8. Validação final bem-sucedida. Dados finais:", finalValidatedData);
+        
+        console.log("9. A enviar dados para o servidor...");
+        const result = await getCalculation(finalValidatedData);
+        console.log("--- FIM DA DEPURAÇÃO ---");
+
+        if (result.success && result.data) {
+            toast({ title: "Cálculo bem-sucedido!", description: "A exibir análise financeira." });
+            setResults(result.data);
+            methods.setValue('calculationInput', finalValidatedData as any);
+            setCurrentStep(1);
+        } else {
+            toast({
+            title: "Erro no Cálculo",
+            description: result.error || "Ocorreu uma falha no servidor ao processar a cotação.",
+            variant: "destructive",
+            });
+            console.error("Server-side calculation failed:", result.error);
+        }
 
     } catch (error: any) {
         console.error("ERRO DE VALIDAÇÃO ZOD:", error);
@@ -260,8 +277,10 @@ export function Wizard() {
     }
   };
 
+
   const handleManualSubmit = async () => {
     const currentFormValues = methods.getValues();
+    console.log("CLIQUE MANUAL DETETADO! A iniciar o processamento com os valores:", currentFormValues);
     await processForm(currentFormValues);
   };
   
