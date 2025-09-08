@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams, useRouter } from 'next/navigation'
 import { z } from "zod";
 import Link from 'next/link';
-import { Step2Results } from "./Step2Results";
+import dynamic from 'next/dynamic';
 import type { SolarCalculationResult, SolarCalculationInput, ClientFormData, Quote } from "@/types";
 import { getCalculation, getRefinedSuggestions } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
@@ -17,7 +17,6 @@ import { Button } from "../ui/button";
 import { ArrowLeft, Save, Sparkles, Calculator, Plus, Trash2, Check, ChevronsUpDown, CheckCircle, Loader2, FileDown, ChevronRight } from "lucide-react";
 import { getLeadById, getQuoteById, saveQuote, generateNewQuoteId, getClientById, addHistoryEntry, getProducts, Product, getProductById } from "@/lib/storage";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "../ui/accordion";
 import {
   Table,
   TableBody,
@@ -34,14 +33,12 @@ import { cn, formatCurrency } from "@/lib/utils";
 import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../ui/alert-dialog";
 import { Separator } from "../ui/separator";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Step1DataInput } from "./Step1DataInput";
+
+const Step2Results = dynamic(() => import('./Step2Results').then(mod => mod.Step2Results), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center h-64"><Loader2 className="mr-2 h-8 w-8 animate-spin" />A carregar resultados...</div>,
+});
 
 
 const wizardSchema = z.object({
@@ -188,7 +185,7 @@ export function Wizard() {
 
   const processForm = async (data: WizardFormData) => {
     setIsLoading(true);
-    toast({ title: "Iniciando cálculo...", description: "Validando dados de entrada." });
+    toast({ title: "Iniciando cálculo...", description: "A validar os dados de entrada..." });
 
     const bom = data.billOfMaterials;
     const panelItem = bom.find(item => item.type === 'PAINEL_SOLAR');
@@ -201,16 +198,30 @@ export function Wizard() {
         return;
     }
 
-    const panelPowerWp = parseFloat(panelItem.technicalSpecifications?.['Potência (Wp)'] || '0');
-    if (!panelPowerWp || panelPowerWp === 0) {
-      toast({ title: "Erro de Especificação", description: `O painel "${panelItem.name}" não tem a especificação "Potência (Wp)".`, variant: "destructive" });
+    const productInInventory = getProductById(panelItem.productId);
+     if (!productInInventory) {
+      toast({ title: "Erro de Inventário", description: `O produto "${panelItem.name}" não foi encontrado no inventário.`, variant: "destructive" });
       setIsLoading(false);
       return;
     }
 
-    const inverterEfficiency = parseFloat(inverterItem.technicalSpecifications?.['Eficiência (%)'] || '0');
+    const panelPowerWp = parseFloat(productInInventory.technicalSpecifications?.['Potência (Wp)'] || '0');
+    if (!panelPowerWp || panelPowerWp === 0) {
+      toast({ title: "Erro de Especificação", description: `O painel "${panelItem.name}" não tem a especificação "Potência (Wp)" definida no inventário.`, variant: "destructive" });
+      setIsLoading(false);
+      return;
+    }
+    
+    const inverterInInventory = getProductById(inverterItem.productId);
+     if (!inverterInInventory) {
+      toast({ title: "Erro de Inventário", description: `O produto "${inverterItem.name}" não foi encontrado no inventário.`, variant: "destructive" });
+      setIsLoading(false);
+      return;
+    }
+
+    const inverterEfficiency = parseFloat(inverterInInventory.technicalSpecifications?.['Eficiência (%)'] || '0');
      if (!inverterEfficiency || inverterEfficiency === 0) {
-      toast({ title: "Erro de Especificação", description: `O inversor "${inverterItem.name}" não tem a especificação "Eficiência (%)".`, variant: "destructive" });
+      toast({ title: "Erro de Especificação", description: `O inversor "${inverterItem.name}" não tem a especificação "Eficiência (%)" definida no inventário.`, variant: "destructive" });
       setIsLoading(false);
       return;
     }
@@ -237,7 +248,7 @@ export function Wizard() {
         custo_fixo_instalacao_reais: serviceItem.cost,
     };
     
-    toast({ title: "Enviando para o servidor...", description: "Os dados foram validados." });
+    toast({ title: "A enviar para o servidor...", description: "Os dados foram validados." });
     console.log("Submitting to server:", calculationData);
 
     const result = await getCalculation(calculationData);
@@ -348,7 +359,10 @@ export function Wizard() {
     setRefinedSuggestion(null);
 
     const data = methods.getValues();
-    const response = await getRefinedSuggestions(data);
+    const response = await getRefinedSuggestions({
+        calculationInput: data.calculationInput,
+        billOfMaterials: data.billOfMaterials,
+    });
 
     if (response.success && response.data) {
       setRefinedSuggestion(response.data);
@@ -388,7 +402,7 @@ export function Wizard() {
   const totalCost = watchedBOM.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
   
   if (!isReady) {
-    return <div className="flex items-center justify-center h-64"><Loader2 className="mr-2 h-8 w-8 animate-spin" />Carregando Orçamento...</div>;
+    return <div className="flex items-center justify-center h-64"><Loader2 className="mr-2 h-8 w-8 animate-spin" />A carregar Orçamento...</div>;
   }
   
   return (
@@ -408,12 +422,12 @@ export function Wizard() {
                         <div className="mb-8 flex justify-between items-center">
                             <div className="flex items-center gap-4">
                                 <h2 className="text-lg font-semibold text-foreground">
-                                    Cotação para o Lead: <span className="text-primary font-bold">{getLeadById(leadId)?.title}</span>
+                                    Cotação para a Oportunidade: <span className="text-primary font-bold">{getLeadById(leadId)?.title}</span>
                                 </h2>
                             </div>
                             <div className="flex gap-2">
                                 <Button type="button" variant="outline" onClick={handleGoBackToLead}>
-                                    <ArrowLeft /> Voltar para o Lead
+                                    <ArrowLeft /> Voltar para a Oportunidade
                                 </Button>
                                 <Button type="button" onClick={handleSaveQuote}>
                                     <Save /> {quoteId ? "Atualizar Cotação" : "Salvar Cotação"}
@@ -567,7 +581,7 @@ export function Wizard() {
                           {isLoading ? (
                             <>
                               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                              Calculando...
+                              A Calcular...
                             </>
                           ) : (
                             "Avançar para Resultados"
