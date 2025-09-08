@@ -73,32 +73,35 @@ const prompt = ai.definePrompt({
 
 **Responda sempre em Português do Brasil (PT-BR).**
 
-**Objetivo:** Cubra 100% do consumo mensal de {{{consumo_mensal_kwh}}} kWh, com uma margem de segurança na geração.
+**Objetivo:** Gerar o suficiente para cobrir 100% do consumo mensal de {{{consumo_mensal_kwh}}} kWh.
 
-**Dados:**
-- Irradiação Solar: {{{irradiacao_psh_kwh_m2_dia}}} PSH
-- Perdas e eficiência padrão: 20% e 97%
+**Dados do Cliente:**
+- Consumo Mensal: {{{consumo_mensal_kwh}}} kWh
+- Irradiação Solar (PSH): {{{irradiacao_psh_kwh_m2_dia}}}
+- Valor Médio da Fatura: R$ {{{valor_medio_fatura_reais}}}
 
-**Inventário de Produtos:**
-- Painéis:
+**Inventário de Produtos Disponíveis:**
+- Painéis Solares:
 {{#each inventory.panels}}
-  - ID: {{id}}, Nome: {{name}}, Preço: R$ {{salePrice}}, Specs: {{json technicalSpecifications}}
+  - ID: {{id}}, Nome: {{name}}, Preço: R$ {{salePrice}}, Potência: {{technicalSpecifications.Potência (Wp)}} Wp
 {{/each}}
 - Inversores:
 {{#each inventory.inverters}}
-  - ID: {{id}}, Nome: {{name}}, Preço: R$ {{salePrice}}, Specs: {{json technicalSpecifications}}
+  - ID: {{id}}, Nome: {{name}}, Preço: R$ {{salePrice}}
 {{/each}}
 
 **Sua Tarefa:**
 
-1.  **Escolha o melhor painel e inversor** do inventário para atender a necessidade do cliente.
-2.  **Calcule a quantidade de painéis** necessária.
-3.  **Monte a resposta JSON.**
-    - Em 'analise_texto', escreva uma justificativa **curta e direta** da sua escolha.
-    - Em 'configuracao_otimizada', liste os produtos, o custo total e o payback. Para o payback, use a fórmula: Custo Total / (Valor da Fatura Média * 0.9 * 12).
+1.  **Escolha o melhor painel e inversor** do inventário para o cliente.
+2.  **Calcule a quantidade de painéis** necessária para cobrir o consumo. (Use a fórmula: (Consumo Mensal / 30 / Irradiação) / (Potência do Painel / 1000) / 0.8). Arredonde o número de painéis para cima.
+3.  **Calcule o custo total** dos equipamentos.
+4.  **Estime o payback** em anos. (Use a fórmula: Custo Total / (Valor da Fatura Média * 0.9 * 12)).
+5.  **Monte a resposta JSON.**
+    - No campo 'analise_texto', escreva uma justificativa **curta e direta** da sua escolha.
+    - Em 'configuracao_otimizada', liste os produtos, o custo total e o payback.
 
 **Formato da Resposta (JSON Obrigatório):**
-Sua resposta DEVE ser um JSON válido com a estrutura definida.
+Sua resposta DEVE ser um JSON válido que corresponda à estrutura de saída.
 `,
 });
 
@@ -113,3 +116,4 @@ const suggestRefinedPanelConfigFlow = ai.defineFlow(
     return output!;
   }
 );
+
