@@ -28,7 +28,7 @@ const calculateSolarFlow = ai.defineFlow(
   async (data) => {
     // 1. Validate Inputs & Apply Defaults
     if (!data.consumo_mensal_kwh || data.consumo_mensal_kwh <= 0) {
-      throw new Error("O consumo mensal (kWh) é um dado essencial e deve ser maior que zero.");
+      throw new Error("O consumo mensal (kWh) é um dado essencial para o cálculo financeiro e deve ser maior que zero.");
     }
     // Allow calculations even if panel/quantity is zero, as per new flexible UI logic
     const potencia_modulo_wp = data.potencia_modulo_wp ?? 0;
