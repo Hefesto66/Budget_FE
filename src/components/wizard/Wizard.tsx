@@ -177,62 +177,61 @@ export function Wizard() {
     initialize();
   }, [leadId, quoteId, clienteId, methods, router]);
 
-
-  // Etapa 2: Refatorar a função de processamento
   const processForm = async (data: WizardFormData) => {
     setIsLoading(true);
     try {
-        console.log("1. Dados brutos recebidos do formulário:", data);
+      console.log("1. Dados brutos recebidos do formulário:", data);
 
-        const validBom = data.billOfMaterials.filter(item => item.productId && item.productId !== '');
-        console.log("2. Validação inicial bem-sucedida (filtragem da BOM). Itens válidos:", validBom);
-        
-        const panelItem = validBom.find(item => item.category === 'PAINEL_SOLAR');
-        const inverterItem = validBom.find(item => item.category === 'INVERSOR');
-        const serviceItem = validBom.find(item => item.category === 'SERVICO');
+      const wizardData = wizardSchema.parse(data);
+      console.log("2. Validação inicial bem-sucedida. Dados validados:", wizardData);
+      
+      const validBom = wizardData.billOfMaterials.filter(item => item.productId && item.productId !== '');
+      
+      const panelItem = validBom.find(item => item.category === 'PAINEL_SOLAR');
+      const inverterItem = validBom.find(item => item.category === 'INVERSOR');
+      const serviceItem = validBom.find(item => item.category === 'SERVICO');
 
-        const calculationData: SolarCalculationInput = {
-            ...data.calculationInput,
-            custo_sistema_reais: validBom.reduce((acc, item) => acc + (item.cost * item.quantity), 0),
-            quantidade_modulos: panelItem?.quantity,
-            potencia_modulo_wp: panelItem ? parseFloat(panelItem.technicalSpecifications?.['Potência (Wp)'] || '0') : undefined,
-            eficiencia_inversor_percent: inverterItem ? parseFloat(inverterItem.technicalSpecifications?.['Eficiência (%)'] || '0') : undefined,
-            preco_modulo_reais: panelItem?.cost,
-            fabricante_modulo: panelItem?.manufacturer,
-            quantidade_inversores: inverterItem?.quantity,
-            custo_inversor_reais: inverterItem?.cost,
-            fabricante_inversor: inverterItem?.manufacturer,
-            modelo_inversor: inverterItem?.name,
-            custo_fixo_instalacao_reais: serviceItem?.cost,
-            garantia_defeito_modulo_anos: 12,
-            garantia_geracao_modulo_anos: 25,
-            potencia_inversor_kw: inverterItem ? parseFloat(inverterItem.technicalSpecifications?.['Potência de Saída (kW)'] || '0') : 5,
-            tensao_inversor_v: 220,
-            garantia_inversor_anos: 5,
-        };
-        console.log("3. Objeto de cálculo construído:", calculationData);
-        
-        const validationResult = solarCalculationSchema.parse(calculationData);
-        console.log("4. Validação final bem-sucedida. Dados finais:", validationResult);
-        
-        console.log("5. A enviar dados para o servidor...");
-        const result = await getCalculation(validationResult);
+      const calculationData: SolarCalculationInput = {
+          ...wizardData.calculationInput,
+          custo_sistema_reais: validBom.reduce((acc, item) => acc + (item.cost * item.quantity), 0),
+          quantidade_modulos: panelItem?.quantity,
+          potencia_modulo_wp: panelItem ? parseFloat(panelItem.technicalSpecifications?.['Potência (Wp)'] || '0') : undefined,
+          eficiencia_inversor_percent: inverterItem ? parseFloat(inverterItem.technicalSpecifications?.['Eficiência (%)'] || '0') : undefined,
+          preco_modulo_reais: panelItem?.cost,
+          fabricante_modulo: panelItem?.manufacturer,
+          quantidade_inversores: inverterItem?.quantity,
+          custo_inversor_reais: inverterItem?.cost,
+          fabricante_inversor: inverterItem?.manufacturer,
+          modelo_inversor: inverterItem?.name,
+          custo_fixo_instalacao_reais: serviceItem?.cost,
+          garantia_defeito_modulo_anos: 12,
+          garantia_geracao_modulo_anos: 25,
+          potencia_inversor_kw: inverterItem ? parseFloat(inverterItem.technicalSpecifications?.['Potência de Saída (kW)'] || '0') : 5,
+          tensao_inversor_v: 220,
+          garantia_inversor_anos: 5,
+      };
+      console.log("3. Objeto de cálculo construído:", calculationData);
+      
+      const finalValidatedData = solarCalculationSchema.parse(calculationData);
+      console.log("4. Validação final bem-sucedida. Dados finais:", finalValidatedData);
+      
+      console.log("5. A enviar dados para o servidor...");
+      const result = await getCalculation(finalValidatedData);
 
-        setIsLoading(false);
+      if (result.success && result.data) {
+        toast({ title: "Cálculo bem-sucedido!", description: "A exibir análise financeira." });
+        setResults(result.data);
+        methods.setValue('calculationInput', finalValidatedData);
+        setCurrentStep(1);
+      } else {
+        toast({
+          title: "Erro no Cálculo",
+          description: result.error || "Ocorreu uma falha no servidor ao processar a cotação.",
+          variant: "destructive",
+        });
+        console.error("Server-side calculation failed:", result.error);
+      }
 
-        if (result.success && result.data) {
-          toast({ title: "Cálculo bem-sucedido!", description: "A exibir análise financeira." });
-          setResults(result.data);
-          methods.setValue('calculationInput', validationResult);
-          setCurrentStep(1);
-        } else {
-          toast({
-            title: "Erro no Cálculo",
-            description: result.error || "Ocorreu uma falha no servidor ao processar a cotação.",
-            variant: "destructive",
-          });
-          console.error("Server-side calculation failed:", result.error);
-        }
     } catch (error) {
         console.error("ERRO DE VALIDAÇÃO ZOD:", error);
         toast({
@@ -240,8 +239,15 @@ export function Wizard() {
             description: "Verifique os campos do formulário. A consola pode ter mais detalhes.",
             variant: "destructive",
         });
+    } finally {
         setIsLoading(false);
     }
+  };
+
+  const handleManualSubmit = async () => {
+    const currentFormValues = methods.getValues();
+    console.log("CLIQUE MANUAL DETETADO! A iniciar o processamento com os valores:", currentFormValues);
+    await processForm(currentFormValues);
   };
   
   
@@ -339,7 +345,7 @@ export function Wizard() {
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
       <FormProvider {...methods}>
-        <form onSubmit={methods.handleSubmit(processForm)}>
+        <form onSubmit={(e) => { e.preventDefault(); handleManualSubmit(); }}>
           <AnimatePresence mode="wait">
             {currentStep === 0 ? (
                <motion.div
@@ -505,7 +511,7 @@ export function Wizard() {
                     </div>
 
                     <div className="mt-8 flex justify-end">
-                      <Button type="submit" size="lg" disabled={isLoading}>
+                      <Button type="button" size="lg" disabled={isLoading} onClick={handleManualSubmit}>
                           {isLoading ? (
                             <>
                               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -545,4 +551,3 @@ export function Wizard() {
     </div>
   );
 }
-
