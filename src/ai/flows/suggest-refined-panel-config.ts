@@ -39,7 +39,7 @@ export type SuggestRefinedPanelConfigInput = z.infer<
 const SuggestRefinedPanelConfigOutputSchema = z.object({
   analise_texto: z
     .string()
-    .describe('A análise detalhada em texto, explicando a sugestão. Deve ser em Português-BR.'),
+    .describe('Uma análise curta e direta em texto, explicando a sugestão. Deve ser em Português-BR.'),
   configuracao_otimizada: z.object({
     itens: z.array(z.object({
       produtoId: z.string().describe("O ID do produto selecionado do inventário."),
@@ -73,48 +73,32 @@ const prompt = ai.definePrompt({
 
 **Responda sempre em Português do Brasil (PT-BR).**
 
-**Princípio Fundamental:** Seu objetivo é encontrar o melhor equilíbrio para cobrir 100% do consumo mensal do cliente, com uma margem de segurança de geração entre 5% e 15%.
+**Objetivo:** Cubra 100% do consumo mensal de {{{consumo_mensal_kwh}}} kWh, com uma margem de segurança na geração.
 
-**Dados do Cliente e Local:**
-- Consumo Mensal: {{{consumo_mensal_kwh}}} kWh
-- Irradiação Solar Local: {{{irradiacao_psh_kwh_m2_dia}}} PSH
-- Eficiência Padrão do Inversor: 97% (use este valor se o produto não especificar)
-- Fator de Perdas Padrão: 20%
+**Dados:**
+- Irradiação Solar: {{{irradiacao_psh_kwh_m2_dia}}} PSH
+- Perdas e eficiência padrão: 20% e 97%
 
-**Produtos Disponíveis no Inventário:**
+**Inventário de Produtos:**
 - Painéis:
 {{#each inventory.panels}}
-  - ID: {{id}}, Nome: {{name}}, Preço: R$ {{salePrice}}, Especificações: {{json technicalSpecifications}}
+  - ID: {{id}}, Nome: {{name}}, Preço: R$ {{salePrice}}, Specs: {{json technicalSpecifications}}
 {{/each}}
 - Inversores:
 {{#each inventory.inverters}}
-  - ID: {{id}}, Nome: {{name}}, Preço: R$ {{salePrice}}, Especificações: {{json technicalSpecifications}}
+  - ID: {{id}}, Nome: {{name}}, Preço: R$ {{salePrice}}, Specs: {{json technicalSpecifications}}
 {{/each}}
 
-**Sua Cadeia de Pensamento (Obrigatória):**
+**Sua Tarefa:**
 
-1.  **Calcular a Geração Necessária:**
-    - Geração Alvo (kWh/mês) = consumo_mensal_kwh * 1.10 (use uma margem de segurança de 10% como alvo).
-
-2.  **Selecionar o Melhor Painel:**
-    - Para cada painel no inventário, calcule a "Geração por Módulo (kWh/mês)". Use as especificações do painel (como 'Potência') e os dados do local.
-      - Geração por Módulo = (Potência Wp / 1000) * irradiacao_psh_kwh_m2_dia * 30 * (eficiencia_inversor_percent / 100) * (1 - (fator_perdas_percent / 100))
-    - Escolha o painel que oferece o melhor custo por kWh gerado ou o que melhor se adapta. Justifique sua escolha.
-
-3.  **Dimensionar a Quantidade de Painéis:**
-    - Quantidade de Painéis = Arredonde para o inteiro de CIMA (Math.ceil) o resultado de (Geração Alvo / Geração por Módulo do painel escolhido).
-
-4.  **Selecionar o Melhor Inversor:**
-    - Potência Total dos Painéis (kWp) = (Quantidade de Painéis * Potência Wp do painel escolhido) / 1000.
-    - Analise os inversores disponíveis. Escolha um cuja potência seja compatível e ligeiramente superior à potência total dos painéis. Considere o custo. Justifique sua escolha.
-
-5.  **Montar a Resposta:**
-    - No campo 'analise_texto', escreva uma justificativa técnica clara, explicando por que você escolheu esses componentes e como eles atendem às necessidades do cliente.
-    - No campo 'configuracao_otimizada.itens', liste os produtos selecionados (o painel e o inversor) com seus IDs e as quantidades calculadas.
-    - Calcule o 'custo_total' e o 'payback' para a configuração que você montou. Para o payback, pode usar uma estimativa simplificada: Custo Total / (Valor da Fatura Média Mensal * 0.9 * 12).
+1.  **Escolha o melhor painel e inversor** do inventário para atender a necessidade do cliente.
+2.  **Calcule a quantidade de painéis** necessária.
+3.  **Monte a resposta JSON.**
+    - Em 'analise_texto', escreva uma justificativa **curta e direta** da sua escolha.
+    - Em 'configuracao_otimizada', liste os produtos, o custo total e o payback. Para o payback, use a fórmula: Custo Total / (Valor da Fatura Média * 0.9 * 12).
 
 **Formato da Resposta (JSON Obrigatório):**
-Sua resposta DEVE ser um JSON válido com a estrutura definida. Certifique-se de que 'configuracao_otimizada.itens' seja um array contendo os produtos que você selecionou.
+Sua resposta DEVE ser um JSON válido com a estrutura definida.
 `,
 });
 
