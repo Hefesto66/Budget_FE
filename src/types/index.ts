@@ -11,10 +11,7 @@ export const solarCalculationSchema = z.object({
   adicional_bandeira_reais_kwh: z.number().gte(0).default(0),
   
   // Seção 2: Detalhes Técnicos do Local - Campos obrigatórios
-  concessionaria: z.enum(
-      ["Equatorial GO", "CHESP"], 
-      { errorMap: () => ({ message: 'Concessionária não suportada para esta região.' }) }
-  ),
+  concessionaria: z.string().optional(),
   rede_fases: z.enum(['mono', 'bi', 'tri']),
   irradiacao_psh_kwh_m2_dia: z.number().min(0.1, "Valor de irradiação muito baixo.").max(12, { message: "Valor de irradiação irreal. Verifique o dado." }),
 
@@ -37,7 +34,7 @@ export const solarCalculationSchema = z.object({
   tensao_inversor_v: z.number().gte(0).optional(),
   quantidade_inversores: z.number().int().gte(0).optional(),
   garantia_inversor_anos: z.number().int().gte(0).optional(),
-  eficiencia_inversor_percent: z.number().min(0).max(100).optional(), // Permite 0, backend trata se for nulo
+  eficiencia_inversor_percent: z.number().min(0).max(100).optional(),
   custo_inversor_reais: z.number().gte(0).optional(),
 
   // Custos e Perdas

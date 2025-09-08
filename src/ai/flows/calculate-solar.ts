@@ -30,14 +30,12 @@ const calculateSolarFlow = ai.defineFlow(
     if (!data.consumo_mensal_kwh || data.consumo_mensal_kwh <= 0) {
       throw new Error("O consumo mensal (kWh) é um dado essencial para o cálculo financeiro e deve ser maior que zero.");
     }
-    // Allow calculations even if panel/quantity is zero, as per new flexible UI logic
+
     const potencia_modulo_wp = data.potencia_modulo_wp ?? 0;
     const quantidade_modulos = data.quantidade_modulos ?? 0;
     
-    // Default efficiency to 97% if it's 0, null, or not provided. Max(0, ...) avoids issues with negative values.
-    const eficiencia_inversor = (data.eficiencia_inversor_percent && data.eficiencia_inversor_percent > 0) 
-        ? data.eficiencia_inversor_percent / 100 
-        : 0.97;
+    // Default efficiency to 97% if it's null, or undefined.
+    const eficiencia_inversor = (data.eficiencia_inversor_percent ?? 97) / 100;
     const fator_perdas = (data.fator_perdas_percent ?? 20) / 100;
     
     // 2. Calculate System Efficiency

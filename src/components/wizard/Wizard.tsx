@@ -58,7 +58,7 @@ export type WizardFormData = z.infer<typeof wizardSchema>;
 
 const DRAFT_QUOTE_SESSION_KEY = 'draftQuoteData';
 
-const defaultValues: SolarCalculationInput = {
+const defaultValues: Partial<SolarCalculationInput> = {
     consumo_mensal_kwh: 500,
     valor_medio_fatura_reais: 450,
     adicional_bandeira_reais_kwh: 0,
@@ -205,18 +205,18 @@ export function Wizard() {
       const panelItem = validBom.find(item => item.category === 'PAINEL_SOLAR');
       const inverterItem = validBom.find(item => item.category === 'INVERSOR');
       const serviceItem = validBom.find(item => item.category === 'SERVICO');
-
-      const panelPowerWp = panelItem?.technicalSpecifications?.['Potência (Wp)'];
-      const inverterEfficiency = inverterItem?.technicalSpecifications?.['Eficiência (%)'];
-      const inverterPowerKw = inverterItem?.technicalSpecifications?.['Potência de Saída (kW)'];
-
+      
+      // Extrai os valores diretamente da BOM, convertendo para número. Se não existir, o valor será NaN.
+      const panelPowerWp = parseFloat(panelItem?.technicalSpecifications?.['Potência (Wp)']!);
+      const inverterEfficiency = parseFloat(inverterItem?.technicalSpecifications?.['Eficiência (%)']!);
+      const inverterPowerKw = parseFloat(inverterItem?.technicalSpecifications?.['Potência de Saída (kW)']!);
 
       const calculationData: SolarCalculationInput = {
-          ...wizardData.calculationInput,
+          ...(wizardData.calculationInput as SolarCalculationInput),
           custo_sistema_reais: validBom.reduce((acc, item) => acc + (item.cost * item.quantity), 0),
           quantidade_modulos: panelItem?.quantity,
-          potencia_modulo_wp: panelPowerWp ? parseFloat(panelPowerWp) : undefined,
-          eficiencia_inversor_percent: inverterEfficiency ? parseFloat(inverterEfficiency) : undefined,
+          potencia_modulo_wp: !isNaN(panelPowerWp) ? panelPowerWp : undefined,
+          eficiencia_inversor_percent: !isNaN(inverterEfficiency) ? inverterEfficiency : undefined,
           preco_modulo_reais: panelItem?.cost,
           fabricante_modulo: panelItem?.manufacturer,
           quantidade_inversores: inverterItem?.quantity,
@@ -226,7 +226,7 @@ export function Wizard() {
           custo_fixo_instalacao_reais: serviceItem?.cost,
           garantia_defeito_modulo_anos: 12, // Placeholder
           garantia_geracao_modulo_anos: 25, // Placeholder
-          potencia_inversor_kw: inverterPowerKw ? parseFloat(inverterPowerKw) : undefined,
+          potencia_inversor_kw: !isNaN(inverterPowerKw) ? inverterPowerKw : undefined,
           tensao_inversor_v: 220, // Placeholder
           garantia_inversor_anos: 5, // Placeholder
       };
@@ -241,7 +241,7 @@ export function Wizard() {
       if (result.success && result.data) {
         toast({ title: "Cálculo bem-sucedido!", description: "A exibir análise financeira." });
         setResults(result.data);
-        methods.setValue('calculationInput', finalValidatedData);
+        methods.setValue('calculationInput', finalValidatedData as any);
         setCurrentStep(1);
       } else {
         toast({
@@ -284,7 +284,7 @@ export function Wizard() {
     const finalProposalId = quoteId || generateNewQuoteId();
     if (!proposalId) setProposalId(finalProposalId);
 
-    const formData = methods.getValues('calculationInput');
+    const formData = methods.getValues('calculationInput') as SolarCalculationInput;
     const billOfMaterials = methods.getValues('billOfMaterials');
     
     if(!results) {
