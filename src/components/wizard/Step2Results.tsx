@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
-import { getRefinedSuggestions, getCalculation } from "@/app/orcamento/actions";
+import { getCalculation } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, BarChart, Zap, Calendar, FileDown, Loader2, FileSignature, CheckCircle, Pencil } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
@@ -60,12 +60,10 @@ export function Step2Results({
   isEditing 
 }: Step2ResultsProps) {
   const { toast } = useToast();
-  const formMethods = useFormContext<SolarCalculationInput>();
+  const formMethods = useFormContext(); // Correctly get the context
   
-  const [isRefining, setIsRefining] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
-
+  
   // State for the editable document details
   const [proposalDate, setProposalDate] = useState<Date>(new Date());
   const [proposalValidity, setProposalValidity] = useState<Date>(addDays(new Date(), 20));
@@ -77,63 +75,6 @@ export function Step2Results({
 
   const paybackYears = results.financeiro.payback_simples_anos;
   const paybackText = isFinite(paybackYears) ? `${formatNumber(paybackYears, 1)} anos` : "N/A";
-
-  const handleAiRefinement = async () => {
-    setIsRefining(true);
-    setRefinedSuggestion(null);
-
-    const formData = formMethods.getValues();
-    // @ts-ignore - inventory is not part of the base schema but added for the flow
-    const response = await getRefinedSuggestions(formData);
-
-    if (response.success && response.data) {
-      setRefinedSuggestion(response.data);
-    } else {
-      toast({
-        title: "Erro na Sugestão",
-        description: response.error || "Não foi possível obter uma sugestão da IA. Tente novamente.",
-        variant: "destructive",
-      });
-    }
-
-    setIsRefining(false);
-  };
-  
-  const handleApplySuggestion = async () => {
-    if (!refinedSuggestion) return;
-  
-    const { quantidade } = refinedSuggestion.configuracao_otimizada.itens.find(i => i.nomeProduto.toLowerCase().includes('painel')) || { quantidade: formMethods.getValues().quantidade_modulos };
-    formMethods.setValue("quantidade_modulos", quantidade);
-  
-    const currentFormData = formMethods.getValues();
-    
-    // Mostra um toast de carregamento
-    const { id: toastId } = toast({
-      title: "Aplicando Sugestão...",
-      description: "Recalculando o orçamento com a nova configuração.",
-    });
-
-    const result = await getCalculation(currentFormData);
-
-    if (result.success && result.data) {
-      onRecalculate(result.data);
-      toast({
-        id: toastId,
-        title: "Sucesso!",
-        description: "Orçamento atualizado com a sugestão da IA.",
-      });
-    } else {
-      toast({
-        id: toastId,
-        title: "Erro ao Recalcular",
-        description: result.error || "Não foi possível aplicar a sugestão.",
-        variant: "destructive",
-      });
-    }
-  
-    setRefinedSuggestion(null); // Fecha o dialog
-  };
-
 
   const handleExportPdf = async () => {
     setIsExporting(true);
@@ -194,6 +135,16 @@ export function Step2Results({
     }
     setIsExporting(false);
   };
+
+  const handleRefineWithAI = () => {
+    // Since the button is removed, we show a toast explaining it.
+    // In a real scenario, you might have a different flow or remove this logic entirely.
+    toast({
+      title: "Função em Manutenção",
+      description: "A funcionalidade de refinar com IA está temporariamente desativada.",
+    });
+  };
+
 
   return (
     <>
@@ -353,103 +304,15 @@ export function Step2Results({
               </Button>
             )}
 
-            <Button type="button" variant="secondary" onClick={handleAiRefinement} disabled={isRefining}>
-                <Sparkles className={`mr-2 h-4 w-4 ${isRefining ? 'animate-spin' : ''}`} />
-                {isRefining ? "Analisando..." : "Refinar com IA"}
-            </Button>
             <Button type="button" onClick={handleExportPdf} disabled={isExporting}>
                 {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                 {isExporting ? "A Preparar..." : "Gerar PDF"}
             </Button>
           </div>
       </div>
-      
-      <AlertDialog open={!!refinedSuggestion} onOpenChange={(isOpen) => !isOpen && setRefinedSuggestion(null)}>
-        <AlertDialogContent className="max-w-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-headline text-2xl flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-accent" />
-              Sugestão Otimizada por IA
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Analisamos seu perfil e encontramos uma configuração que pode ser mais vantajosa.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto p-1 pr-4">
-            {isRefining ? <SuggestionSkeleton /> : refinedSuggestion && (
-              <div className="space-y-6 text-sm">
-                <div>
-                    <h3 className="font-semibold mb-2 text-foreground">Análise da IA</h3>
-                    <p className="text-muted-foreground bg-secondary/50 p-4 rounded-md border">{refinedSuggestion.analise_texto}</p>
-                </div>
-                
-                <Separator />
-                
-                <div>
-                    <h4 className="font-semibold text-foreground mb-4">Comparativo da Configuração</h4>
-                    <div className="grid grid-cols-2 gap-x-6">
-                        <div className="space-y-3">
-                            <h5 className="font-medium text-muted-foreground">Configuração Atual</h5>
-                             <ComparisonItem label="Painéis" value={`${results.dimensionamento.quantidade_modulos} de ${formMethods.getValues().calculationInput.potencia_modulo_wp}Wp`} />
-                             <ComparisonItem label="Custo Total" value={formatCurrency(results.financeiro.custo_sistema_reais)} />
-                             <ComparisonItem label="Payback" value={paybackText} />
-                        </div>
-                        <div className="space-y-3 rounded-md border border-primary bg-primary/5 p-4">
-                             <h5 className="font-medium text-primary">Sugestão Otimizada</h5>
-                             <ComparisonItem label="Painéis" value={`${refinedSuggestion.configuracao_otimizada.itens.find(i => i.nomeProduto.toLowerCase().includes('painel'))?.quantidade} de ${formMethods.getValues().calculationInput.potencia_modulo_wp}Wp`} highlight />
-                             <ComparisonItem label="Custo Total" value={formatCurrency(refinedSuggestion.configuracao_otimizada.custo_total)} highlight />
-                             <ComparisonItem label="Payback" value={`${formatNumber(refinedSuggestion.configuracao_otimizada.payback, 1)} anos`} highlight />
-                        </div>
-                    </div>
-                </div>
-
-              </div>
-            )}
-          </div>
-          <AlertDialogFooter>
-            <Button variant="ghost" onClick={() => setRefinedSuggestion(null)}>Cancelar</Button>
-            <Button onClick={handleApplySuggestion} disabled={isRefining}>
-                <CheckCircle className="mr-2" />
-                Aplicar Sugestão
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }
-
-const ComparisonItem = ({ label, value, highlight = false }: { label: string, value: string, highlight?: boolean }) => (
-    <div>
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className={`font-semibold text-base ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
-    </div>
-)
-
-const SuggestionSkeleton = () => (
-    <div className="space-y-6">
-        <div>
-            <h3 className="font-semibold mb-2 text-foreground">Análise da IA</h3>
-            <Skeleton className="h-24 w-full" />
-        </div>
-        <Separator />
-        <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-            <div className="space-y-4">
-                <h4 className="font-semibold text-foreground">Configuração Inicial</h4>
-                <Skeleton className="h-10 w-3/4" />
-                <Skeleton className="h-10 w-1/2" />
-                <Skeleton className="h-10 w-2/3" />
-            </div>
-            <div className="space-y-4">
-                <h4 className="font-semibold text-primary">Configuração Otimizada</h4>
-                <Skeleton className="h-10 w-3/4" />
-                <Skeleton className="h-10 w-1/2" />
-                <Skeleton className="h-10 w-2/3" />
-            </div>
-        </div>
-    </div>
-);
-
 
 const defaultCustomization: CustomizationSettings = {
   colors: {

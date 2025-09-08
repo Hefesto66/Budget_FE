@@ -134,5 +134,3 @@ const suggestRefinedPanelConfigFlow = ai.defineFlow(
     };
   }
 );
-
-    
