@@ -61,7 +61,7 @@ export default function LeadDetailPage() {
        <div className="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-950">
         <Header />
         <main className="flex-1 p-6 text-center">
-            <h1 className="text-xl">Lead não encontrado.</h1>
+            <h1 className="text-xl">Oportunidade não encontrada.</h1>
             <Button variant="link" onClick={() => router.push('/crm')}>Voltar para o Funil</Button>
         </main>
       </div>
@@ -124,7 +124,7 @@ export default function LeadDetailPage() {
                                     )) : (
                                       <TableRow>
                                         <TableCell colSpan={3} className="text-center h-24 text-muted-foreground">
-                                          Nenhuma cotação criada para este lead.
+                                          Nenhuma cotação criada para esta oportunidade.
                                         </TableCell>
                                       </TableRow>
                                     )}

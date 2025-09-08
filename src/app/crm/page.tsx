@@ -285,7 +285,7 @@ export default function CrmPage() {
                   <Button size="lg" asChild>
                       <Link href="/crm/new-lead">
                           <PlusCircle className="mr-2 h-5 w-5"/>
-                          Criar Lead
+                          Nova Oportunidade
                       </Link>
                   </Button>
               </div>
@@ -356,7 +356,7 @@ export default function CrmPage() {
                     </Droppable>
                   ))}
                   <div className="w-72 flex-shrink-0">
-                      <Card className="bg-gray-200/50 dark:bg-gray-800/ ৫০ border-2 border-dashed hover:border-primary transition-colors">
+                      <Card className="bg-gray-200/50 dark:bg-gray-800/50 border-2 border-dashed hover:border-primary transition-colors">
                           <CardContent className="p-4">
                               <div className="flex items-center gap-2">
                                   <Input 
@@ -421,7 +421,3 @@ export default function CrmPage() {
     </DragDropContext>
   );
 }
-
-    
-
-    

@@ -51,6 +51,7 @@ export interface Quote {
     createdAt: string; // ISO string
     formData: SolarCalculationInput;
     results: SolarCalculationResult;
+    billOfMaterials: any[];
 }
 
 export interface Stage {
@@ -341,16 +342,42 @@ export const getPriceLists = (): PriceList[] => {
 // ====== PRODUCT FUNCTIONS ====== //
 
 const DEFAULT_PRODUCTS: Product[] = [
-    { id: 'prod-1', name: 'Painel Solar Tongwei 550W', type: 'PAINEL_SOLAR', salePrice: 750, unit: 'UN' },
-    { id: 'prod-2', name: 'Inversor Growatt 5kW', type: 'INVERSOR', salePrice: 4200, unit: 'UN' },
-    { id: 'prod-3', name: 'Estrutura de Montagem para Telhado Cerâmico', type: 'ESTRUTURA', salePrice: 120, unit: 'UN' },
-    { id: 'prod-4', name: 'Projeto e Homologação', type: 'SERVICO', salePrice: 1500, unit: 'UN' },
+    { 
+        id: 'prod-1', 
+        name: 'Painel Solar Tongwei 550W', 
+        type: 'PAINEL_SOLAR', 
+        salePrice: 750, 
+        unit: 'UN', 
+        technicalSpecifications: { 'Fabricante': 'Tongwei', 'Potência (Wp)': '550' }
+    },
+    { 
+        id: 'prod-2', 
+        name: 'Inversor Growatt 5kW', 
+        type: 'INVERSOR', 
+        salePrice: 4200, 
+        unit: 'UN', 
+        technicalSpecifications: { 'Fabricante': 'Growatt', 'Eficiência (%)': '97.5' }
+    },
+    { 
+        id: 'prod-3', 
+        name: 'Estrutura de Montagem para Telhado Cerâmico', 
+        type: 'ESTRUTURA', 
+        salePrice: 120, 
+        unit: 'UN' 
+    },
+    { 
+        id: 'prod-4', 
+        name: 'Projeto e Homologação', 
+        type: 'SERVICO', 
+        salePrice: 1500, 
+        unit: 'UN' 
+    },
 ];
 
 
 export const getProducts = (): Product[] => {
   const products = getFromStorage<Product[]>(PRODUCTS_STORAGE_KEY);
-  if (!products) {
+  if (!products || products.length === 0) {
     saveToStorage(PRODUCTS_STORAGE_KEY, DEFAULT_PRODUCTS);
     return DEFAULT_PRODUCTS;
   }

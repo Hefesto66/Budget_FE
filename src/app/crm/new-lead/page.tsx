@@ -114,7 +114,7 @@ export default function NewLeadPage() {
     saveLead(newLead);
     addHistoryEntry({ 
       clientId: selectedClient.id, 
-      text: `Novo lead criado: "${data.title}"`, 
+      text: `Nova oportunidade criada: "${data.title}"`, 
       type: 'log-lead',
       refId: newLeadId,
     });
@@ -123,7 +123,7 @@ export default function NewLeadPage() {
 
     toast({
       title: "Sucesso!",
-      description: "O novo lead foi criado.",
+      description: "A nova oportunidade foi criada.",
     });
 
     router.push(`/crm/${newLeadId}`); 
@@ -144,7 +144,7 @@ export default function NewLeadPage() {
     };
     
     saveClient(newClient);
-    addHistoryEntry({ clientId: newClient.id, text: 'Cliente criado através do formulário de novo lead.', type: 'log' });
+    addHistoryEntry({ clientId: newClient.id, text: 'Cliente criado através do formulário de nova oportunidade.', type: 'log' });
     
     const updatedClients = [...clients, newClient];
     setClients(updatedClients);
@@ -175,14 +175,14 @@ export default function NewLeadPage() {
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <Card className="shadow-lg">
               <CardHeader>
-                <CardTitle className="font-headline text-2xl flex items-center gap-2"><UserPlus /> Criar Novo Lead</CardTitle>
+                <CardTitle className="font-headline text-2xl flex items-center gap-2"><UserPlus /> Criar Nova Oportunidade</CardTitle>
                 <CardDescription>
                   Preencha as informações abaixo para adicionar uma nova oportunidade ao seu funil de vendas.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <Label htmlFor="title">Título do Lead</Label>
+                  <Label htmlFor="title">Título da Oportunidade</Label>
                   <Input id="title" placeholder="Ex: Orçamento para Residência em Alphaville" {...form.register("title")} className="mt-2" />
                   {form.formState.errors.title && <p className="text-sm text-destructive mt-1">{form.formState.errors.title.message}</p>}
                 </div>
@@ -276,7 +276,7 @@ export default function NewLeadPage() {
                   ) : (
                     <>
                       <Save className="mr-2 h-4 w-4" />
-                      Salvar Lead
+                      Salvar Oportunidade
                     </>
                   )}
                 </Button>
@@ -292,7 +292,7 @@ export default function NewLeadPage() {
           <DialogHeader>
             <DialogTitle>Criar Novo Cliente</DialogTitle>
              <DialogDescription>
-                Adicione um novo cliente que será associado a este lead.
+                Adicione um novo cliente que será associado a esta oportunidade.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">

@@ -25,7 +25,7 @@ export function Header() {
     }
     if (pathname.startsWith('/crm/')) {
         const isNew = pathname.endsWith('/new-lead');
-        return { title: isNew ? 'Novo Lead' : 'Detalhes do Lead', showQuickQuote: false };
+        return { title: isNew ? 'Nova Oportunidade' : 'Detalhes da Oportunidade', showQuickQuote: false };
     }
     if (pathname === '/orcamento') {
       const hasLead = searchParams.has('leadId');
