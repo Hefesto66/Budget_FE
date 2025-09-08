@@ -19,15 +19,15 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save, ArrowLeft, Package, Trash2, PlusCircle } from "lucide-react";
 import { Header } from "@/components/layout/Header";
-import { getProductById, saveProduct, type Product, PRODUCT_TYPES, ProductType } from '@/lib/storage';
+import { getProductById, saveProduct, type Product, PRODUCT_CATEGORIES, ProductCategory } from '@/lib/storage';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 const productFormSchema = z.object({
   name: z.string().min(1, "O nome do produto é obrigatório."),
   fabricante: z.string().optional(),
-  type: z.enum(Object.keys(PRODUCT_TYPES) as [ProductType, ...ProductType[]], {
-      errorMap: () => ({ message: 'Selecione um tipo de produto válido.'})
+  category: z.enum(Object.keys(PRODUCT_CATEGORIES) as [ProductCategory, ...ProductCategory[]], {
+      errorMap: () => ({ message: 'Selecione uma categoria de produto válida.'})
   }),
   salePrice: z.coerce.number().min(0, "O preço de venda não pode ser negativo."),
   unit: z.string().min(1, "A unidade de medida é obrigatória."),
@@ -54,7 +54,7 @@ export default function ProductForm() {
     defaultValues: {
       name: "",
       fabricante: "",
-      type: "OUTRO",
+      category: "OUTRO",
       salePrice: 0,
       unit: "UN",
       description: "",
@@ -62,7 +62,7 @@ export default function ProductForm() {
     },
   });
 
-  const productType = form.watch("type");
+  const productCategory = form.watch("category");
 
   useEffect(() => {
     if (isEditing) {
@@ -100,7 +100,7 @@ export default function ProductForm() {
     const productToSave: Product = {
       id: isEditing ? productId : `prod-${Date.now()}`,
       name: data.name,
-      type: data.type,
+      category: data.category,
       salePrice: data.salePrice,
       unit: data.unit,
       description: data.description,
@@ -170,14 +170,14 @@ export default function ProductForm() {
                                     <Input id="fabricante" placeholder="Ex: Tongwei, Growatt" {...form.register("fabricante")} />
                                 </div>
                                  <div className="space-y-1">
-                                    <Label>Tipo de Produto *</Label>
-                                    <Select onValueChange={(value: ProductType) => form.setValue('type', value)} defaultValue={form.getValues('type')}>
+                                    <Label>Categoria *</Label>
+                                    <Select onValueChange={(value: ProductCategory) => form.setValue('category', value)} defaultValue={form.getValues('category')}>
                                         <SelectTrigger>
-                                            <SelectValue placeholder="Selecione um tipo" />
+                                            <SelectValue placeholder="Selecione uma categoria" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {(Object.keys(PRODUCT_TYPES) as ProductType[]).map(key => (
-                                                <SelectItem key={key} value={key}>{PRODUCT_TYPES[key]}</SelectItem>
+                                            {(Object.keys(PRODUCT_CATEGORIES) as ProductCategory[]).map(key => (
+                                                <SelectItem key={key} value={key}>{PRODUCT_CATEGORIES[key]}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -194,17 +194,23 @@ export default function ProductForm() {
                                 </div>
                             </div>
                             
-                            {productType === 'PAINEL_SOLAR' && (
+                            {productCategory === 'PAINEL_SOLAR' && (
                                 <div className="space-y-1">
                                     <Label htmlFor="spec-potencia">Potência (Wp)</Label>
                                     <Input id="spec-potencia" type="number" placeholder="Ex: 550" value={specifications['Potência (Wp)'] || ''} onChange={e => handleSpecChange('Potência (Wp)', e.target.value)} />
                                 </div>
                             )}
 
-                             {productType === 'INVERSOR' && (
-                                <div className="space-y-1">
-                                    <Label htmlFor="spec-eficiencia">Eficiência (%)</Label>
-                                    <Input id="spec-eficiencia" type="number" placeholder="Ex: 97.5" value={specifications['Eficiência (%)'] || ''} onChange={e => handleSpecChange('Eficiência (%)', e.target.value)} />
+                             {productCategory === 'INVERSOR' && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-1">
+                                        <Label htmlFor="spec-potencia-inversor">Potência de Saída (kW)</Label>
+                                        <Input id="spec-potencia-inversor" type="number" placeholder="Ex: 5" value={specifications['Potência de Saída (kW)'] || ''} onChange={e => handleSpecChange('Potência de Saída (kW)', e.target.value)} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="spec-eficiencia">Eficiência (%)</Label>
+                                        <Input id="spec-eficiencia" type="number" placeholder="Ex: 97.5" value={specifications['Eficiência (%)'] || ''} onChange={e => handleSpecChange('Eficiência (%)', e.target.value)} />
+                                    </div>
                                 </div>
                             )}
                             

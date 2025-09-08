@@ -170,7 +170,7 @@ export function Step2Results({
     const { nova_quantidade_paineis } = refinedSuggestion.configuracao_otimizada;
     
     const bom = formMethods.getValues('billOfMaterials');
-    const panelIndex = bom.findIndex(item => item.type === 'PAINEL_SOLAR');
+    const panelIndex = bom.findIndex(item => item.category === 'PAINEL_SOLAR');
 
     if (panelIndex !== -1) {
       formMethods.setValue(`billOfMaterials.${panelIndex}.quantity`, nova_quantidade_paineis);
@@ -386,7 +386,7 @@ export function Step2Results({
                     <div className="grid grid-cols-2 gap-x-6">
                         <div className="space-y-3">
                             <h5 className="font-medium text-muted-foreground">Sua Configuração</h5>
-                                <ComparisonItem label="Painéis" value={`${formMethods.getValues('billOfMaterials').find(i => i.type === 'PAINEL_SOLAR')?.quantity} UN`} />
+                                <ComparisonItem label="Painéis" value={`${formMethods.getValues('billOfMaterials').find(i => i.category === 'PAINEL_SOLAR')?.quantity} UN`} />
                                 <ComparisonItem label="Custo Total" value={formatCurrency(totalCostFromBom)} />
                         </div>
                         <div className="space-y-3 rounded-md border border-primary bg-primary/5 p-4">

@@ -76,7 +76,7 @@ export interface PriceList {
   name: string;
 }
 
-export const PRODUCT_TYPES = {
+export const PRODUCT_CATEGORIES = {
   PAINEL_SOLAR: 'Painel Solar',
   INVERSOR: 'Inversor',
   ESTRUTURA: 'Estrutura',
@@ -84,13 +84,13 @@ export const PRODUCT_TYPES = {
   OUTRO: 'Outro',
 } as const;
 
-export type ProductType = keyof typeof PRODUCT_TYPES;
+export type ProductCategory = keyof typeof PRODUCT_CATEGORIES;
 
 
 export interface Product {
     id: string;
     name: string;
-    type: ProductType;
+    category: ProductCategory;
     salePrice: number;
     unit: string; // UN, m², etc.
     description?: string;
@@ -345,7 +345,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     { 
         id: 'prod-1', 
         name: 'Painel Solar Tongwei 550W', 
-        type: 'PAINEL_SOLAR', 
+        category: 'PAINEL_SOLAR', 
         salePrice: 750, 
         unit: 'UN', 
         technicalSpecifications: { 'Fabricante': 'Tongwei', 'Potência (Wp)': '550' }
@@ -353,7 +353,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     { 
         id: 'prod-2', 
         name: 'Inversor Growatt 5kW', 
-        type: 'INVERSOR', 
+        category: 'INVERSOR', 
         salePrice: 4200, 
         unit: 'UN', 
         technicalSpecifications: { 'Fabricante': 'Growatt', 'Eficiência (%)': '97.5' }
@@ -361,14 +361,14 @@ const DEFAULT_PRODUCTS: Product[] = [
     { 
         id: 'prod-3', 
         name: 'Estrutura de Montagem para Telhado Cerâmico', 
-        type: 'ESTRUTURA', 
+        category: 'ESTRUTURA', 
         salePrice: 120, 
         unit: 'UN' 
     },
     { 
         id: 'prod-4', 
         name: 'Projeto e Homologação', 
-        type: 'SERVICO', 
+        category: 'SERVICO', 
         salePrice: 1500, 
         unit: 'UN' 
     },

@@ -1,3 +1,4 @@
+
 // src/ai/flows/suggest-refined-panel-config.ts
 'use server';
 
@@ -20,7 +21,7 @@ type SystemStatus = 'OTIMIZADO' | 'SUBDIMENSIONADO' | 'SUPERDIMENSIONADO';
 const bomItemSchema = z.object({
     productId: z.string(),
     name: z.string(),
-    type: z.string(),
+    category: z.string(),
     cost: z.number(),
     quantity: z.number(),
     manufacturer: z.string(),
@@ -89,8 +90,8 @@ export async function suggestRefinedPanelConfig(
     const { calculationInput, billOfMaterials } = SuggestRefinedPanelConfigInputSchema.parse(input);
     const { consumo_mensal_kwh, irradiacao_psh_kwh_m2_dia, valor_medio_fatura_reais } = calculationInput;
 
-    const panel = billOfMaterials.find(item => item.type === 'PAINEL_SOLAR');
-    const inverter = billOfMaterials.find(item => item.type === 'INVERSOR');
+    const panel = billOfMaterials.find(item => item.category === 'PAINEL_SOLAR');
+    const inverter = billOfMaterials.find(item => item.category === 'INVERSOR');
 
     if (!panel) throw new Error("Nenhum 'Painel Solar' encontrado na lista de materiais.");
     if (!inverter) throw new Error("Nenhum 'Inversor' encontrado na lista de materiais.");
@@ -130,7 +131,7 @@ export async function suggestRefinedPanelConfig(
     
     // 4. Calculate new total cost and payback for the suggestion
     const otherItemsCost = billOfMaterials
-      .filter(item => item.type !== 'PAINEL_SOLAR')
+      .filter(item => item.category !== 'PAINEL_SOLAR')
       .reduce((sum, item) => sum + (item.cost * item.quantity), 0);
     
     const newPanelsCost = panel.cost * suggestedPanelQuantity;

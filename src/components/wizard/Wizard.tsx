@@ -43,7 +43,7 @@ const wizardSchema = z.object({
     billOfMaterials: z.array(z.object({
         productId: z.string().min(1, "Selecione um produto"),
         name: z.string(),
-        type: z.string(),
+        category: z.string(),
         manufacturer: z.string(),
         cost: z.number(),
         unit: z.string(),
@@ -182,9 +182,9 @@ export function Wizard() {
     toast({ title: "Iniciando cálculo...", description: "A validar os dados de entrada..." });
 
     const bom = data.billOfMaterials;
-    const panelItem = bom.find(item => item.type === 'PAINEL_SOLAR');
-    const inverterItem = bom.find(item => item.type === 'INVERSOR');
-    const serviceItem = bom.find(item => item.type === 'SERVICO');
+    const panelItem = bom.find(item => item.category === 'PAINEL_SOLAR');
+    const inverterItem = bom.find(item => item.category === 'INVERSOR');
+    const serviceItem = bom.find(item => item.category === 'SERVICO');
 
     if (!panelItem || !inverterItem || !serviceItem) {
         toast({ title: "Lista de Materiais Incompleta", description: "É necessário ter pelo menos um Painel Solar, um Inversor e um Serviço na lista para calcular.", variant: "destructive" });
@@ -321,7 +321,7 @@ export function Wizard() {
     update(index, {
         productId: product.id,
         name: product.name,
-        type: product.type,
+        category: product.category,
         manufacturer: product.technicalSpecifications?.['Fabricante'] || 'N/A',
         cost: product.salePrice,
         unit: product.unit,
@@ -332,7 +332,7 @@ export function Wizard() {
   }
   
   const handleAddNewItem = () => {
-    append({ productId: '', name: '', type: 'OUTRO', manufacturer: '', cost: 0, unit: '', quantity: 1, technicalSpecifications: {} });
+    append({ productId: '', name: '', category: 'OUTRO', manufacturer: '', cost: 0, unit: '', quantity: 1, technicalSpecifications: {} });
   }
 
   const navigateToProduct = (productId: string) => {

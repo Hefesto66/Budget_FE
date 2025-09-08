@@ -7,12 +7,12 @@ import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PlusCircle, Search, Package, Sun, GitBranch, Wrench } from 'lucide-react';
-import { getProducts, type Product, PRODUCT_TYPES } from '@/lib/storage';
+import { getProducts, type Product, PRODUCT_CATEGORIES } from '@/lib/storage';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
 
-const ProductIcon = ({ type }: { type: Product['type'] }) => {
-    switch (type) {
+const ProductIcon = ({ category }: { category: Product['category'] }) => {
+    switch (category) {
         case 'PAINEL_SOLAR': return <Sun className="h-8 w-8" />;
         case 'INVERSOR': return <GitBranch className="h-8 w-8" />;
         case 'ESTRUTURA': return <Wrench className="h-8 w-8" />;
@@ -29,11 +29,11 @@ const ProductCard = ({ product }: { product: Product }) => (
                 <p className="text-sm font-bold text-muted-foreground">{formatCurrency(product.salePrice)}</p>
             </div>
             <div className="relative flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
-                <ProductIcon type={product.type} />
+                <ProductIcon category={product.category} />
             </div>
         </div>
          <div className="flex flex-wrap gap-1 mt-auto">
-            <Badge variant="secondary" className="text-xs">{PRODUCT_TYPES[product.type]}</Badge>
+            <Badge variant="secondary" className="text-xs">{PRODUCT_CATEGORIES[product.category]}</Badge>
         </div>
     </div>
   </Link>
