@@ -4,13 +4,13 @@ import type { calculateSolar } from "@/ai/flows/calculate-solar";
 import { z } from "zod";
 
 export const solarCalculationSchema = z.object({
-  // Seção 1: Consumo e Fatura
+  // Seção 1: Consumo e Fatura - Campos obrigatórios que o utilizador deve preencher
   consumo_mensal_kwh: z.number().gte(0, { message: "O consumo mensal não pode ser negativo." }),
   valor_medio_fatura_reais: z.number().gte(0, { message: "O valor da fatura não pode ser negativo." }),
   cip_iluminacao_publica_reais: z.number().gte(0, { message: "O valor da CIP não pode ser negativo." }),
   adicional_bandeira_reais_kwh: z.number().gte(0).default(0),
   
-  // Seção 2: Detalhes Técnicos do Local
+  // Seção 2: Detalhes Técnicos do Local - Campos obrigatórios
   concessionaria: z.enum(
       ["Equatorial GO", "CHESP"], 
       { errorMap: () => ({ message: 'Concessionária não suportada para esta região.' }) }
@@ -18,7 +18,10 @@ export const solarCalculationSchema = z.object({
   rede_fases: z.enum(['mono', 'bi', 'tri']),
   irradiacao_psh_kwh_m2_dia: z.number().min(0.1, "Valor de irradiação muito baixo.").max(12, { message: "Valor de irradiação irreal. Verifique o dado." }),
 
-  // Seção 3: Parâmetros de Cálculo (Derivados da BOM ou com valores padrão)
+  // Seção 3: Parâmetros de Cálculo - A maioria destes campos é OPCIONAL
+  // Eles são derivados da BOM ou têm valores padrão no backend.
+  // A validação aqui é flexível para permitir que o cálculo funcione mesmo sem uma BOM completa.
+  
   // Módulos
   potencia_modulo_wp: z.number().gte(0).optional(),
   preco_modulo_reais: z.number().gte(0).optional(),
@@ -34,7 +37,7 @@ export const solarCalculationSchema = z.object({
   tensao_inversor_v: z.number().gte(0).optional(),
   quantidade_inversores: z.number().int().gte(0).optional(),
   garantia_inversor_anos: z.number().int().gte(0).optional(),
-  eficiencia_inversor_percent: z.number().min(0).max(99).optional(), // Allow 0
+  eficiencia_inversor_percent: z.number().min(0).max(100).optional(), // Permite 0, backend trata se for nulo
   custo_inversor_reais: z.number().gte(0).optional(),
 
   // Custos e Perdas
@@ -46,7 +49,7 @@ export const solarCalculationSchema = z.object({
   meta_compensacao_percent: z.number().min(0).max(100).optional(),
   custo_sistema_reais: z.number().gte(0).optional(),
   
-  // Vendas
+  // Vendas (não usado no cálculo, mas parte do formulário)
   salespersonId: z.string().optional(),
   paymentTermId: z.string().optional(),
   priceListId: z.string().optional(),

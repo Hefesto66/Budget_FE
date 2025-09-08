@@ -1,67 +1,70 @@
-# Relatório de Incidente: Falha Crítica no Fluxo de Cálculo do Orçamento
+# Relatório de Incidente: Falha na Extração de Dados da Lista de Materiais
 
-**Data:** 24/07/2024
+**Data:** 25/07/2024
 **Autor:** Assistente de IA - Firebase Studio
-**Status:** **Crítico - Não Resolvido**
+**Status:** **Crítico - Análise Concluída**
 
 ## 1. Resumo Executivo
 
-O fluxo de criação de orçamentos, funcionalidade central da aplicação, encontra-se num estado de falha persistente e crítico. O sintoma principal é a total ausência de reação do botão "Avançar para Resultados" quando a lista de materiais (`billOfMaterials`) contém itens, especificamente o painel solar e o inversor. Paradoxalmente, o cálculo é processado corretamente quando a lista de materiais está vazia.
+O fluxo de cálculo do orçamento, embora agora não bloqueie mais, está a produzir resultados incorretos. A causa raiz foi identificada: o sistema **não está a extrair corretamente os dados de especificações técnicas** (como "Potência (Wp)" do painel solar e "Eficiência (%)" do inversor) da lista de materiais (`billOfMaterials`).
 
-Este comportamento indica um erro fundamental na validação dos dados no *frontend* (navegador), que bloqueia a submissão do formulário de forma silenciosa, sem fornecer qualquer feedback ao utilizador. Este relatório documenta as tentativas de correção, as razões pelas quais falharam e apresenta uma análise estruturada do problema.
+Quando um painel e um inversor são adicionados, o cálculo prossegue como se a sua potência e eficiência fossem zero. Isto invalida completamente a análise financeira e de geração. Este relatório detalha a falha e apresenta a solução profissional para garantir a correta extração e processamento dos dados.
 
 ---
 
 ## 2. Anatomia do Problema
 
-O fluxo de trabalho pretendido é o seguinte:
-1.  O utilizador preenche os dados de consumo e a lista de materiais no Passo 1 (`Wizard.tsx`).
-2.  Ao clicar em "Avançar para Resultados", a função `processForm` é acionada.
-3.  `processForm` recolhe os dados, valida-os usando um *schema* da biblioteca Zod, e envia-os para a ação de servidor `getCalculation`.
-4.  O servidor executa a lógica de negócio em `calculateSolarFlow` e retorna os resultados.
-5.  O frontend exibe os resultados no Passo 2.
+O fluxo de trabalho pretendido dentro da função `processForm` é:
+1.  Receber os dados do formulário, que incluem a lista de materiais (`billOfMaterials`).
+2.  Encontrar o item da categoria `PAINEL_SOLAR` na lista.
+3.  Ler a sua especificação técnica `Potência (Wp)` do objeto `technicalSpecifications`.
+4.  Encontrar o item da categoria `INVERSOR` na lista.
+5.  Ler a sua especificação técnica `Eficiência (%)`.
+6.  Usar estes valores para construir o objeto de dados de cálculo (`calculationData`) e enviá-lo para o servidor.
 
-**O Ponto de Falha:** O processo está a ser interrompido **antes do passo 3**. A validação do Zod no *frontend* está a falhar silenciosamente, impedindo que a função `processForm` seja executada.
+**O Ponto de Falha:** O processo falha nos passos 3 e 5. A lógica atual dentro de `processForm` não está a aceder corretamente ao objeto `technicalSpecifications` do item encontrado na lista. Em vez disso, está a tentar ler estes valores de um local incorreto ou a usar valores padrão de `0`, o que leva a um cálculo falho.
 
----
-
-## 3. Histórico de Tentativas de Correção e Análise de Falhas
-
-### Tentativa 1: Flexibilização da Validação no Backend
-- **Ação:** Modifiquei o fluxo `calculateSolarFlow` no *backend* para aceitar valores `0` para campos como `potencia_modulo_wp`, pensando que o erro era uma rejeição do servidor.
-- **Por que Falhou:** O problema não estava no *backend*. A submissão dos dados nunca chegava a acontecer. O erro estava a ocorrer no *frontend*, antes da chamada de rede.
-
-### Tentativa 2: Remoção do Botão Duplicado
-- **Ação:** Identifiquei um botão de *submit* escondido no componente `Step1DataInput.tsx` e removi-o, acreditando que poderia estar a causar um conflito de formulário.
-- **Por que Falhou:** Embora fosse uma boa prática de higiene do código, não era a causa raiz. O problema de validação subjacente persistiu.
-
-### Tentativa 3: Ajuste do Schema para `.gte(0)`
-- **Ação:** Alterei a validação de `consumo_mensal_kwh` de `.positive()` para `.gte(0)`, suspeitando que a inserção de um `0` temporário pelo utilizador estava a invalidar o formulário.
-- **Por que Falhou:** Esta foi uma correção válida para um problema secundário, mas não resolveu o problema principal. O bloqueio continuou quando a lista de materiais era preenchida, indicando que o conflito de validação era mais complexo.
-
-### Tentativa 4: Simplificação do `wizardSchema` e Validação Lógica
-- **Ação:** A minha hipótese era que o *schema* aninhado (`solarCalculationSchema` dentro do `wizardSchema`) estava a criar um conflito. Tentei simplificá-lo e mover a lógica de validação para dentro da função `processForm`.
-- **Por que Falhou:** A abordagem foi correta na intenção, mas a execução foi falha. Eu não consegui desacoplar completamente a dependência entre a `billOfMaterials` e a `calculationInput` a nível da validação do Zod. O formulário ainda tentava validar um estado inconsistente de dados, onde os valores da lista de materiais (ex: potência) ainda não tinham sido formalmente transferidos para os campos correspondentes do `calculationInput` no momento da validação.
+**Armazenamento dos Dados:** A forma como os dados estão a ser guardados está correta. Cada produto no inventário (`src/lib/storage.ts`) possui um campo `technicalSpecifications`, que é um objeto `Record<string, string>`. Quando um produto é adicionado à `billOfMaterials`, este objeto de especificações é corretamente copiado para o item da lista. O problema não é o armazenamento, mas sim a **leitura** desses dados no momento do processamento.
 
 ---
 
-## 4. Hipótese Atual e Causa Raiz Provável
+## 3. Solução Profissional e Estratégica
 
-**O problema é um conflito de validação no frontend causado por uma dependência circular implícita.**
+A solução requer uma abordagem limpa e desacoplada, onde cada parte do sistema tem uma responsabilidade clara.
 
-1.  O nosso formulário principal (`Wizard.tsx`) usa um único *schema* Zod (`wizardSchema`) para validar todo o seu estado.
-2.  Este *schema* inclui o `solarCalculationSchema`, que contém campos como `potencia_modulo_wp`.
-3.  O valor de `potencia_modulo_wp` **só pode ser conhecido depois de processar a `billOfMaterials`**.
-4.  No entanto, o Zod tenta validar **tudo de uma só vez**. No momento da validação, o campo `potencia_modulo_wp` dentro do objeto do formulário está vazio ou com o valor padrão, mesmo que um painel solar já tenha sido adicionado à `billOfMaterials`.
-5.  Esta discrepância — ter um painel na lista, mas não ter a sua potência refletida no campo `potencia_modulo_wp` no mesmo instante — invalida o formulário.
-6.  Como não há uma mensagem de erro explicitamente ligada a este campo no Passo 1, a falha é **silenciosa**. O botão não faz nada.
+### Etapa 1: Flexibilizar o Schema de Validação (`src/types/index.ts`)
 
-Em suma, estamos a pedir ao Zod para validar o resultado de um processamento que ainda não aconteceu.
+A validação não deve conter lógica de negócio. Ela deve apenas garantir que os tipos de dados estão corretos.
 
-**Próximos Passos Sugeridos:**
-A solução definitiva exige o total desacoplamento da validação dos dados de entrada do utilizador da validação dos dados processados. Devemos:
-1.  Simplificar radicalmente o `wizardSchema` para validar apenas os campos que o utilizador insere diretamente.
-2.  Construir o objeto `calculationData` final dentro da função `processForm` **após** a validação bem-sucedida dos dados de entrada.
-3.  Só então, opcionalmente, validar este objeto `calculationData` final contra o `solarCalculationSchema` antes de o enviar para o servidor.
+- **Ação:** Modificar o `solarCalculationSchema` para que os campos que dependem da lista de materiais (`potencia_modulo_wp`, `eficiencia_inversor_percent`, etc.) sejam **genuinamente opcionais** e aceitem `0`. A regra de negócio (ex: "se existe um painel, a potência não pode ser zero") não deve estar na validação do Zod, mas sim na lógica de processamento.
+- **Porquê:** Isto impede que o Zod bloqueie o formulário prematuramente. Ele simplesmente garante que, se o campo for fornecido, ele é um número.
 
-Isto quebra a dependência circular e garante que a validação ocorra apenas em dados consistentes e totalmente processados.
+### Etapa 2: Centralizar e Corrigir a Lógica de Extração em `processForm` (`src/components/wizard/Wizard.tsx`)
+
+Esta é a etapa mais crítica. A função `processForm` deve ser a única responsável por ler a lista de materiais e construir o objeto de cálculo final.
+
+- **Ação:** Refatorar a `processForm` para:
+    1.  Encontrar o `panelItem` e o `inverterItem` na lista de materiais (`data.billOfMaterials`).
+    2.  **Aceder diretamente ao objeto `item.technicalSpecifications`** do item encontrado.
+    3.  Extrair a string (ex: `'550'`) e convertê-la para um número (`parseFloat`). Adicionar uma verificação para garantir que o resultado é um número válido (não `NaN`).
+    4.  Usar estes valores extraídos para preencher os campos `potencia_modulo_wp` e `eficiencia_inversor_percent` no objeto `calculationData`.
+    5.  Se um item não for encontrado, estes campos não serão definidos no objeto, e o backend irá usar os seus valores padrão.
+
+### Etapa 3: Reforçar o Backend para ser Tolerante a Falhas (`src/ai/flows/calculate-solar.ts`)
+
+O servidor não deve assumir que receberá sempre todos os dados. Ele deve ser capaz de funcionar com o mínimo de informação necessária.
+
+- **Ação:** No fluxo `calculateSolarFlow`, para cada campo opcional (como `eficiencia_inversor_percent`), usar o operador "nullish coalescing" (`??`) para aplicar um valor padrão seguro caso o campo não seja fornecido pelo frontend.
+    - Exemplo: `const eficiencia_inversor = (data.eficiencia_inversor_percent ?? 97) / 100;`
+- **Porquê:** Isto torna o backend robusto. Ele pode realizar um cálculo mesmo que o frontend, por alguma razão, não envie todos os detalhes, evitando erros de "divisão por zero" ou `undefined`.
+
+---
+
+## 4. Resultado Esperado
+
+Ao implementar esta arquitetura, o fluxo de dados torna-se claro e à prova de erros:
+1.  O formulário do frontend recolhe os dados sem validações de negócio complexas.
+2.  A função `processForm` atua como um "controlador", extraindo e transformando os dados da lista de materiais de forma explícita e segura.
+3.  O backend recebe um objeto de cálculo e aplica a sua lógica de negócio, usando valores padrão para quaisquer dados opcionais em falta.
+
+Isto não só corrige o erro atual, mas também cria um sistema mais estável, previsível e fácil de depurar no futuro.

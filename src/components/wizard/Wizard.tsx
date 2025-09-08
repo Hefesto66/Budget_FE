@@ -38,13 +38,13 @@ const Step2Results = dynamic(() => import('./Step2Results').then(mod => mod.Step
 });
 
 
-// Etapa 1: Simplificar o wizardSchema
+// Etapa 1: Simplificar o wizardSchema para validar apenas a estrutura, não a lógica de negócio.
 const wizardSchema = z.object({
-  calculationInput: z.any(), // A validação específica será feita depois
+  calculationInput: z.any(), 
   billOfMaterials: z.array(z.object({
       productId: z.string(),
       name: z.string(),
-      category: z.string(), // Categoria é obrigatória na validação inicial
+      category: z.string(),
       manufacturer: z.string(),
       cost: z.number(),
       unit: z.string(),
@@ -206,12 +206,17 @@ export function Wizard() {
       const inverterItem = validBom.find(item => item.category === 'INVERSOR');
       const serviceItem = validBom.find(item => item.category === 'SERVICO');
 
+      const panelPowerWp = panelItem?.technicalSpecifications?.['Potência (Wp)'];
+      const inverterEfficiency = inverterItem?.technicalSpecifications?.['Eficiência (%)'];
+      const inverterPowerKw = inverterItem?.technicalSpecifications?.['Potência de Saída (kW)'];
+
+
       const calculationData: SolarCalculationInput = {
           ...wizardData.calculationInput,
           custo_sistema_reais: validBom.reduce((acc, item) => acc + (item.cost * item.quantity), 0),
           quantidade_modulos: panelItem?.quantity,
-          potencia_modulo_wp: panelItem ? parseFloat(panelItem.technicalSpecifications?.['Potência (Wp)'] || '0') : undefined,
-          eficiencia_inversor_percent: inverterItem ? parseFloat(inverterItem.technicalSpecifications?.['Eficiência (%)'] || '0') : undefined,
+          potencia_modulo_wp: panelPowerWp ? parseFloat(panelPowerWp) : undefined,
+          eficiencia_inversor_percent: inverterEfficiency ? parseFloat(inverterEfficiency) : undefined,
           preco_modulo_reais: panelItem?.cost,
           fabricante_modulo: panelItem?.manufacturer,
           quantidade_inversores: inverterItem?.quantity,
@@ -219,11 +224,11 @@ export function Wizard() {
           fabricante_inversor: inverterItem?.manufacturer,
           modelo_inversor: inverterItem?.name,
           custo_fixo_instalacao_reais: serviceItem?.cost,
-          garantia_defeito_modulo_anos: 12,
-          garantia_geracao_modulo_anos: 25,
-          potencia_inversor_kw: inverterItem ? parseFloat(inverterItem.technicalSpecifications?.['Potência de Saída (kW)'] || '0') : 5,
-          tensao_inversor_v: 220,
-          garantia_inversor_anos: 5,
+          garantia_defeito_modulo_anos: 12, // Placeholder
+          garantia_geracao_modulo_anos: 25, // Placeholder
+          potencia_inversor_kw: inverterPowerKw ? parseFloat(inverterPowerKw) : undefined,
+          tensao_inversor_v: 220, // Placeholder
+          garantia_inversor_anos: 5, // Placeholder
       };
       console.log("3. Objeto de cálculo construído:", calculationData);
       
