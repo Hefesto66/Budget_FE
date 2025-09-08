@@ -69,41 +69,43 @@ const prompt = ai.definePrompt({
   name: 'suggestRefinedPanelConfigPrompt',
   input: {schema: SuggestRefinedPanelConfigInputSchema},
   output: {schema: SuggestRefinedPanelConfigOutputSchema},
-  prompt: `Você é um engenheiro especialista em sistemas de energia solar. Sua tarefa é analisar a necessidade de um cliente e, usando os produtos disponíveis no inventário, montar a configuração ideal com o melhor custo-benefício.
+  prompt: `
+      Você é um engenheiro especialista em sistemas de energia solar. Sua tarefa é analisar a necessidade de um cliente e, usando os produtos disponíveis no inventário, montar a configuração ideal com o melhor custo-benefício.
 
-**Responda sempre em Português do Brasil (PT-BR).**
+      **Responda sempre em Português do Brasil (PT-BR).**
 
-**Objetivo:** Gerar o suficiente para cobrir 100% do consumo mensal de {{{consumo_mensal_kwh}}} kWh.
+      **Objetivo:** Gerar o suficiente para cobrir 100% do consumo mensal de {{{consumo_mensal_kwh}}} kWh.
 
-**Dados do Cliente:**
-- Consumo Mensal: {{{consumo_mensal_kwh}}} kWh
-- Irradiação Solar (PSH): {{{irradiacao_psh_kwh_m2_dia}}}
-- Valor Médio da Fatura: R$ {{{valor_medio_fatura_reais}}}
+      **Dados do Cliente:**
+      - Consumo Mensal: {{{consumo_mensal_kwh}}} kWh
+      - Irradiação Solar (PSH): {{{irradiacao_psh_kwh_m2_dia}}}
+      - Valor Médio da Fatura: R$ {{{valor_medio_fatura_reais}}}
 
-**Inventário de Produtos Disponíveis:**
-- Painéis Solares:
-{{#each inventory.panels}}
-  - ID: {{id}}, Nome: {{name}}, Preço: R$ {{salePrice}}, Potência: {{technicalSpecifications.Potência (Wp)}} Wp
-{{/each}}
-- Inversores:
-{{#each inventory.inverters}}
-  - ID: {{id}}, Nome: {{name}}, Preço: R$ {{salePrice}}
-{{/each}}
+      **Inventário de Produtos Disponíveis:**
+      - Painéis Solares:
+      {{#each inventory.panels}}
+        - ID: {{id}}, Nome: {{name}}, Preço: R$ {{salePrice}}, Potência: {{technicalSpecifications.Potência (Wp)}} Wp
+      {{/each}}
+      - Inversores:
+      {{#each inventory.inverters}}
+        - ID: {{id}}, Nome: {{name}}, Preço: R$ {{salePrice}}
+      {{/each}}
 
-**Sua Tarefa:**
+      **Sua Tarefa:**
 
-1.  **Escolha o melhor painel e inversor** do inventário para o cliente.
-2.  **Calcule a quantidade de painéis** necessária para cobrir o consumo. (Use a fórmula: (Consumo Mensal / 30 / Irradiação) / (Potência do Painel / 1000) / 0.8). Arredonde o número de painéis para cima.
-3.  **Calcule o custo total** dos equipamentos.
-4.  **Estime o payback** em anos. (Use a fórmula: Custo Total / (Valor da Fatura Média * 0.9 * 12)).
-5.  **Monte a resposta JSON.**
-    - No campo 'analise_texto', escreva uma justificativa **curta e direta** da sua escolha.
-    - Em 'configuracao_otimizada', liste os produtos, o custo total e o payback.
+      1.  **Escolha o melhor painel e inversor** do inventário para atender a necessidade do cliente. Considere um bom balanço entre preço e potência.
+      2.  **Calcule a quantidade de painéis** necessária para cobrir o consumo. A fórmula para a energia gerada mensalmente por um painel é: (Potência do Painel (Wp) / 1000) * Irradiação Solar * 30 * 0.8 (eficiência do sistema). A quantidade de painéis será: Consumo Mensal / Energia gerada por um painel. Arredonde o número de painéis para cima.
+      3.  **Calcule o custo total** dos equipamentos (painéis + inversor).
+      4.  **Estime o payback** em anos. A fórmula é: Custo Total / (Valor da Fatura Média * 0.9 * 12).
+      5.  **Monte a resposta JSON.**
+          - No campo 'analise_texto', escreva uma justificativa **curta e direta** da sua escolha de equipamentos.
+          - Em 'configuracao_otimizada', liste os produtos escolhidos (painel e inversor), o custo total e o payback que você calculou.
 
-**Formato da Resposta (JSON Obrigatório):**
-Sua resposta DEVE ser um JSON válido que corresponda à estrutura de saída.
+      **Formato da Resposta (JSON Obrigatório):**
+      Sua resposta DEVE ser um JSON válido que corresponda à estrutura de saída.
 `,
 });
+
 
 const suggestRefinedPanelConfigFlow = ai.defineFlow(
   {
@@ -116,4 +118,3 @@ const suggestRefinedPanelConfigFlow = ai.defineFlow(
     return output!;
   }
 );
-
