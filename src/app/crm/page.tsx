@@ -29,6 +29,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
+import { Confetti } from '@/components/ui/confetti';
 
 // Importa o DragDropContext dinamicamente para evitar problemas de SSR
 const DragDropContext = dynamic(
@@ -81,9 +82,9 @@ const LeadCard = ({ lead, index, onDelete }: { lead: Lead, index: number, onDele
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                    <AlertDialogTitle>Excluir Lead?</AlertDialogTitle>
+                    <AlertDialogTitle>Excluir Oportunidade?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Esta ação não pode ser desfeita. Isto irá apagar permanentemente o lead "{lead.title}".
+                        Esta ação não pode ser desfeita. Isto irá apagar permanentemente a oportunidade "{lead.title}".
                     </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -108,6 +109,7 @@ export default function CrmPage() {
   // State for editing a stage
   const [editingStage, setEditingStage] = useState<Stage | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
   
   const { toast } = useToast();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -177,7 +179,7 @@ export default function CrmPage() {
   const handleDeleteStage = (stageId: string) => {
     const leadsInStage = leadsByStage[stageId] || [];
     if (leadsInStage.length > 0) {
-        toast({ title: "Ação Bloqueada", description: "Não é possível excluir uma etapa que contém leads.", variant: "destructive" });
+        toast({ title: "Ação Bloqueada", description: "Não é possível excluir uma etapa que contém oportunidades.", variant: "destructive" });
         return;
     }
 
@@ -195,6 +197,9 @@ export default function CrmPage() {
   };
 
   const handleDeleteLead = (leadId: string) => {
+    const leadToDelete = getLeads().find(l => l.id === leadId);
+    if (!leadToDelete) return;
+
     deleteLead(leadId); // Deleta do storage
     
     // Atualiza o estado para remover o lead da UI
@@ -204,7 +209,7 @@ export default function CrmPage() {
     }
     setLeadsByStage(newLeadsByStage);
 
-    toast({ title: "Lead Excluído", description: "O lead foi removido com sucesso." });
+    toast({ title: "Oportunidade Excluída", description: `A oportunidade "${leadToDelete.title}" foi removida.` });
   };
   
   const handleEditStage = (stage: Stage) => {
@@ -255,10 +260,21 @@ export default function CrmPage() {
       if(destStage) {
         addHistoryEntry({ 
             clientId: movedLead.clientId, 
-            text: `Lead "${movedLead.title}" movido para a etapa "${destStage.title}".`, 
+            text: `Oportunidade "${movedLead.title}" movida para a etapa "${destStage.title}".`, 
             type: 'log-stage',
             refId: movedLead.id
         });
+
+        // Check for "Won" stage celebration
+        if (destStage.isWon) {
+            setShowConfetti(true);
+            toast({
+                title: "🎉 Parabéns!",
+                description: `Você ganhou a oportunidade "${movedLead.title}"!`,
+                duration: 5000,
+            });
+            setTimeout(() => setShowConfetti(false), 6000); // Hide confetti after 6 seconds
+        }
       }
 
       setLeadsByStage(prev => ({
@@ -279,6 +295,7 @@ export default function CrmPage() {
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-950">
+          {showConfetti && <Confetti />}
           <Header />
           <main className="flex-1 p-6 flex flex-col">
               <div className="mb-6 flex items-center justify-start">
@@ -296,7 +313,7 @@ export default function CrmPage() {
                           <div 
                             ref={provided.innerRef}
                             {...provided.droppableProps}
-                            className={`w-80 flex-shrink-0 flex flex-col rounded-xl p-4 transition-colors ${snapshot.isDraggingOver ? 'bg-primary/10' : 'bg-gray-200/50 dark:bg-gray-800/50'}`}
+                            className={`w-80 flex-shrink-0 flex flex-col rounded-xl p-4 transition-colors ${stage.isWon ? 'bg-green-500/10 border-2 border-dashed border-green-500/50' : snapshot.isDraggingOver ? 'bg-primary/10' : 'bg-gray-200/50 dark:bg-gray-800/50'}`}
                           >
                             <div className="mb-4 flex justify-between items-center group">
                                 <TooltipProvider delayDuration={100}>
@@ -345,7 +362,7 @@ export default function CrmPage() {
                                 ) : (
                                   !snapshot.isDraggingOver && (
                                     <div className="flex items-center justify-center h-full rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 text-sm text-muted-foreground p-4 text-center">
-                                      Sem leads nesta etapa
+                                      Sem oportunidades nesta etapa
                                     </div>
                                   )
                                 )}
@@ -409,7 +426,7 @@ export default function CrmPage() {
                     <Label htmlFor="is-won-stage">Marcar como estágio "Ganho"?</Label>
                 </div>
                  <p className="text-xs text-muted-foreground">
-                    Marcar esta opção fará com que qualquer lead movido para cá seja considerado uma venda concluída. Apenas uma etapa pode ser marcada como "Ganho".
+                    Marcar esta opção fará com que qualquer oportunidade movida para cá seja considerada uma venda concluída. Apenas uma etapa pode ser marcada como "Ganho".
                 </p>
             </div>
             <DialogFooter>
@@ -421,3 +438,5 @@ export default function CrmPage() {
     </DragDropContext>
   );
 }
+
+    
