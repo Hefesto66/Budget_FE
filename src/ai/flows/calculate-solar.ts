@@ -30,12 +30,9 @@ const calculateSolarFlow = ai.defineFlow(
     if (!data.consumo_mensal_kwh || data.consumo_mensal_kwh <= 0) {
       throw new Error("O consumo mensal (kWh) é um dado essencial e deve ser maior que zero.");
     }
-    if (!data.potencia_modulo_wp || data.potencia_modulo_wp <= 0) {
-        throw new Error("A potência do módulo (Wp) é necessária para dimensionar o sistema.");
-    }
-     if (!data.quantidade_modulos || data.quantidade_modulos <= 0) {
-        throw new Error("A quantidade de módulos é necessária para dimensionar o sistema.");
-    }
+    // Allow calculations even if panel/quantity is zero, as per new flexible UI logic
+    const potencia_modulo_wp = data.potencia_modulo_wp ?? 0;
+    const quantidade_modulos = data.quantidade_modulos ?? 0;
     
     const eficiencia_inversor = (data.eficiencia_inversor_percent ?? 97) / 100;
     const fator_perdas = (data.fator_perdas_percent ?? 20) / 100;
@@ -44,8 +41,8 @@ const calculateSolarFlow = ai.defineFlow(
     const eficiencia_sistema = eficiencia_inversor * (1 - fator_perdas);
 
     // 3. Calculate Final System Specs
-    const potencia_modulo_kw = data.potencia_modulo_wp / 1000;
-    const potencia_pico_final_kw = potencia_modulo_kw * data.quantidade_modulos;
+    const potencia_modulo_kw = potencia_modulo_wp / 1000;
+    const potencia_pico_final_kw = potencia_modulo_kw * quantidade_modulos;
 
     // 4. Calculate Energy Generation
     const geracao_diaria_kwh = potencia_pico_final_kw * data.irradiacao_psh_kwh_m2_dia * eficiencia_sistema;
@@ -77,7 +74,7 @@ const calculateSolarFlow = ai.defineFlow(
     return {
       dimensionamento: {
         potencia_sistema_kwp: Number(potencia_pico_final_kw.toFixed(2)),
-        quantidade_modulos: data.quantidade_modulos,
+        quantidade_modulos: quantidade_modulos,
       },
       geracao: {
         media_diaria_kwh: Number(geracao_diaria_kwh.toFixed(2)),
