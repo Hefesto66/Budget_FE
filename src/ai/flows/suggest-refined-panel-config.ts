@@ -121,6 +121,10 @@ const suggestRefinedPanelConfigFlow = ai.defineFlow(
     const { text } = await ai.generate({
       model: googleAI('gemini-1.5-flash-latest'),
       prompt: prompt,
+      config: {
+        // Relax safety settings as a precaution
+        safetySettings: [{ category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }]
+      }
     });
 
     // 5. Return the final structured object with calculated data
