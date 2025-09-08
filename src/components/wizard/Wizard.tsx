@@ -44,7 +44,7 @@ const wizardSchema = z.object({
   billOfMaterials: z.array(z.object({
       productId: z.string(),
       name: z.string(),
-      category: z.string(),
+      category: z.string(), // Categoria é obrigatória na validação inicial
       manufacturer: z.string(),
       cost: z.number(),
       unit: z.string(),
@@ -70,6 +70,21 @@ const defaultValues: SolarCalculationInput = {
     custo_om_anual_reais: 150,
     meta_compensacao_percent: 100,
 }
+
+// Função para garantir que todos os itens da BOM tenham uma estrutura válida
+const normalizeBillOfMaterials = (bom: any[]): WizardFormData['billOfMaterials'] => {
+  if (!Array.isArray(bom)) return [];
+  return bom.map(item => ({
+    productId: item?.productId || '',
+    name: item?.name || '',
+    category: item?.category || 'OUTRO',
+    manufacturer: item?.manufacturer || '',
+    cost: item?.cost || 0,
+    unit: item?.unit || 'UN',
+    quantity: item?.quantity || 1,
+    technicalSpecifications: item?.technicalSpecifications || {},
+  }));
+};
 
 export function Wizard() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -121,7 +136,7 @@ export function Wizard() {
       if (draftData) {
           methods.reset({
             calculationInput: { ...defaultValues, ...(draftData.formData?.calculationInput || {}) },
-            billOfMaterials: draftData.formData?.billOfMaterials || [],
+            billOfMaterials: normalizeBillOfMaterials(draftData.formData?.billOfMaterials),
           });
           if (draftData.results) setResults(draftData.results);
           if (draftData.clientData) setClientData(draftData.clientData);
@@ -164,7 +179,7 @@ export function Wizard() {
       
       methods.reset({ 
         calculationInput: {...defaultValues, ...initialData}, 
-        billOfMaterials: bomToSet 
+        billOfMaterials: normalizeBillOfMaterials(bomToSet)
       });
 
       if(clientToSet) setClientData(clientToSet);
@@ -321,7 +336,7 @@ export function Wizard() {
   const handleAddNewItem = () => {
     append({ 
         productId: '', 
-        name: '', 
+        name: 'Selecione um produto', 
         category: 'OUTRO', 
         manufacturer: '', 
         cost: 0, 
