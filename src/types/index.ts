@@ -20,9 +20,9 @@ export const solarCalculationSchema = z.object({
 
   // Seção 3: Parâmetros de Cálculo (Derivados da BOM ou com valores padrão)
   // Módulos
-  potencia_modulo_wp: z.number().positive().optional(),
-  preco_modulo_reais: z.number().positive().optional(),
-  quantidade_modulos: z.number().int().positive().optional(),
+  potencia_modulo_wp: z.number().gte(0).optional(),
+  preco_modulo_reais: z.number().gte(0).optional(),
+  quantidade_modulos: z.number().int().gte(0).optional(),
   fabricante_modulo: z.string().optional(),
   garantia_defeito_modulo_anos: z.number().int().positive().optional(),
   garantia_geracao_modulo_anos: z.number().int().positive().optional(),
@@ -34,8 +34,8 @@ export const solarCalculationSchema = z.object({
   tensao_inversor_v: z.number().positive().optional(),
   quantidade_inversores: z.number().int().positive().optional(),
   garantia_inversor_anos: z.number().int().positive().optional(),
-  eficiencia_inversor_percent: z.number().min(80).max(99).optional(),
-  custo_inversor_reais: z.number().positive().optional(),
+  eficiencia_inversor_percent: z.number().min(0).max(99).optional(), // Allow 0
+  custo_inversor_reais: z.number().gte(0).optional(),
 
   // Custos e Perdas
   fator_perdas_percent: z.number().min(0).max(100).optional(),

@@ -34,7 +34,8 @@ const calculateSolarFlow = ai.defineFlow(
     const potencia_modulo_wp = data.potencia_modulo_wp ?? 0;
     const quantidade_modulos = data.quantidade_modulos ?? 0;
     
-    const eficiencia_inversor = (data.eficiencia_inversor_percent ?? 97) / 100;
+    // Default efficiency to 97% if it's 0 or not provided (e.g., no inverter in BOM)
+    const eficiencia_inversor = (data.eficiencia_inversor_percent && data.eficiencia_inversor_percent > 0) ? data.eficiencia_inversor_percent / 100 : 0.97;
     const fator_perdas = (data.fator_perdas_percent ?? 20) / 100;
     
     // 2. Calculate System Efficiency
