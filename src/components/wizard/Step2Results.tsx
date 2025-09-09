@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings } from "@/types";
 import { ResultCard } from "@/components/ResultCard";
 import { Button } from "@/components/ui/button";
@@ -79,7 +79,9 @@ export function Step2Results({
   const [showAdvancedAnalysis, setShowAdvancedAnalysis] = useState(false);
   
   const billOfMaterials = formMethods.watch('billOfMaterials');
-  
+
+  const intervalRef = useRef<number | null>(null);
+
   const handleAiRefinement = async () => {
     setIsRefining(true);
     setRefinedSuggestion(null);
@@ -103,79 +105,105 @@ export function Step2Results({
     setIsRefining(false);
   };
   
-  const handleExportPdf = () => {
+  const handleExportPdf = useCallback(() => {
     setIsPrinting(true);
-    toast({ title: "A preparar a proposta...", description: "A janela de impressão será aberta." });
+    toast({ title: "A preparar a proposta...", description: "A sua janela de impressão será aberta." });
 
-    const printWindow = window.open('/proposal-template', '_blank');
-    if (!printWindow) {
-        toast({ title: "Erro", description: "Não foi possível abrir a janela de impressão. Verifique se o seu navegador está a bloquear pop-ups.", variant: "destructive" });
+    const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    let printWindow: Window | null = null;
+    let cleanedUp = false;
+
+    const cleanup = () => {
+        if (cleanedUp) return;
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+        }
+        window.removeEventListener("message", handleMessage);
         setIsPrinting(false);
+        cleanedUp = true;
+    };
+
+    const handleMessage = (event: MessageEvent) => {
+        if (event.source !== printWindow || event.origin !== window.location.origin) {
+            return;
+        }
+        if (event.data?.type === "PROPOSAL_ACK" && event.data?.requestId === requestId) {
+            toast({ title: "Sucesso!", description: "Dados recebidos pela janela de impressão.", className: "bg-green-100 dark:bg-green-900" });
+            cleanup();
+        }
+        if (event.data?.type === "PROPOSAL_ERROR") {
+             toast({ title: "Erro na Janela de Impressão", description: event.data?.error || "Ocorreu um erro desconhecido.", variant: "destructive" });
+             cleanup();
+        }
+    };
+
+    window.addEventListener("message", handleMessage);
+
+    const url = `/proposal-template?requestId=${encodeURIComponent(requestId)}`;
+    printWindow = window.open(url, "_blank");
+
+    if (!printWindow) {
+        toast({ title: "Erro", description: "O seu navegador bloqueou a janela de impressão. Por favor, permita pop-ups para este site.", variant: "destructive" });
+        cleanup();
         return;
     }
 
-    // Prepare all data once.
-    let dataForPrint;
+    let payload;
     try {
         const companyDataStr = localStorage.getItem(COMPANY_DATA_KEY);
         const customizationStr = localStorage.getItem(CUSTOMIZATION_KEY);
-
-        if (!companyDataStr) {
-            toast({ title: "Empresa não configurada", description: "Aceda a Definições > Minha Empresa para preencher os seus dados.", variant: "destructive" });
-            printWindow.close();
-            setIsPrinting(false);
-            return;
-        }
-
+        if (!companyDataStr) throw new Error("Dados da empresa não configurados. Aceda a Definições > Minha Empresa.");
+        
         const companyData = JSON.parse(companyDataStr);
         const customization = customizationStr ? JSON.parse(customizationStr) : defaultCustomization;
         const formData = formMethods.getValues();
         const finalClientData = clientData || { name: "Cliente Final", document: "-", address: "-" };
 
-        dataForPrint = {
+        payload = {
             type: 'PROPOSAL_DATA',
+            requestId,
             payload: {
-                results: results,
+                results,
                 formData: formData.calculationInput,
                 billOfMaterials: formData.billOfMaterials,
-                companyData: companyData,
+                companyData,
                 clientData: finalClientData,
-                customization: customization,
-                proposalId: proposalId,
+                customization,
+                proposalId,
                 proposalDate: new Date().toISOString(),
                 proposalValidity: new Date(new Date().setDate(new Date().getDate() + 20)).toISOString(),
             }
         };
     } catch (error: any) {
-        console.error("Erro ao preparar dados para impressão:", error);
-        toast({ title: "Erro ao Preparar Impressão", description: error.message || "Ocorreu um erro desconhecido.", variant: "destructive" });
+        toast({ title: "Erro ao Preparar Dados", description: error.message, variant: "destructive" });
         printWindow.close();
-        setIsPrinting(false);
+        cleanup();
         return;
     }
 
+    const start = Date.now();
+    const TIMEOUT_MS = 15000;
+    const INTERVAL_MS = 250;
 
-    // This interval will repeatedly try to send the data until it gets a confirmation.
-    const sendInterval = setInterval(() => {
-        if (printWindow.closed) {
-            clearInterval(sendInterval);
-            setIsPrinting(false);
+    intervalRef.current = window.setInterval(() => {
+        if (printWindow?.closed) {
+            toast({ title: "Janela Fechada", description: "A janela de impressão foi fechada antes da confirmação.", variant: "destructive" });
+            cleanup();
             return;
         }
-        printWindow.postMessage(dataForPrint, '*');
-    }, 200);
 
-    // This listener waits for the confirmation from the child window.
-    const messageListener = (event: MessageEvent) => {
-        if (event.source === printWindow && event.data === 'data-received-and-ready') {
-            clearInterval(sendInterval); // Stop sending the data.
-            setIsPrinting(false);
-            window.removeEventListener('message', messageListener); // Clean up the listener.
+        if (Date.now() - start > TIMEOUT_MS) {
+            toast({ title: "Tempo Esgotado", description: "Não foi possível comunicar com a janela de impressão.", variant: "destructive" });
+            cleanup();
+            return;
         }
-    };
+        
+        printWindow.postMessage(payload, window.location.origin);
 
-    window.addEventListener('message', messageListener);
-  };
+    }, INTERVAL_MS);
+
+  }, [results, proposalId, clientData, formMethods, toast]);
 
 
   const handleApplySuggestion = () => {
