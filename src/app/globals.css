@@ -90,21 +90,22 @@
 
 
 /* Print-specific styles */
+@page {
+  size: A4;
+  margin: 0; /* Remove default browser margins */
+}
+
 @media print {
   /* Hide elements not meant for printing */
   .no-print {
     display: none !important;
   }
-  
-  /* A4 Page setup */
-  @page {
-    size: A4;
-    margin: 20mm;
-  }
-  
+
   html, body {
     width: 210mm;
     height: 297mm;
+    margin: 0;
+    padding: 0;
     background-color: white !important;
     color: black !important;
     -webkit-print-color-adjust: exact !important;
@@ -115,14 +116,15 @@
   h1, h2, h3, h4, h5, h6 {
     color: black !important;
   }
-
+  
   .proposal-document {
+    width: 100%;
+    height: 100%;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: 2cm !important; /* Creates the desired 2cm margins inside the container */
+    box-sizing: border-box !important; /* Crucial: ensures padding is inside the width, not outside */
     border: none !important;
     box-shadow: none !important;
-    width: 100% !important;
-    max-width: 100% !important;
     transform: scale(1) !important;
     background-color: white !important;
     font-family: 'Helvetica', 'Arial', sans-serif;
