@@ -91,36 +91,82 @@
 
 /* Print-specific styles */
 @media print {
-  body, html {
+  /* Hide elements not meant for printing */
+  .no-print {
+    display: none !important;
+  }
+  
+  /* A4 Page setup */
+  @page {
+    size: A4;
+    margin: 20mm;
+  }
+  
+  html, body {
+    width: 210mm;
+    height: 297mm;
     background-color: white !important;
     color: black !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-  }
-  .no-print {
-    display: none !important;
-  }
-  @page {
-    size: A4;
-    margin: 2cm;
-  }
-  
-  .proposal-document {
-    box-shadow: none !important;
-    border: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    transform: scale(1);
+    font-size: 11pt; /* Base font size for print */
   }
 
+  h1, h2, h3, h4, h5, h6 {
+    color: black !important;
+  }
+
+  .proposal-document {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    transform: scale(1) !important;
+    background-color: white !important;
+    font-family: 'Helvetica', 'Arial', sans-serif;
+  }
+
+  /* Utility to prevent breaking content across pages */
   .pdf-block {
     page-break-inside: avoid !important;
   }
-
+  
   .pdf-page-break-before {
     page-break-before: always !important;
+  }
+
+  /* Table styles for printing */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    page-break-inside: auto; /* Allow tables to break across pages if necessary */
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  thead {
+    display: table-header-group; /* Repeat table headers on each page */
+  }
+  
+  tfoot {
+    display: table-footer-group;
+  }
+  
+  td, th {
+    padding: 6px 8px;
+    border: 1px solid #ccc; /* Add subtle borders for clarity */
+    word-wrap: break-word;
+  }
+
+  /* Ensure links are just text */
+  a {
+    text-decoration: none;
+    color: inherit;
   }
 }
 
