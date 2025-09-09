@@ -46,6 +46,7 @@ import {
   ChartLegendContent,
 } from "@/components/ui/chart"
 import { Pie, PieChart } from "recharts"
+import { DetailedAnalysisChart } from "./DetailedAnalysisChart";
 
 
 const COMPANY_DATA_KEY = "companyData";
@@ -101,12 +102,6 @@ export function Step2Results({
   useEffect(() => {
     setProposalValidity(addDays(proposalDate, 20));
   }, [proposalDate]);
-
-  const paybackYears = results?.financeiro?.payback_simples_anos;
-  const paybackText = isFinite(paybackYears) ? `${formatNumber(paybackYears, 1)} anos` : "N/A";
-  
-  const tirValue = results?.financeiro?.tir_percentual;
-  const tirText = isFinite(tirValue) ? `${formatNumber(tirValue, 2)}%` : "N/A";
 
   const handleExportPdf = async () => {
     setIsExporting(true);
@@ -169,24 +164,19 @@ export function Step2Results({
       });
       
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      const ratio = imgWidth / imgHeight;
-      
-      const pageImgHeight = pdfWidth / ratio;
+      const pageImgHeight = (canvas.height * pdfWidth) / canvas.width;
       
       let heightLeft = pageImgHeight;
       let position = 0;
   
       pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pageImgHeight);
-      heightLeft -= pdfHeight;
+      heightLeft -= pdf.internal.pageSize.getHeight();
       
-      while (heightLeft > 1) { // Changed condition to prevent empty pages for small remainders
-        position -= pdfHeight;
+      while (heightLeft > 1) { 
+        position -= pdf.internal.pageSize.getHeight();
         pdf.addPage();
         pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pageImgHeight);
-        heightLeft -= pdfHeight;
+        heightLeft -= pdf.internal.pageSize.getHeight();
       }
   
       pdf.save(`proposta-${proposalId}.pdf`);
@@ -247,6 +237,12 @@ export function Step2Results({
   };
 
   const totalCostFromBom = formMethods.watch('billOfMaterials').reduce((acc, item) => acc + (item.cost * item.quantity), 0);
+
+  const paybackYears = results?.financeiro?.payback_simples_anos;
+  const paybackText = isFinite(paybackYears) ? `${formatNumber(paybackYears, 1)} anos` : "N/A";
+  
+  const tirValue = results?.financeiro?.tir_percentual;
+  const tirText = isFinite(tirValue) ? `${formatNumber(tirValue, 2)}%` : "N/A";
 
   return (
     <>
@@ -322,50 +318,36 @@ export function Step2Results({
         </div>
 
         <div className="lg:col-span-1 space-y-6">
-             <Card className="shadow-md">
-                <CardHeader>
-                    <CardTitle className="font-headline text-xl">Sistema Sugerido</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex items-center gap-4">
-                        <div className="bg-primary/10 p-3 rounded-lg"><Zap className="h-6 w-6 text-primary" /></div>
-                        <div>
-                            <p className="text-sm text-muted-foreground">Potência Total</p>
-                            <p className="font-bold text-lg">{`${formatNumber(results.dimensionamento.potencia_sistema_kwp, 2)} kWp`}</p>
-                        </div>
-                    </div>
-                     <div className="flex items-center gap-4">
-                        <div className="bg-primary/10 p-3 rounded-lg"><Package className="h-6 w-6 text-primary" /></div>
-                        <div>
-                            <p className="text-sm text-muted-foreground">Módulos</p>
-                            <p className="font-bold text-lg">{`${results.dimensionamento.quantidade_modulos} x ${formMethods.getValues().calculationInput.potencia_modulo_wp}Wp`}</p>
-                        </div>
-                    </div>
-                     <div className="flex items-center gap-4">
-                        <div className="bg-primary/10 p-3 rounded-lg"><Power className="h-6 w-6 text-primary" /></div>
-                        <div>
-                            <p className="text-sm text-muted-foreground">Geração Estimada</p>
-                            <p className="font-bold text-lg">{`${formatNumber(results.geracao.media_mensal_kwh, 0)} kWh/mês`}</p>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-            
             <Card className="shadow-md">
-                <CardHeader>
-                    <CardTitle className="font-headline text-xl">Composição do Custo Total</CardTitle>
-                    <CardDescription>{formatCurrency(results.financeiro.custo_sistema_reais)}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 pb-0">
-                    <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[200px]">
-                        <PieChart>
-                             <ChartTooltip content={<ChartTooltipContent nameKey="component" hideLabel />} />
-                            <Pie data={costBreakdownData} dataKey="value" nameKey="component" innerRadius={50} strokeWidth={2} />
-                             <ChartLegend content={<ChartLegendContent nameKey="component" />} />
-                        </PieChart>
-                    </ChartContainer>
-                </CardContent>
+              <CardHeader>
+                  <CardTitle className="font-headline text-xl">Sistema Sugerido</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                  <div className="flex items-center gap-4">
+                      <div className="bg-primary/10 p-3 rounded-lg"><Zap className="h-6 w-6 text-primary" /></div>
+                      <div>
+                          <p className="text-sm text-muted-foreground">Potência Total</p>
+                          <p className="font-bold text-lg">{`${formatNumber(results.dimensionamento.potencia_sistema_kwp, 2)} kWp`}</p>
+                      </div>
+                  </div>
+                    <div className="flex items-center gap-4">
+                      <div className="bg-primary/10 p-3 rounded-lg"><Package className="h-6 w-6 text-primary" /></div>
+                      <div>
+                          <p className="text-sm text-muted-foreground">Módulos</p>
+                          <p className="font-bold text-lg">{`${results.dimensionamento.quantidade_modulos} x ${formMethods.getValues().calculationInput.potencia_modulo_wp}Wp`}</p>
+                      </div>
+                  </div>
+                    <div className="flex items-center gap-4">
+                      <div className="bg-primary/10 p-3 rounded-lg"><Power className="h-6 w-6 text-primary" /></div>
+                      <div>
+                          <p className="text-sm text-muted-foreground">Geração Estimada</p>
+                          <p className="font-bold text-lg">{`${formatNumber(results.geracao.media_mensal_kwh, 0)} kWh/mês`}</p>
+                      </div>
+                  </div>
+              </CardContent>
             </Card>
+
+            <DetailedAnalysisChart results={results} billOfMaterials={billOfMaterials} />
         </div>
       </div>
 
