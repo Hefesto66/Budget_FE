@@ -54,8 +54,21 @@ export async function POST(req: NextRequest) {
       return new NextResponse(JSON.stringify({ error: 'Dados insuficientes para gerar a proposta.' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
     
-    // ISOLATION TEST: Render a simple div instead of the complex component
-    const htmlString = ReactDOMServer.renderToString(<div>Teste</div>);
+    // RENDERIZAÇÃO SEGURA DO DOCUMENTO
+    // A sintaxe JSX foi corrigida para usar auto-fechamento (/>)
+    const htmlString = ReactDOMServer.renderToString(
+      <ProposalDocument
+        results={results}
+        formData={formData}
+        companyData={companyData}
+        clientData={clientData}
+        customization={customization}
+        proposalId={proposalId}
+        proposalDate={new Date(proposalDate)}
+        proposalValidity={new Date(proposalValidity)}
+      />
+    );
+
 
     // This API route has been deprecated in favor of a client-side rendering approach.
     // The client-side implementation will handle creating the PDF.

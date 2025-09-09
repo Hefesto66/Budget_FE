@@ -102,16 +102,29 @@ export function Step2Results({
     setProposalValidity(addDays(proposalDate, 20));
   }, [proposalDate]);
 
-  const paybackYears = results.financeiro.payback_simples_anos;
+  const paybackYears = results?.financeiro?.payback_simples_anos;
   const paybackText = isFinite(paybackYears) ? `${formatNumber(paybackYears, 1)} anos` : "N/A";
   
-  const tirValue = results.financeiro.tir_percentual;
+  const tirValue = results?.financeiro?.tir_percentual;
   const tirText = isFinite(tirValue) ? `${formatNumber(tirValue, 2)}%` : "N/A";
 
   const handleExportPdf = async () => {
     setIsExporting(true);
     try {
-      // 1. Gather all data
+      // ETAPA 1: VALIDAÇÃO DE SEGURANÇA
+      // Garante que os resultados do cálculo existem antes de prosseguir.
+      if (!results || !results.financeiro || !results.dimensionamento) {
+          console.error("ERRO CRÍTICO: Tentativa de gerar PDF com dados de cálculo inválidos.", results);
+          toast({
+              title: "Erro ao Gerar PDF",
+              description: "Os dados do cálculo parecem estar incompletos. Por favor, recalcule a proposta.",
+              variant: "destructive"
+          });
+          setIsExporting(false);
+          return;
+      }
+      
+      // 2. Gather all data
       const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
       if (!companyData || !companyData.name) {
         toast({
@@ -137,10 +150,10 @@ export function Step2Results({
         proposalValidity: proposalValidity,
       };
 
-      // 2. Render component to HTML string
+      // 3. Render component to HTML string
       const htmlString = ReactDOMServer.renderToString(<ProposalDocument {...props} />);
 
-      // 3. Store in sessionStorage and open print view
+      // 4. Store in sessionStorage and open print view
       sessionStorage.setItem('proposalHtmlToPrint', htmlString);
       window.open('/orcamento/imprimir', '_blank');
 
@@ -427,4 +440,3 @@ const ComparisonItem = ({ label, value, highlight = false }: { label: string, va
         <p className={`font-semibold text-base ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
     </div>
 );
-
