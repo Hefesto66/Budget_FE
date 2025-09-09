@@ -27,6 +27,7 @@ export default function ProposalTemplatePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // This logic now runs only on the client, after hydration
     try {
       const storedData = sessionStorage.getItem('proposalDataForPrint');
       if (storedData) {
@@ -35,7 +36,7 @@ export default function ProposalTemplatePage() {
         // Clean up immediately after reading
         sessionStorage.removeItem('proposalDataForPrint');
         
-        // Trigger print dialog after a short delay to allow the page to render
+        // Trigger print dialog after a short delay to allow the page to render with the new data
         setTimeout(() => {
           window.print();
         }, 500);
@@ -47,7 +48,7 @@ export default function ProposalTemplatePage() {
       console.error("Failed to parse or load proposal data", err);
       setError("Ocorreu um erro ao processar os dados da proposta. Verifique a consola para mais detalhes.");
     }
-  }, []); // Empty dependency array ensures this runs only once on the client after hydration.
+  }, []); // Empty dependency array ensures this runs only once on mount, on the client-side.
 
   if (error) {
     return (
@@ -59,6 +60,7 @@ export default function ProposalTemplatePage() {
   }
 
   if (!data) {
+    // This is the initial state rendered on both server and client, ensuring no hydration mismatch.
     return (
         <div style={{ fontFamily: 'sans-serif', textAlign: 'center', padding: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
             <Loader2 className="h-8 w-8 animate-spin" />
@@ -68,7 +70,7 @@ export default function ProposalTemplatePage() {
     );
   }
 
-  // Render the document component with the provided props
+  // Once data is loaded on the client, this part will be rendered.
   return (
     <ProposalDocument
       {...data}
