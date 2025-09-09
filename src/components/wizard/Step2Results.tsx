@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import ReactDOMServer from 'react-dom/server';
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings, SolarCalculationInput } from "@/types";
@@ -118,6 +117,7 @@ export function Step2Results({
         const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
         if (!companyData || !companyData.name) {
             toast({ title: "Empresa não configurada", description: "Aceda a Definições > Minha Empresa.", variant: "destructive" });
+            setIsExporting(false);
             return;
         }
         
@@ -153,8 +153,9 @@ export function Step2Results({
         const tempDiv = document.createElement('div');
         tempDiv.style.position = 'absolute';
         tempDiv.style.left = '-9999px';
-        tempDiv.innerHTML = htmlContent;
+        tempDiv.style.width = '800px'; // Set a fixed width consistent with the PDF component
         document.body.appendChild(tempDiv);
+        tempDiv.innerHTML = htmlContent;
         
         const proposalElement = tempDiv.querySelector('#proposal-content') as HTMLElement;
         
@@ -178,25 +179,23 @@ export function Step2Results({
         
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
-        const canvasWidth = canvas.width;
-        const canvasHeight = canvas.height;
-        const ratio = canvasWidth / canvasHeight;
-        const height = pdfWidth / ratio;
+        const imgWidth = canvas.width;
+        const imgHeight = canvas.height;
+        const ratio = imgWidth / imgHeight;
         
-        // Se o conteúdo for maior que uma página A4, divida-o.
-        const pageHeight = pdf.internal.pageSize.getHeight();
+        const pageImgHeight = pdfWidth / ratio;
+        
+        let heightLeft = pageImgHeight;
         let position = 0;
-        const imgHeight = pdf.internal.pageSize.getWidth() * canvas.height / canvas.width;
-        let heightLeft = imgHeight;
-        
-        pdf.addImage(imgData, 'PNG', 0, position, pdf.internal.pageSize.getWidth(), imgHeight);
-        heightLeft -= pageHeight;
+
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pageImgHeight);
+        heightLeft -= pdfHeight;
         
         while (heightLeft > 0) {
-          position = heightLeft - imgHeight;
+          position = -pdfHeight + (pageImgHeight - heightLeft);
           pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, position, pdf.internal.pageSize.getWidth(), imgHeight);
-          heightLeft -= pageHeight;
+          pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pageImgHeight);
+          heightLeft -= pdfHeight;
         }
 
         pdf.save(`proposta-${proposalId}.pdf`);
