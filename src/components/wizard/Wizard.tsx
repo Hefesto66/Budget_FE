@@ -14,8 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { solarCalculationSchema } from "@/types";
 import { Button } from "../ui/button";
-import { ArrowLeft, Save, Sparkles, Calculator, Plus, Trash2, Check, ChevronsUpDown, CheckCircle, Loader2, FileDown, ChevronRight } from "lucide-react";
-import { getLeadById, getQuoteById, saveQuote, generateNewQuoteId, getClientById, addHistoryEntry, getProducts, Product, getProductById } from "@/lib/storage";
+import { ArrowLeft, Plus, Trash2, Check, ChevronsUpDown, Loader2, ChevronRight } from "lucide-react";
+import { getLeadById, getQuoteById, saveQuote, generateNewQuoteId, getClientById, addHistoryEntry, getProducts, Product } from "@/lib/storage";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import {
   Table,
@@ -25,7 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
+import { FormControl, FormField, FormItem } from "../ui/form";
 import { Input } from "../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
@@ -63,7 +63,6 @@ const defaultValues: Partial<SolarCalculationInput> = {
     valor_medio_fatura_reais: 450,
     adicional_bandeira_reais_kwh: 0,
     cip_iluminacao_publica_reais: 25,
-    concessionaria: "Equatorial GO",
     rede_fases: "mono",
     irradiacao_psh_kwh_m2_dia: 5.7,
     // Valores padrão para os campos opcionais
@@ -231,7 +230,6 @@ export function Wizard() {
       }
   
       const totalSystemCost = billOfMaterials.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
-      const serviceItem = billOfMaterials.find(item => item.category === 'SERVICO');
   
       const calculationData: SolarCalculationInput = {
         ...(data.calculationInput as SolarCalculationInput),
@@ -239,18 +237,6 @@ export function Wizard() {
         quantidade_modulos: panelItem.quantity,
         potencia_modulo_wp: panelPowerWp,
         eficiencia_inversor_percent: inverterEfficiencyPercent,
-        custo_inversor_reais: inverterItem.cost,
-        preco_modulo_reais: panelItem.cost,
-        fabricante_modulo: panelItem.manufacturer,
-        quantidade_inversores: inverterItem.quantity,
-        fabricante_inversor: inverterItem.manufacturer,
-        modelo_inversor: inverterItem.name,
-        potencia_inversor_kw: parseFloat(inverterItem.technicalSpecifications?.['Potência de Saída (kW)'] || '0'),
-        custo_fixo_instalacao_reais: serviceItem?.cost ?? 0,
-        garantia_defeito_modulo_anos: 12,
-        garantia_geracao_modulo_anos: 25,
-        tensao_inversor_v: 220,
-        garantia_inversor_anos: 5,
       };
   
       const finalValidatedData = solarCalculationSchema.parse(calculationData);

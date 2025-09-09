@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import type { SolarCalculationResult, ClientFormData, CustomizationSettings, Quote } from "@/types";
+import { useState } from "react";
+import type { SolarCalculationResult, ClientFormData, CustomizationSettings } from "@/types";
 import { ResultCard } from "@/components/ResultCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,12 +17,10 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { getRefinedSuggestions } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, BarChart, Zap, Calendar, FileDown, Loader2, FileSignature, CheckCircle, Pencil, Save, LineChart, Target, ChevronDown, Power, Wrench, Package } from "lucide-react";
-import { Skeleton } from "../ui/skeleton";
+import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, Zap, Calendar, FileDown, Loader2, CheckCircle, LineChart, Target, ChevronDown, Power, Package, Printer } from "lucide-react";
 import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
 import { formatCurrency, formatNumber, cn } from "@/lib/utils";
 import { SavingsChart } from "@/components/SavingsChart";
-import type { CompanyFormData } from "@/app/minha-empresa/page";
 import { useFormContext } from "react-hook-form";
 import type { WizardFormData } from "./Wizard";
 import { AnimatePresence, motion } from "framer-motion";
@@ -75,7 +73,7 @@ export function Step2Results({
   const formMethods = useFormContext<WizardFormData>();
   
   const [isRefining, setIsRefining] = useState(false);
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
   const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
 
   const [showAdvancedAnalysis, setShowAdvancedAnalysis] = useState(false);
@@ -105,17 +103,17 @@ export function Step2Results({
     setIsRefining(false);
   };
   
-  const handleExportPdf = async () => {
-    setIsGeneratingPdf(true);
-    toast({ title: "A Gerar Proposta...", description: "A preparar o seu documento PDF. Isto pode demorar alguns segundos." });
-
+  const handlePrint = () => {
+    setIsPrinting(true);
+    toast({ title: "A preparar a proposta...", description: "A sua proposta está a ser aberta numa nova janela para impressão." });
+    
     try {
         const companyDataStr = localStorage.getItem(COMPANY_DATA_KEY);
         const customizationStr = localStorage.getItem(CUSTOMIZATION_KEY);
 
         if (!companyDataStr) {
             toast({ title: "Empresa não configurada", description: "Aceda a Definições > Minha Empresa para preencher os seus dados.", variant: "destructive" });
-            setIsGeneratingPdf(false);
+            setIsPrinting(false);
             return;
         }
 
@@ -124,54 +122,30 @@ export function Step2Results({
         const formData = formMethods.getValues();
         const finalClientData = clientData || { name: "Cliente Final", document: "-", address: "-" };
 
-        const response = await fetch('/api/gerar-pdf', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                results: results,
-                formData: formData.calculationInput,
-                billOfMaterials: formData.billOfMaterials,
-                companyData: companyData,
-                clientData: finalClientData,
-                customization: customization,
-                proposalId: proposalId,
-                proposalDate: new Date().toISOString(),
-                proposalValidity: new Date(new Date().setDate(new Date().getDate() + 20)).toISOString(),
-            }),
-        });
+        const dataForPrint = {
+            results: results,
+            formData: formData.calculationInput,
+            billOfMaterials: formData.billOfMaterials,
+            companyData: companyData,
+            clientData: finalClientData,
+            customization: customization,
+            proposalId: proposalId,
+            proposalDate: new Date().toISOString(),
+            proposalValidity: new Date(new Date().setDate(new Date().getDate() + 20)).toISOString(),
+        };
 
-        if (!response.ok) {
-            let errorDetails = 'Falha ao gerar o PDF no servidor.';
-            try {
-              // Try to parse the error response as JSON
-              const errorData = await response.json();
-              errorDetails = errorData.details || errorData.error || errorDetails;
-            } catch (e) {
-              // If parsing fails, the response was not JSON (e.g., HTML error page)
-              console.error("Could not parse error response as JSON:", e);
-            }
-            throw new Error(errorDetails);
-        }
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `proposta-${proposalId}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
+        sessionStorage.setItem('proposalDataForPrint', JSON.stringify(dataForPrint));
+        window.open('/proposal-template', '_blank');
 
     } catch (error: any) {
-        console.error("PDF Generation Error:", error);
+        console.error("Print Preparation Error:", error);
         toast({
-            title: "Erro ao Gerar PDF",
+            title: "Erro ao Preparar Impressão",
             description: error.message || "Ocorreu um erro desconhecido.",
             variant: "destructive",
         });
     } finally {
-        setIsGeneratingPdf(false);
+        setIsPrinting(false);
     }
   };
 
@@ -204,7 +178,7 @@ export function Step2Results({
   const paybackText = isFinite(paybackYears) ? `${formatNumber(paybackYears, 1)} anos` : "N/A";
   
   const tirValue = results?.financeiro?.tir_percentual;
-  const tirText = isFinite(tirValue) ? `${formatNumber(tirValue, 2)}%` : "N/A";
+  const tirText = isFinite(tirValue) && tirValue !== Infinity ? `${formatNumber(tirValue, 2)}%` : "N/A";
 
   return (
     <>
@@ -324,14 +298,14 @@ export function Step2Results({
                 Refinar com IA
             </Button>
             
-            <Button type="button" onClick={onSave} disabled={isGeneratingPdf}>
-                <Save className="mr-2 h-4 w-4" />
+            <Button type="button" onClick={onSave} disabled={isPrinting}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-save mr-2 h-4 w-4"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                 {isEditing ? "Atualizar Cotação" : "Salvar Cotação"}
             </Button>
 
-            <Button type="button" onClick={handleExportPdf} disabled={isGeneratingPdf}>
-                {isGeneratingPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                Gerar Proposta
+            <Button type="button" onClick={handlePrint} disabled={isPrinting}>
+                {isPrinting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
+                Imprimir Proposta
             </Button>
           </div>
       </div>

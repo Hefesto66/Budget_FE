@@ -93,6 +93,7 @@
 @media print {
   body, html {
     background-color: white !important;
+    color: black !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -101,7 +102,7 @@
   }
   @page {
     size: A4;
-    margin: 2cm;
+    margin: 1cm;
   }
   
   .proposal-document {
@@ -111,6 +112,7 @@
     padding: 0 !important;
     max-width: 100% !important;
     width: 100% !important;
+    transform: scale(1);
   }
 
   .pdf-block {
