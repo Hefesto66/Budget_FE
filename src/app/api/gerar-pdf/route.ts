@@ -188,7 +188,7 @@ export async function POST(req: NextRequest) {
     console.error('PDF Generation Error:', error);
     return new NextResponse(
       JSON.stringify({ error: 'Failed to generate PDF.', details: error.message }),
-      { status: 500 }
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }
