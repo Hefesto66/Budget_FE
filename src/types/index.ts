@@ -7,7 +7,7 @@ export const solarCalculationSchema = z.object({
   // Seção 1: Consumo e Fatura - Campos obrigatórios que o utilizador deve preencher
   consumo_mensal_kwh: z.number().gte(0, { message: "O consumo mensal não pode ser negativo." }),
   valor_medio_fatura_reais: z.number().gte(0, { message: "O valor da fatura não pode ser negativo." }),
-  cip_iluminacao_publica_reais: z.number().gte(0, { message: "O valor da CIP não pode ser negativo." }),
+  cip_iluminacao_publica_reais: z.number().gte(0, { message: "O valor da CIP não pode ser negativo." }).default(0),
   adicional_bandeira_reais_kwh: z.number().gte(0).default(0),
   
   // Seção 2: Detalhes Técnicos do Local - Campos obrigatórios

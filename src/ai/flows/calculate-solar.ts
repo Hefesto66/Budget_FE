@@ -83,11 +83,12 @@ const calculateSolarFlow = ai.defineFlow(
     if (!data.consumo_mensal_kwh || data.consumo_mensal_kwh <= 0) {
       throw new Error("O consumo mensal (kWh) é um dado essencial para o cálculo financeiro e deve ser maior que zero.");
     }
-
+    
+    // Assegura que potência e quantidade venham do input, caso contrário, default para 0.
     const potencia_modulo_wp = data.potencia_modulo_wp ?? 0;
     const quantidade_modulos = data.quantidade_modulos ?? 0;
     
-    // Default efficiency to 97% if it's null, or undefined.
+    // Default efficiency to 97% if it's null, undefined.
     const eficiencia_inversor = (data.eficiencia_inversor_percent ?? 97) / 100;
     const fator_perdas = (data.fator_perdas_percent ?? 20) / 100;
     
