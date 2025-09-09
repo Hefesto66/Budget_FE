@@ -110,66 +110,106 @@ export function Step2Results({
   const handleExportPdf = async () => {
     setIsExporting(true);
     try {
-      // 1. Validar e reunir todos os dados no frontend
-      if (!results) {
-        toast({ title: "Erro", description: "Os resultados do cálculo não estão disponíveis.", variant: "destructive" });
-        setIsExporting(false);
-        return;
-      }
-      
-      const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
-      if (!companyData || !companyData.name) {
-        toast({ title: "Empresa não configurada", description: "Aceda a Definições > Minha Empresa para configurar os seus dados.", variant: "destructive" });
-        setIsExporting(false);
-        return;
-      }
+        if (!results) {
+            toast({ title: "Erro", description: "Resultados do cálculo não disponíveis.", variant: "destructive" });
+            return;
+        }
 
-      const customization: CustomizationSettings = JSON.parse(localStorage.getItem(CUSTOMIZATION_KEY) || JSON.stringify(defaultCustomization));
-      
-      const completeProposalData = {
-        results,
-        formData: formMethods.getValues().calculationInput,
-        companyData,
-        clientData: clientData || { name: "Cliente Final", document: "-", address: "-" }, // Garante que nunca seja nulo
-        customization,
-        proposalId,
-        proposalDate: proposalDate,
-        proposalValidity: proposalValidity,
-      };
+        const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
+        if (!companyData || !companyData.name) {
+            toast({ title: "Empresa não configurada", description: "Aceda a Definições > Minha Empresa.", variant: "destructive" });
+            return;
+        }
+        
+        const customization: CustomizationSettings = JSON.parse(localStorage.getItem(CUSTOMIZATION_KEY) || JSON.stringify(defaultCustomization));
 
-      // 2. Chamar a API com os dados já processados
-      const response = await fetch('/api/gerar-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(completeProposalData),
-      });
+        const proposalData = {
+            results,
+            formData: formMethods.getValues().calculationInput,
+            companyData,
+            clientData: clientData || { name: "Cliente Final", document: "-", address: "-" },
+            customization,
+            proposalId,
+            proposalDate: proposalDate.toISOString(),
+            proposalValidity: proposalValidity.toISOString(),
+        };
+        
+        // 1. Chamar a API para obter o HTML renderizado
+        const response = await fetch('/api/gerar-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(proposalData),
+        });
 
-      if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(errorBody.error || 'A resposta do servidor não foi bem-sucedida.');
-      }
-      
-      const { htmlContent } = await response.json();
+        const body = await response.json();
 
-      if (!htmlContent) {
-          throw new Error("A API não retornou o conteúdo HTML para o PDF.");
-      }
+        if (!response.ok) {
+            throw new Error(body.error || 'A resposta do servidor não foi bem-sucedida.');
+        }
 
-      // 3. Abrir a página de impressão com o HTML recebido
-      sessionStorage.setItem('proposalHtmlToPrint', htmlContent);
-      window.open('/orcamento/imprimir', '_blank');
+        const { htmlContent } = body;
+
+        // 2. Usar o HTML para gerar o PDF no cliente
+        const tempDiv = document.createElement('div');
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.left = '-9999px';
+        tempDiv.innerHTML = htmlContent;
+        document.body.appendChild(tempDiv);
+        
+        const proposalElement = tempDiv.querySelector('#proposal-content') as HTMLElement;
+        
+        if (!proposalElement) {
+            throw new Error("Elemento da proposta não encontrado no HTML recebido.");
+        }
+
+        const canvas = await html2canvas(proposalElement, {
+            scale: 2, // Aumenta a resolução para melhor qualidade
+            useCORS: true,
+            logging: false,
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        
+        const pdf = new jsPDF({
+            orientation: 'p',
+            unit: 'mm',
+            format: 'a4',
+        });
+        
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+        const ratio = canvasWidth / canvasHeight;
+        const height = pdfWidth / ratio;
+        
+        // Se o conteúdo for maior que uma página A4, divida-o.
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        let position = 0;
+        const imgHeight = pdf.internal.pageSize.getWidth() * canvas.height / canvas.width;
+        let heightLeft = imgHeight;
+        
+        pdf.addImage(imgData, 'PNG', 0, position, pdf.internal.pageSize.getWidth(), imgHeight);
+        heightLeft -= pageHeight;
+        
+        while (heightLeft > 0) {
+          position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, pdf.internal.pageSize.getWidth(), imgHeight);
+          heightLeft -= pageHeight;
+        }
+
+        pdf.save(`proposta-${proposalId}.pdf`);
+
+        document.body.removeChild(tempDiv);
 
     } catch (error: any) {
-      console.error("Falha ao gerar o PDF:", error);
-      toast({
-        title: "Erro ao Gerar PDF",
-        description: error.message || "Ocorreu um erro inesperado. Tente novamente.",
-        variant: "destructive",
-      });
+        console.error("Falha ao gerar PDF:", error);
+        toast({ title: "Erro ao Gerar PDF", description: error.message, variant: "destructive" });
     } finally {
-      setIsExporting(false);
+        setIsExporting(false);
     }
-  };
+};
   
   const handleAiRefinement = async () => {
     setIsRefining(true);
