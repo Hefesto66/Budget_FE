@@ -1,81 +1,197 @@
+import { NextRequest, NextResponse } from 'next/server';
+import PdfPrinter from 'pdfmake';
+import type { TDocumentDefinitions, StyleDictionary, TFontDictionary } from 'pdfmake/interfaces';
+import { formatCurrency, formatNumber, formatDate } from '@/lib/utils';
+import type { SolarCalculationResult, ClientFormData, CustomizationSettings } from '@/types';
+import type { CompanyFormData } from '@/app/minha-empresa/page';
+import type { WizardFormData } from '@/components/wizard/Wizard';
 
-# Relatório Técnico: Análise do Problema de Geração de PDF na Aplicação Next.js
+interface ProposalData {
+  results: SolarCalculationResult;
+  formData: WizardFormData['calculationInput'];
+  billOfMaterials: WizardFormData['billOfMaterials'];
+  companyData: CompanyFormData;
+  clientData: ClientFormData;
+  customization: CustomizationSettings;
+  proposalId: string;
+  proposalDate: string; // ISO string
+  proposalValidity: string; // ISO string
+}
 
-**Data:** 09/09/2025
-**Autor:** App Prototyper (IA)
-**Objetivo:** Documentar as tentativas de implementação, os erros encontrados e o estado atual da funcionalidade de geração de PDF para obter uma análise técnica externa.
+const fonts: TFontDictionary = {
+  Roboto: {
+    normal: Buffer.from([]), // pdfmake requires a buffer, even if empty, will fallback to embedded fonts
+    bold: Buffer.from([]),
+    italics: Buffer.from([]),
+    bolditalics: Buffer.from([]),
+  }
+};
 
----
+const printer = new PdfPrinter(fonts);
 
-## 1. Resumo do Problema (Situação Atual)
+async function generatePdf(docDefinition: TDocumentDefinitions): Promise<Buffer> {
+  const pdfDoc = printer.createPdfKitDocument(docDefinition);
 
-A aplicação falha consistentemente ao tentar gerar um documento PDF a partir de uma proposta comercial. A interação do utilizador no frontend (clique no botão "Gerar Proposta") resulta numa chamada à API que termina com um erro 500.
+  return new Promise((resolve, reject) => {
+    try {
+      const chunks: Buffer[] = [];
+      pdfDoc.on('data', (chunk) => chunks.push(chunk));
+      pdfDoc.on('end', () => resolve(Buffer.concat(chunks)));
+      pdfDoc.end();
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
 
-O erro específico retornado pela API de backend é:
+export async function POST(req: NextRequest) {
+  try {
+    const body: ProposalData = await req.json();
+    const { results, billOfMaterials, companyData, clientData, customization, proposalId, proposalDate, proposalValidity } = body;
 
-```
-Failed to launch the browser process!
-/tmp/chromium: error while loading shared libraries: libnss3.so: cannot open shared object file: No such file or directory
-```
+    const styles: StyleDictionary = {
+      header: { fontSize: 20, bold: true, margin: [0, 0, 0, 20], color: customization.colors.primary },
+      subheader: { fontSize: 14, bold: true, margin: [0, 15, 0, 5], color: customization.colors.primary },
+      bodyText: { fontSize: 10, margin: [0, 0, 0, 5] },
+      tableHeader: { bold: true, fontSize: 11, color: customization.colors.textOnPrimary, fillColor: customization.colors.primary },
+      tableCell: { fontSize: 10 },
+      totalRow: { bold: true, fontSize: 12, color: customization.colors.textOnPrimary, fillColor: customization.colors.primary },
+      companyHeader: { fontSize: 16, bold: true, color: customization.colors.primary },
+      clientInfo: { margin: [0, 10, 0, 20] },
+      footer: { fontSize: 8, alignment: 'center', margin: [0, 20, 0, 0], color: '#666' }
+    };
+    
+    const bomBody = billOfMaterials.map(item => [
+      { text: `${item.name}\n${item.manufacturer}`, style: 'tableCell' },
+      { text: item.quantity, style: 'tableCell', alignment: 'center' },
+      { text: formatCurrency(item.cost), style: 'tableCell', alignment: 'right' },
+      { text: formatCurrency(item.cost * item.quantity), style: 'tableCell', alignment: 'right' },
+    ]);
+    
+    const docDefinition: TDocumentDefinitions = {
+      content: [
+        // Header
+        {
+          columns: [
+            companyData.logo ? { image: companyData.logo, width: 120 } : { text: '' },
+            [
+              { text: companyData.name, style: 'companyHeader', alignment: 'right' },
+              { text: companyData.address, alignment: 'right' },
+              { text: `CNPJ: ${companyData.cnpj}`, alignment: 'right' },
+              { text: `Contato: ${companyData.phone} | ${companyData.email}`, alignment: 'right' },
+            ]
+          ],
+        },
+        { canvas: [{ type: 'line', x1: 0, y1: 10, x2: 515, y2: 10, lineWidth: 1, lineColor: '#ccc' }] },
+        
+        // Proposal Title & Client Info
+        { text: 'Proposta de Sistema Fotovoltaico', style: 'header', alignment: 'center' },
+        {
+          style: 'clientInfo',
+          table: {
+            widths: ['*', '*', '*'],
+            body: [
+              [
+                { text: `ID Proposta:\n${proposalId}`, bold: true },
+                { text: `Data:\n${formatDate(new Date(proposalDate))}`, bold: true },
+                { text: `Validade:\n${formatDate(new Date(proposalValidity))}`, bold: true },
+              ]
+            ]
+          },
+          layout: 'noBorders'
+        },
+        {
+            table: {
+                widths: ['*'],
+                body: [[{ text: `Preparado para: ${clientData.name}\n${clientData.address || ''}\nCPF/CNPJ: ${clientData.document || ''}`, style: 'bodyText' }]],
+            },
+            layout: {
+                hLineWidth: () => 1, vLineWidth: () => 1,
+                hLineColor: () => '#ddd', vLineColor: () => '#ddd',
+            },
+            margin: [0, 0, 0, 20]
+        },
 
-Este erro indica que o ambiente de execução do servidor (um container Linux, provavelmente minimalista) não possui as bibliotecas de sistema necessárias (`libnss3`, entre outras) para que o navegador Chromium (utilizado pelo Puppeteer) possa ser executado, mesmo com a biblioteca `@sparticuz/chromium` que foi projetada para ambientes de nuvem.
+        // Investment Table
+        { text: 'Descrição do Sistema e Investimento', style: 'subheader' },
+        {
+            table: {
+                headerRows: 1,
+                widths: ['*', 'auto', 'auto', 'auto'],
+                body: [
+                    ['Descrição', 'Qtde.', 'Preço Unit.', 'Preço Total'],
+                    ...bomBody,
+                    [
+                      { text: 'Valor Total do Investimento', colSpan: 3, style: 'totalRow', alignment: 'right'}, {}, {}, 
+                      { text: formatCurrency(results.financeiro.custo_sistema_reais), style: 'totalRow', alignment: 'right' }
+                    ]
+                ]
+            },
+            layout: {
+                fillColor: function (rowIndex) {
+                    if (rowIndex === 0) return customization.colors.primary;
+                    if (rowIndex === billOfMaterials.length + 1) return customization.colors.primary;
+                    return (rowIndex! % 2 === 0) ? '#f9f9f9' : null;
+                }
+            }
+        },
 
----
+        // Financial & Performance Analysis
+        { text: 'Análise Financeira e de Geração', style: 'subheader', pageBreak: 'before' },
+        {
+            columns: [
+                [
+                    { text: 'Resumo Financeiro', bold: true, margin: [0,0,0,5] },
+                    { text: `Conta Média Atual: ${formatCurrency(results.conta_media_mensal_reais.antes)}`},
+                    { text: `Conta Média Estimada: ${formatCurrency(results.conta_media_mensal_reais.depois)}`},
+                    { text: `Economia Mensal: ${formatCurrency(results.financeiro.economia_mensal_reais)}`},
+                    { text: `Payback Simples: ${formatNumber(results.financeiro.payback_simples_anos, 1)} anos`},
+                ],
+                [
+                    { text: 'Desempenho do Sistema', bold: true, margin: [0,0,0,5] },
+                    { text: `Potência do Sistema: ${formatNumber(results.dimensionamento.potencia_sistema_kwp, 2)} kWp` },
+                    { text: `Geração Média Mensal: ${formatNumber(results.geracao.media_mensal_kwh, 0)} kWh` },
+                ]
+            ],
+            margin: [0, 0, 0, 20]
+        },
 
-## 2. Arquitetura Atual da Geração de PDF
+        // Advanced Analysis
+        { text: 'Análise de Investimento Avançada', style: 'subheader' },
+        {
+            columns: [
+                 { text: `VPL (Valor Presente Líquido):\n${formatCurrency(results.financeiro.vpl_reais)}`, style: 'bodyText' },
+                 { text: `TIR (Taxa Interna de Retorno):\n${isFinite(results.financeiro.tir_percentual) ? `${formatNumber(results.financeiro.tir_percentual, 2)}%` : 'N/A'}`, style: 'bodyText' },
+            ]
+        }
+      ],
+      defaultStyle: {
+        font: 'Roboto',
+        fontSize: 10,
+        lineHeight: 1.15
+      },
+      styles: styles,
+      footer: {
+        text: customization.footer.customText,
+        style: 'footer'
+      }
+    };
 
-A implementação atual está desenhada da seguinte forma:
+    const pdfBuffer = await generatePdf(docDefinition);
 
-1.  **Componente Frontend (`src/components/wizard/Step2Results.tsx`):**
-    *   Uma função `handleExportPdf` é acionada pelo clique do utilizador.
-    *   Esta função recolhe todos os dados da proposta (dados do formulário, resultados do cálculo, informações da empresa, etc.).
-    *   Ela envia estes dados através de uma requisição `POST` para a API interna do Next.js no endpoint `/api/gerar-pdf`.
+    return new NextResponse(pdfBuffer, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="proposta-${proposalId}.pdf"`,
+      },
+    });
 
-2.  **Rota de API do Next.js (`src/app/api/gerar-pdf/route.ts`):**
-    *   Recebe os dados da proposta no corpo da requisição.
-    *   Constrói uma URL para uma página de template oculta (`/proposal-template`), passando todos os dados da proposta codificados como um parâmetro de pesquisa.
-    *   Utiliza a biblioteca `puppeteer-core` em conjunto com `@sparticuz/chromium` para iniciar uma instância de um navegador headless.
-    *   Instrui o Puppeteer a navegar até à URL do template, aguardando que a página seja completamente renderizada.
-    *   Gera um buffer de PDF a partir do HTML da página renderizada.
-    *   Retorna este buffer como uma resposta com o `Content-Type: application/pdf`.
-
-3.  **Página de Template (`src/app/proposal-template/page.tsx`):**
-    *   É um Server Component do Next.js que não é destinado à navegação direta.
-    *   Ele lê os dados da proposta a partir dos parâmetros de pesquisa da URL.
-    *   Renderiza o componente React `ProposalDocument` com os dados recebidos, produzindo o HTML final que será convertido em PDF.
-
----
-
-## 3. Histórico de Tentativas e Evolução da Solução
-
-A solução atual é o resultado de várias iterações que falharam por diferentes motivos. O histórico ajuda a entender o contexto do problema.
-
-### Tentativa 1: Geração de PDF no Frontend com `react-to-print`
-
-*   **Abordagem:** Utilizar a biblioteca `react-to-print` para acionar a funcionalidade de impressão do navegador diretamente no cliente. O componente da proposta (`ProposalDocument`) era renderizado de forma oculta na página de resultados.
-*   **Problema:** O botão "Gerar Proposta" não tinha qualquer efeito. A causa provável foi a dificuldade da biblioteca em encontrar a referência (`ref`) do componente oculto no DOM no momento do clique, resultando numa falha silenciosa.
-
-### Tentativa 2: Geração de PDF no Backend com Função Netlify (Abordagem Equivocada)
-
-*   **Abordagem:** Assumindo que o problema era o ambiente de compilação do Next.js, a lógica do Puppeteer foi movida para uma função de servidor Netlify separada (`netlify/functions/gemini.js`). A API do Next.js atuaria como um proxy.
-*   **Problema:** Esta abordagem falhou porque o ambiente de execução não era Netlify. A chamada da API para o endpoint da função (`localhost:8888`) falhava com um erro de `fetch failed`, pois o servidor de desenvolvimento da Netlify não estava a ser executado. Isto introduziu uma complexidade e uma dependência de plataforma desnecessárias.
-
-### Tentativa 3: Geração de PDF no Backend com API Next.js e `react-dom/server`
-
-*   **Abordagem:** Retornar à abordagem de uma API integrada. A lógica de renderização do componente da proposta para uma string HTML foi implementada diretamente na rota da API usando `ReactDOMServer.renderToString()`.
-*   **Problema:** O compilador do Next.js (Turbopack) bloqueou a compilação, emitindo um erro que proíbe a importação de `react-dom/server` dentro de Rotas de API do App Router, por razões de otimização e segurança. Tentativas de contornar isto com aliases de importação no `package.json` ou isolando a lógica noutro ficheiro (`/lib/pdf-renderer.ts`) falharam igualmente.
-
-### Tentativa 4: Arquitetura Atual (API Next.js + Rota de Template)
-
-*   **Abordagem:** A que está descrita na secção "Arquitetura Atual". Esta é a abordagem canónica para renderizar um componente React complexo no servidor para ser consumido por uma ferramenta como o Puppeteer, utilizando o próprio motor de renderização do Next.js.
-*   **Problema:** Esta abordagem resolveu todos os erros de compilação e de lógica de aplicação, mas expôs o erro fundamental do ambiente: a ausência da dependência de sistema `libnss3.so`. Uma tentativa de corrigir isto adicionando o argumento `--no-sandbox` ao Puppeteer não teve sucesso.
-
----
-
-## 4. Conclusão e Próximos Passos Sugeridos
-
-O problema atual não é mais de código JavaScript/Next.js, mas sim de configuração de ambiente de execução. A biblioteca `@sparticuz/chromium` foi projetada para ser executada em ambientes de nuvem padrão (como AWS Lambda, Google Cloud Functions), que geralmente incluem estas dependências base. O ambiente do Firebase Studio parece ser mais minimalista.
-
-**Questão Central para Investigação:**
-
-Como podemos satisfazer a dependência da biblioteca `libnss3.so` (e potencialmente outras) para o Chromium no ambiente de execução específico do Firebase Studio, ou existe uma alternativa ao Puppeteer/Chromium que não tenha estas dependências de sistema?
+  } catch (error: any) {
+    console.error('PDF Generation Error:', error);
+    return new NextResponse(
+      JSON.stringify({ error: 'Failed to generate PDF.', details: error.message }),
+      { status: 500 }
+    );
+  }
+}
