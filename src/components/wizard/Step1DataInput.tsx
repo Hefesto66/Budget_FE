@@ -118,31 +118,67 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
               />
          </div>
          
-        <Accordion type="single" collapsible className="w-full mt-6">
+        <Accordion type="single" collapsible className="w-full mt-6" defaultValue="advanced-params">
             <AccordionItem value="advanced-params" className="border-t">
                 <AccordionTrigger className="pt-4">
                     <span className="font-semibold text-primary">Parâmetros Técnicos e de Custo</span>
                 </AccordionTrigger>
                 <AccordionContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8 pt-4">
                        <FormField control={form.control} name="calculationInput.fator_perdas_percent" render={({ field }) => (
                              <FormItem>
                                 <FormLabel>Fator de Perdas (%)</FormLabel>
-                                <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
+                                <FormControl>
+                                    <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}/>
                          <FormField control={form.control} name="calculationInput.custo_om_anual_reais" render={({ field }) => (
                              <FormItem>
                                 <FormLabel>Custo O&M Anual (R$)</FormLabel>
-                                <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
+                                 <FormControl>
+                                    <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}/>
                         <FormField control={form.control} name="calculationInput.meta_compensacao_percent" render={({ field }) => (
                              <FormItem>
                                 <FormLabel>Meta de Compensação (%)</FormLabel>
-                                <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
+                                 <FormControl>
+                                    <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}/>
+                        <FormField control={form.control} name="calculationInput.inflacao_energetica_anual_percent" render={({ field }) => (
+                             <FormItem>
+                                <FormLabel>Inflação Energética Anual (%)</FormLabel>
+                                 <FormControl>
+                                    <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
+                                </FormControl>
+                                <FormDescription className="text-xs">Estimativa do reajuste anual da tarifa de energia.</FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}/>
+                        <FormField control={form.control} name="calculationInput.degradacao_anual_paineis_percent" render={({ field }) => (
+                             <FormItem>
+                                <FormLabel>Degradação Anual dos Painéis (%)</FormLabel>
+                                 <FormControl>
+                                    <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
+                                </FormControl>
+                                <FormDescription className="text-xs">Perda de eficiência anual projetada para os painéis solares.</FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}/>
+                        <FormField control={form.control} name="calculationInput.taxa_minima_atratividade_percent" render={({ field }) => (
+                             <FormItem>
+                                <FormLabel>Taxa Mín. de Atratividade (%)</FormLabel>
+                                 <FormControl>
+                                    <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
+                                </FormControl>
+                                <FormDescription className="text-xs">Usada para o cálculo do VPL. Rendimento mínimo esperado de um investimento.</FormDescription>
                                 <FormMessage />
                             </FormItem>
                         )}/>

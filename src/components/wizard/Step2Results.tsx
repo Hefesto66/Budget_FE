@@ -18,7 +18,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { getCalculation, getRefinedSuggestions } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, BarChart, Zap, Calendar, FileDown, Loader2, FileSignature, CheckCircle, Pencil, Save } from "lucide-react";
+import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, BarChart, Zap, Calendar, FileDown, Loader2, FileSignature, CheckCircle, Pencil, Save, LineChart, Target } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
 import { formatCurrency, formatNumber } from "@/lib/utils";
@@ -80,6 +80,9 @@ export function Step2Results({
 
   const paybackYears = results.financeiro.payback_simples_anos;
   const paybackText = isFinite(paybackYears) ? `${formatNumber(paybackYears, 1)} anos` : "N/A";
+  
+  const tirValue = results.financeiro.tir_percentual;
+  const tirText = isFinite(tirValue) ? `${formatNumber(tirValue, 2)}%` : "N/A";
 
   const handleExportPdf = async () => {
     setIsExporting(true);
@@ -245,6 +248,21 @@ export function Step2Results({
                   description="Valor do sistema + instalação"
                 />
               </div>
+               <Separator className="my-6" />
+               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                 <ResultCard
+                    icon={<LineChart />}
+                    title="Valor Presente Líquido (VPL)"
+                    value={formatCurrency(results.financeiro.vpl_reais)}
+                    description="Traz a valor presente o fluxo de caixa futuro"
+                />
+                 <ResultCard
+                    icon={<Target />}
+                    title="Taxa Interna de Retorno (TIR)"
+                    value={tirText}
+                    description="Rentabilidade anual do investimento"
+                />
+               </div>
           </CardContent>
         </Card>
         

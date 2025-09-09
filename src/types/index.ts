@@ -50,6 +50,11 @@ export const solarCalculationSchema = z.object({
   salespersonId: z.string().optional(),
   paymentTermId: z.string().optional(),
   priceListId: z.string().optional(),
+
+  // Novos campos para projeção financeira
+  inflacao_energetica_anual_percent: z.number().gte(0).optional().default(8.0),
+  degradacao_anual_paineis_percent: z.number().gte(0).optional().default(0.5),
+  taxa_minima_atratividade_percent: z.number().gte(0).optional().default(6.0),
 });
 
 
