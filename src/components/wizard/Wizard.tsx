@@ -37,18 +37,20 @@ const Step2Results = dynamic(() => import('./Step2Results').then(mod => mod.Step
   loading: () => <div className="flex items-center justify-center h-64"><Loader2 className="mr-2 h-8 w-8 animate-spin" />A carregar resultados...</div>,
 });
 
+const bomItemSchema = z.object({
+  productId: z.string(),
+  name: z.string(),
+  category: z.string(),
+  manufacturer: z.string(),
+  cost: z.number(),
+  unit: z.string(),
+  quantity: z.number().min(1, "A quantidade deve ser pelo menos 1."),
+  technicalSpecifications: z.record(z.string()).optional(),
+});
+
 const wizardSchema = z.object({
   calculationInput: solarCalculationSchema,
-  billOfMaterials: z.array(z.object({
-      productId: z.string(),
-      name: z.string(),
-      category: z.string(),
-      manufacturer: z.string(),
-      cost: z.number(),
-      unit: z.string(),
-      quantity: z.number().min(1, "A quantidade deve ser pelo menos 1."),
-      technicalSpecifications: z.record(z.string()).optional(),
-  }))
+  billOfMaterials: z.array(bomItemSchema)
 });
 
 
@@ -587,5 +589,3 @@ export function Wizard() {
     </div>
   );
 }
-
-    

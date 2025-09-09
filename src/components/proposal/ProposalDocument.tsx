@@ -24,7 +24,7 @@ const Block = ({ children, className = '', pageBreakBefore = false }: { children
     </div>
 );
 
-const HeaderBlock = ({ companyData, proposalId, proposalDate, proposalValidity }: Pick<ProposalDocumentProps, 'companyData' | 'proposalId' | 'proposalDate' | 'proposalValidity'>) => (
+const HeaderBlock = ({ companyData, proposalId, proposalDate, proposalValidity, clientData }: Pick<ProposalDocumentProps, 'companyData' | 'proposalId' | 'proposalDate' | 'proposalValidity' | 'clientData'>) => (
   <Block>
     <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: '16px', borderBottom: '2px solid #EEE' }}>
         <div style={{ width: '33.33%' }}>

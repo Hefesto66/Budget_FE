@@ -1,5 +1,5 @@
 
-import type { SolarCalculationInput, SolarCalculationResult } from "@/types";
+import type { SolarCalculationInput, SolarCalculationResult, Quote } from "@/types";
 
 // ====== TYPES ====== //
 
@@ -43,15 +43,6 @@ export interface Lead {
   clientName: string;
   value: number;
   stage: string;
-}
-
-export interface Quote {
-    id: string;
-    leadId: string;
-    createdAt: string; // ISO string
-    formData: SolarCalculationInput;
-    results: SolarCalculationResult;
-    billOfMaterials: any[];
 }
 
 export interface Stage {
