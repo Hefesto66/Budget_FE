@@ -114,44 +114,41 @@ export function Step2Results({
     let cleanedUp = false;
 
     const cleanup = () => {
-        if (cleanedUp) return;
-        
-        if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-        }
-        window.removeEventListener("message", handleMessage);
-        setIsPrinting(false);
-        cleanedUp = true;
+      if (cleanedUp) return;
+      cleanedUp = true;
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      window.removeEventListener("message", handleMessage);
+      setIsPrinting(false);
     };
 
     const handleMessage = (event: MessageEvent) => {
-        // Security checks
-        if (event.source !== printWindow || event.origin !== window.location.origin) {
-            return;
-        }
-        
-        const msg = event.data;
-        if (!msg || typeof msg !== 'object') return;
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+      
+      const msg = event.data;
+      if (!msg || typeof msg !== 'object') return;
 
-        // If child window confirms receipt, we can stop trying to send.
-        if (msg.type === "PROPOSAL_ACK" && msg.requestId === requestId) {
-            console.log(`[Step2Results] Received ACK for requestId: ${requestId}. Cleaning up.`);
-            toast({ title: "Sucesso!", description: "A janela de impressão confirmou o recebimento dos dados.", className: "bg-green-100 dark:bg-green-900" });
-            cleanup();
-        }
+      if (msg.type === "PROPOSAL_ACK" && msg.requestId === requestId) {
+        console.log(`[Opener] ACK recebido para requestId: ${requestId}. A parar o envio.`);
+        toast({ title: "Sucesso!", description: "A janela de impressão confirmou o recebimento dos dados.", className: "bg-green-100 dark:bg-green-900" });
+        cleanup();
+      }
 
-        if (msg.type === "PROPOSAL_ERROR" && msg.requestId === requestId) {
-             console.error(`[Step2Results] Received error from proposal window for requestId ${requestId}:`, msg.error);
-             toast({ title: "Erro na Janela de Impressão", description: msg.error || "Ocorreu um erro desconhecido.", variant: "destructive" });
-             cleanup();
-        }
+      if (msg.type === "PROPOSAL_ERROR" && msg.requestId === requestId) {
+         console.error(`[Opener] Erro recebido da janela de impressão para ${requestId}:`, msg.error);
+         toast({ title: "Erro na Janela de Impressão", description: msg.error || "Ocorreu um erro desconhecido.", variant: "destructive" });
+         cleanup();
+      }
     };
     
-    // 1. Add listener BEFORE opening the window to avoid race conditions
+    // 1. Adicionar o listener ANTES de abrir a janela para evitar race conditions.
     window.addEventListener("message", handleMessage);
 
-    // 2. Open the window
+    // 2. Abrir a janela.
     const url = `/proposal-template?requestId=${encodeURIComponent(requestId)}`;
     printWindow = window.open(url, "_blank");
 
@@ -161,7 +158,7 @@ export function Step2Results({
         return;
     }
 
-    // 3. Prepare payload
+    // 3. Preparar a carga de dados.
     let payload;
     try {
         const companyDataStr = localStorage.getItem(COMPANY_DATA_KEY);
@@ -195,7 +192,7 @@ export function Step2Results({
         return;
     }
 
-    // 4. Start sending data repeatedly until ACK is received or timeout
+    // 4. Iniciar o envio repetido até receber uma confirmação (ACK).
     const start = Date.now();
     const TIMEOUT_MS = 15000;
     const INTERVAL_MS = 250;
@@ -213,7 +210,7 @@ export function Step2Results({
             return;
         }
         
-        console.log(`[Step2Results] Posting PROPOSAL_DATA for requestId: ${requestId}`);
+        console.log(`[Opener] A enviar PROPOSAL_DATA para requestId: ${requestId}`);
         printWindow.postMessage(payload, window.location.origin);
 
     }, INTERVAL_MS);
@@ -370,7 +367,7 @@ export function Step2Results({
             </Button>
             
             <Button type="button" onClick={onSave} disabled={isPrinting}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-save mr-2 h-4 w-4"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-save mr-2 h-4 w-4"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                 {isEditing ? "Atualizar Cotação" : "Salvar Cotação"}
             </Button>
 
