@@ -27,8 +27,6 @@ import { useFormContext } from "react-hook-form";
 import type { WizardFormData } from "./Wizard";
 import { AnimatePresence, motion } from "framer-motion";
 import { DetailedAnalysisChart } from "./DetailedAnalysisChart";
-import { useReactToPrint } from 'react-to-print';
-import { ProposalDocument } from "../proposal/ProposalDocument";
 
 
 const COMPANY_DATA_KEY = "companyData";
@@ -77,51 +75,12 @@ export function Step2Results({
   const formMethods = useFormContext<WizardFormData>();
   
   const [isRefining, setIsRefining] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
 
   const [showAdvancedAnalysis, setShowAdvancedAnalysis] = useState(false);
   
   const billOfMaterials = formMethods.watch('billOfMaterials');
-
-  // --- Start Print Logic ---
-  const proposalRef = useRef<HTMLDivElement>(null);
-  const [companyData, setCompanyData] = useState<CompanyFormData | null>(null);
-  const [customization, setCustomization] = useState<CustomizationSettings>(defaultCustomization);
-
-  useEffect(() => {
-    try {
-      const savedCompanyData = localStorage.getItem(COMPANY_DATA_KEY);
-      if (savedCompanyData) setCompanyData(JSON.parse(savedCompanyData));
-
-      const savedCustomization = localStorage.getItem(CUSTOMIZATION_KEY);
-       if (savedCustomization) {
-        const parsed = JSON.parse(savedCustomization);
-        // Merge with defaults to ensure all keys are present
-        setCustomization(prev => ({
-          ...defaultCustomization,
-          ...parsed,
-          colors: { ...defaultCustomization.colors, ...parsed.colors },
-          content: { ...defaultCustomization.content, ...parsed.content },
-          footer: { ...defaultCustomization.footer, ...parsed.footer },
-        }));
-      }
-    } catch (e) {
-      console.error("Failed to load data for printing from localStorage", e);
-    }
-  }, []);
-
-  const handlePrint = useReactToPrint({
-    content: () => proposalRef.current,
-    onBeforeGetContent: () => {
-      if (!companyData || !companyData.name) {
-        toast({ title: "Empresa não configurada", description: "Aceda a Definições > Minha Empresa para preencher os seus dados.", variant: "destructive" });
-        return Promise.reject();
-      }
-      return Promise.resolve();
-    },
-    documentTitle: `Proposta-${proposalId}-${clientData?.name || 'Cliente'}`,
-  });
-  // --- End Print Logic ---
   
   const handleAiRefinement = async () => {
     setIsRefining(true);
@@ -145,6 +104,69 @@ export function Step2Results({
 
     setIsRefining(false);
   };
+  
+  const handleExportPdf = async () => {
+    setIsGeneratingPdf(true);
+    toast({ title: "A Gerar Proposta...", description: "A preparar o seu documento PDF. Isto pode demorar alguns segundos." });
+
+    try {
+        const companyDataStr = localStorage.getItem(COMPANY_DATA_KEY);
+        const customizationStr = localStorage.getItem(CUSTOMIZATION_KEY);
+
+        if (!companyDataStr) {
+            toast({ title: "Empresa não configurada", description: "Aceda a Definições > Minha Empresa para preencher os seus dados.", variant: "destructive" });
+            setIsGeneratingPdf(false);
+            return;
+        }
+
+        const companyData = JSON.parse(companyDataStr);
+        const customization = customizationStr ? JSON.parse(customizationStr) : defaultCustomization;
+        const formData = formMethods.getValues();
+        const finalClientData = clientData || { name: "Cliente Final", document: "-", address: "-" };
+
+        const response = await fetch('/api/gerar-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                results: results,
+                formData: formData.calculationInput,
+                billOfMaterials: formData.billOfMaterials,
+                companyData: companyData,
+                clientData: finalClientData,
+                customization: customization,
+                proposalId: proposalId,
+                proposalDate: new Date().toISOString(),
+                proposalValidity: new Date(new Date().setDate(new Date().getDate() + 20)).toISOString(),
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.details || 'Falha ao gerar o PDF no servidor.');
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `proposta-${proposalId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+
+    } catch (error: any) {
+        console.error("PDF Generation Error:", error);
+        toast({
+            title: "Erro ao Gerar PDF",
+            description: error.message || "Ocorreu um erro desconhecido.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsGeneratingPdf(false);
+    }
+  };
+
 
   const handleApplySuggestion = () => {
     if (!refinedSuggestion) return;
@@ -175,8 +197,6 @@ export function Step2Results({
   
   const tirValue = results?.financeiro?.tir_percentual;
   const tirText = isFinite(tirValue) ? `${formatNumber(tirValue, 2)}%` : "N/A";
-
-  const finalClientData = clientData || { name: "Cliente Final", document: "-", address: "-" };
 
   return (
     <>
@@ -296,13 +316,13 @@ export function Step2Results({
                 Refinar com IA
             </Button>
             
-            <Button type="button" onClick={onSave}>
+            <Button type="button" onClick={onSave} disabled={isGeneratingPdf}>
                 <Save className="mr-2 h-4 w-4" />
                 {isEditing ? "Atualizar Cotação" : "Salvar Cotação"}
             </Button>
 
-            <Button type="button" onClick={handlePrint}>
-                <FileDown className="mr-2 h-4 w-4" />
+            <Button type="button" onClick={handleExportPdf} disabled={isGeneratingPdf}>
+                {isGeneratingPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                 Gerar Proposta
             </Button>
           </div>
@@ -360,24 +380,6 @@ export function Step2Results({
         </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <div className="hidden">
-        {companyData && (
-          <div ref={proposalRef}>
-            <ProposalDocument
-                results={results}
-                formData={formMethods.getValues().calculationInput}
-                billOfMaterials={formMethods.getValues().billOfMaterials}
-                companyData={companyData}
-                clientData={finalClientData}
-                customization={customization}
-                proposalId={proposalId}
-                proposalDate={new Date()}
-                proposalValidity={new Date(new Date().setDate(new Date().getDate() + 20))}
-            />
-          </div>
-        )}
-      </div>
     </>
   );
 }
