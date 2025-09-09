@@ -31,6 +31,7 @@ import { DetailedAnalysisChart } from "./DetailedAnalysisChart";
 
 const COMPANY_DATA_KEY = "companyData";
 const CUSTOMIZATION_KEY = "proposalCustomization";
+const PROPOSAL_DATA_SESSION_KEY = "printableProposalData";
 
 const defaultCustomization: CustomizationSettings = {
   colors: {
@@ -86,7 +87,6 @@ export function Step2Results({
   const handleExportPdf = async () => {
     setIsExporting(true);
     try {
-      // 1. Fetch all necessary data
       const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
       if (!companyData || !companyData.name) {
         toast({ title: "Empresa não configurada", description: "Aceda a Definições > Minha Empresa.", variant: "destructive" });
@@ -98,7 +98,7 @@ export function Step2Results({
       
       const quoteData: Quote = {
         id: proposalId,
-        leadId: '', // Not needed for printing
+        leadId: '',
         createdAt: new Date().toISOString(),
         formData: formMethods.getValues().calculationInput,
         results: results,
@@ -107,25 +107,16 @@ export function Step2Results({
 
       const finalClientData = clientData || { name: "Cliente Final", document: "-", address: "-" };
 
-      // Helper function to compress data for URL
-      const compressData = (data: object): string => {
-        return Buffer.from(JSON.stringify(data)).toString("base64");
+      const printableData = {
+        quote: quoteData,
+        client: finalClientData,
+        company: companyData,
+        customization: customization,
       };
+      
+      sessionStorage.setItem(PROPOSAL_DATA_SESSION_KEY, JSON.stringify(printableData));
 
-      // 2. Compress all data into Base64 strings
-      const compressedQuote = compressData(quoteData);
-      const compressedClient = compressData(finalClientData);
-      const compressedCompany = compressData(companyData);
-      const compressedCustomization = compressData(customization);
-
-      // 3. Build the URL for the print page
       const url = new URL("/orcamento/imprimir", window.location.origin);
-      url.searchParams.set("quote", compressedQuote);
-      url.searchParams.set("client", compressedClient);
-      url.searchParams.set("company", compressedCompany);
-      url.searchParams.set("customization", compressedCustomization);
-
-      // 4. Open the print page in a new tab
       window.open(url.toString(), "_blank");
 
     } catch (error: any) {
@@ -381,3 +372,5 @@ const ComparisonItem = ({ label, value, highlight = false }: { label: string, va
         <p className={`font-semibold text-base ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
     </div>
 );
+
+    
