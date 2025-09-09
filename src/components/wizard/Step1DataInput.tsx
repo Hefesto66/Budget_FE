@@ -47,7 +47,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                 <FormItem>
                   <FormLabel>Consumo médio mensal (kWh) *</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="ex: 500" {...field} value={field.value || 0} onChange={e => field.onChange(parseInt(e.target.value, 10))}/>
+                    <Input type="number" placeholder="ex: 500" {...field} value={field.value || ''} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)}/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -60,7 +60,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                 <FormItem>
                   <FormLabel>Valor médio da fatura (R$) *</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="ex: 450.00" {...field} value={field.value || 0} onChange={e => field.onChange(parseFloat(e.target.value))}/>
+                    <Input type="number" placeholder="ex: 450.00" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -97,7 +97,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                   <FormItem>
                     <FormLabel>Irradiação Solar Local (PSH) *</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="ex: 5.7" {...field} value={field.value || 0} onChange={e => field.onChange(parseFloat(e.target.value))}/>
+                      <Input type="number" placeholder="ex: 5.7" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -110,7 +110,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                   <FormItem>
                     <FormLabel>Taxa de Iluminação Pública (R$)</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="ex: 25.50" {...field} value={field.value || 0} onChange={e => field.onChange(parseFloat(e.target.value))}/>
+                      <Input type="number" placeholder="ex: 25.50" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -129,7 +129,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                              <FormItem>
                                 <FormLabel>Fator de Perdas (%)</FormLabel>
                                 <FormControl>
-                                    <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
+                                    <Input type="number" {...field} placeholder="20.0" value={field.value || ''} onChange={e => field.onChange(Number(e.target.value))} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -138,7 +138,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                              <FormItem>
                                 <FormLabel>Custo O&M Anual (R$)</FormLabel>
                                  <FormControl>
-                                    <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
+                                    <Input type="number" {...field} placeholder="150" value={field.value || ''} onChange={e => field.onChange(Number(e.target.value))} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -147,7 +147,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                              <FormItem>
                                 <FormLabel>Meta de Compensação (%)</FormLabel>
                                  <FormControl>
-                                    <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
+                                    <Input type="number" {...field} placeholder="100" value={field.value || ''} onChange={e => field.onChange(Number(e.target.value))} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -156,7 +156,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                              <FormItem>
                                 <FormLabel>Inflação Energética Anual (%)</FormLabel>
                                  <FormControl>
-                                    <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
+                                    <Input type="number" {...field} placeholder="8.0" value={field.value || ''} onChange={e => field.onChange(Number(e.target.value))} />
                                 </FormControl>
                                 <FormDescription className="text-xs">Estimativa do reajuste anual da tarifa de energia.</FormDescription>
                                 <FormMessage />
@@ -166,7 +166,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                              <FormItem>
                                 <FormLabel>Degradação Anual dos Painéis (%)</FormLabel>
                                  <FormControl>
-                                    <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
+                                    <Input type="number" {...field} placeholder="0.5" value={field.value || ''} onChange={e => field.onChange(Number(e.target.value))} />
                                 </FormControl>
                                 <FormDescription className="text-xs">Perda de eficiência anual projetada para os painéis solares.</FormDescription>
                                 <FormMessage />
@@ -176,7 +176,7 @@ export function Step1DataInput({ isLoading }: { isLoading: boolean }) {
                              <FormItem>
                                 <FormLabel>Taxa Mín. de Atratividade (%)</FormLabel>
                                  <FormControl>
-                                    <Input type="number" {...field} value={field.value || 0} onChange={e => field.onChange(Number(e.target.value))} />
+                                    <Input type="number" {...field} placeholder="6.0" value={field.value || ''} onChange={e => field.onChange(Number(e.target.value))} />
                                 </FormControl>
                                 <FormDescription className="text-xs">Usada para o cálculo do VPL. Rendimento mínimo esperado de um investimento.</FormDescription>
                                 <FormMessage />

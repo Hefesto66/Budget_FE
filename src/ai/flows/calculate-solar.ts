@@ -91,7 +91,7 @@ const calculateSolarFlow = ai.defineFlow(
     const eficiencia_inversor = (data.eficiencia_inversor_percent ?? 97) / 100;
     const fator_perdas = (data.fator_perdas_percent ?? 20) / 100;
     
-    // Novos parâmetros de projeção
+    // Novos parâmetros de projeção com valores padrão robustos
     const inflacao_energetica = (data.inflacao_energetica_anual_percent ?? 8.0) / 100;
     const degradacao_paineis = (data.degradacao_anual_paineis_percent ?? 0.5) / 100;
     const taxa_desconto = (data.taxa_minima_atratividade_percent ?? 6.0) / 100;
@@ -134,13 +134,15 @@ const calculateSolarFlow = ai.defineFlow(
     // 6. Advanced Financials (Cash Flow, NPV, IRR) for 25 years
     const cashFlow: number[] = [-custo_sistema_reais]; // Ano 0 é o investimento
     let geracaoAnualKwh = geracao_media_mensal_kwh * 12;
+    let tarifaAtualizada = tarifa_final_reais_kwh;
 
     for (let ano = 1; ano <= 25; ano++) {
-      if(ano > 1) {
+      if (ano > 1) {
           geracaoAnualKwh *= (1 - degradacao_paineis);
+          tarifaAtualizada *= (1 + inflacao_energetica);
       }
       
-      const economiaDoAno = (geracaoAnualKwh * (tarifa_final_reais_kwh * Math.pow(1 + inflacao_energetica, ano - 1))) - (data.custo_om_anual_reais ?? 0);
+      const economiaDoAno = (geracaoAnualKwh * tarifaAtualizada) - (data.custo_om_anual_reais ?? 0);
       cashFlow.push(economiaDoAno);
     }
     

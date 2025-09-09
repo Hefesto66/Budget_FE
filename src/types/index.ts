@@ -52,9 +52,9 @@ export const solarCalculationSchema = z.object({
   priceListId: z.string().optional(),
 
   // Novos campos para projeção financeira
-  inflacao_energetica_anual_percent: z.number().gte(0).optional().default(8.0),
-  degradacao_anual_paineis_percent: z.number().gte(0).optional().default(0.5),
-  taxa_minima_atratividade_percent: z.number().gte(0).optional().default(6.0),
+  inflacao_energetica_anual_percent: z.number().gte(0).optional(),
+  degradacao_anual_paineis_percent: z.number().gte(0).optional(),
+  taxa_minima_atratividade_percent: z.number().gte(0).optional(),
 });
 
 
