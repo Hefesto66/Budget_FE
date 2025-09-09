@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import ReactDOMServer from 'react-dom/server';
 import { ProposalDocument } from '@/components/proposal/ProposalDocument';
