@@ -18,7 +18,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { getCalculation, getRefinedSuggestions } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, BarChart, Zap, Calendar, FileDown, Loader2, FileSignature, CheckCircle, Pencil, Save, LineChart, Target } from "lucide-react";
+import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, BarChart, Zap, Calendar, FileDown, Loader2, FileSignature, CheckCircle, Pencil, Save, LineChart, Target, ChevronDown } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
 import { formatCurrency, formatNumber } from "@/lib/utils";
@@ -35,6 +35,7 @@ import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useFormContext } from "react-hook-form";
 import type { WizardFormData } from "./Wizard";
+import { AnimatePresence, motion } from "framer-motion";
 
 const COMPANY_DATA_KEY = "companyData";
 const CUSTOMIZATION_KEY = "proposalCustomization";
@@ -61,7 +62,7 @@ export function Step2Results({
   isEditing 
 }: Step2ResultsProps) {
   const { toast } = useToast();
-  const formMethods = useFormContext<WizardFormData>(); // Correctly get the context
+  const formMethods = useFormContext<WizardFormData>();
   
   const [isExporting, setIsExporting] = useState(false);
   
@@ -72,6 +73,9 @@ export function Step2Results({
   // State for AI Refinement
   const [isRefining, setIsRefining] = useState(false);
   const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
+
+  // State for advanced analysis visibility
+  const [showAdvancedAnalysis, setShowAdvancedAnalysis] = useState(false);
 
   useEffect(() => {
     // Automatically update validity date when proposal date changes
@@ -118,10 +122,8 @@ export function Step2Results({
 
       const htmlString = ReactDOMServer.renderToString(docToRender);
       
-      // Store data in session storage for the print page
       sessionStorage.setItem('proposalHtmlToPrint', htmlString);
       
-      // Open the print page
       const printWindow = window.open('/orcamento/imprimir', '_blank');
       if (printWindow) {
         printWindow.focus();
@@ -249,20 +251,43 @@ export function Step2Results({
                 />
               </div>
                <Separator className="my-6" />
-               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                 <ResultCard
-                    icon={<LineChart />}
-                    title="Valor Presente Líquido (VPL)"
-                    value={formatCurrency(results.financeiro.vpl_reais)}
-                    description="Traz a valor presente o fluxo de caixa futuro"
-                />
-                 <ResultCard
-                    icon={<Target />}
-                    title="Taxa Interna de Retorno (TIR)"
-                    value={tirText}
-                    description="Rentabilidade anual do investimento"
-                />
+
+               {/* Advanced Analysis Toggle Button */}
+               <div className="text-center">
+                 <Button variant="link" onClick={() => setShowAdvancedAnalysis(!showAdvancedAnalysis)}>
+                    {showAdvancedAnalysis ? 'Ocultar Análise Avançada' : 'Mostrar Análise Avançada'}
+                    <ChevronDown className={cn("ml-2 h-4 w-4 transition-transform", showAdvancedAnalysis && "rotate-180")} />
+                 </Button>
                </div>
+               
+               {/* Advanced Analysis Section */}
+               <AnimatePresence>
+                {showAdvancedAnalysis && (
+                  <motion.div
+                    key="advanced-analysis"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 pt-6">
+                        <ResultCard
+                            icon={<LineChart />}
+                            title="Valor Presente Líquido (VPL)"
+                            value={formatCurrency(results.financeiro.vpl_reais)}
+                            description="Traz a valor presente o fluxo de caixa futuro"
+                        />
+                        <ResultCard
+                            icon={<Target />}
+                            title="Taxa Interna de Retorno (TIR)"
+                            value={tirText}
+                            description="Rentabilidade anual do investimento"
+                        />
+                    </div>
+                   </motion.div>
+                )}
+                </AnimatePresence>
           </CardContent>
         </Card>
         
@@ -276,7 +301,6 @@ export function Step2Results({
             </CardContent>
         </Card>
 
-        {/* Document Details Card */}
         <Card>
             <CardHeader>
                 <CardTitle className="font-headline text-xl flex items-center gap-2">
@@ -458,3 +482,6 @@ const ComparisonItem = ({ label, value, highlight = false }: { label: string, va
         <p className={`font-semibold text-base ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
     </div>
 );
+
+
+    
