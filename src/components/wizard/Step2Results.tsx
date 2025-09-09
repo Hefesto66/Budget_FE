@@ -20,7 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, BarChart, Zap, Calendar, FileDown, Loader2, FileSignature, CheckCircle, Pencil, Save, LineChart, Target, ChevronDown, Power, Wrench, Package } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { formatCurrency, formatNumber, cn } from "@/lib/utils";
 import { SavingsChart } from "@/components/SavingsChart";
 import type { CompanyFormData } from "@/app/minha-empresa/page";
 import { useFormContext } from "react-hook-form";
