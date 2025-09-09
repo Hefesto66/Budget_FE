@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+// import html2canvas from "html2canvas"; // Removido para importação dinâmica
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings, SolarCalculationInput } from "@/types";
 import { ResultCard } from "@/components/ResultCard";
 import { Button } from "@/components/ui/button";
@@ -134,7 +134,6 @@ export function Step2Results({
             proposalValidity: proposalValidity.toISOString(),
         };
         
-        // 1. Chamar a API para obter o HTML renderizado
         const response = await fetch('/api/gerar-pdf', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -148,12 +147,13 @@ export function Step2Results({
         }
 
         const { htmlContent } = body;
+        
+        const { default: html2canvas } = await import('html2canvas');
 
-        // 2. Usar o HTML para gerar o PDF no cliente
         const tempDiv = document.createElement('div');
         tempDiv.style.position = 'absolute';
         tempDiv.style.left = '-9999px';
-        tempDiv.style.width = '800px'; // Set a fixed width consistent with the PDF component
+        tempDiv.style.width = '800px'; 
         document.body.appendChild(tempDiv);
         tempDiv.innerHTML = htmlContent;
         
@@ -164,7 +164,7 @@ export function Step2Results({
         }
 
         const canvas = await html2canvas(proposalElement, {
-            scale: 2, // Aumenta a resolução para melhor qualidade
+            scale: 2, 
             useCORS: true,
             logging: false,
         });
@@ -192,7 +192,7 @@ export function Step2Results({
         heightLeft -= pdfHeight;
         
         while (heightLeft > 0) {
-          position = -pdfHeight + (pageImgHeight - heightLeft);
+          position -= pdfHeight;
           pdf.addPage();
           pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pageImgHeight);
           heightLeft -= pdfHeight;
