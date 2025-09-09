@@ -133,11 +133,11 @@ export function Step2Results({
         clientData: clientData || { name: "Cliente Final", document: "-", address: "-" }, // Garante que nunca seja nulo
         customization,
         proposalId,
-        proposalDate: proposalDate.toISOString(),
-        proposalValidity: proposalValidity.toISOString(),
+        proposalDate: proposalDate,
+        proposalValidity: proposalValidity,
       };
 
-      // 2. Chamar a API Route com os dados já processados
+      // 2. Chamar a API com os dados já processados
       const response = await fetch('/api/gerar-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
