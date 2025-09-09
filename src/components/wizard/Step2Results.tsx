@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import jsPDF from "jspdf";
-// import html2canvas from "html2canvas"; // Removido para importação dinâmica
+import ReactDOMServer from "react-dom/server";
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings, SolarCalculationInput } from "@/types";
 import { ResultCard } from "@/components/ResultCard";
 import { Button } from "@/components/ui/button";
@@ -109,106 +109,95 @@ export function Step2Results({
   const handleExportPdf = async () => {
     setIsExporting(true);
     try {
-        if (!results) {
-            toast({ title: "Erro", description: "Resultados do cálculo não disponíveis.", variant: "destructive" });
-            return;
-        }
+      if (!results) {
+        toast({ title: "Erro", description: "Resultados do cálculo não disponíveis.", variant: "destructive" });
+        return;
+      }
+  
+      const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
+      if (!companyData || !companyData.name) {
+        toast({ title: "Empresa não configurada", description: "Aceda a Definições > Minha Empresa.", variant: "destructive" });
+        setIsExporting(false);
+        return;
+      }
+      
+      const customization: CustomizationSettings = JSON.parse(localStorage.getItem(CUSTOMIZATION_KEY) || JSON.stringify(defaultCustomization));
+      
+      // Dynamic import of html2canvas
+      const { default: html2canvas } = await import('html2canvas');
 
-        const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
-        if (!companyData || !companyData.name) {
-            toast({ title: "Empresa não configurada", description: "Aceda a Definições > Minha Empresa.", variant: "destructive" });
-            setIsExporting(false);
-            return;
-        }
-        
-        const customization: CustomizationSettings = JSON.parse(localStorage.getItem(CUSTOMIZATION_KEY) || JSON.stringify(defaultCustomization));
-
-        const proposalData = {
-            results,
-            formData: formMethods.getValues().calculationInput,
-            companyData,
-            clientData: clientData || { name: "Cliente Final", document: "-", address: "-" },
-            customization,
-            proposalId,
-            proposalDate: proposalDate.toISOString(),
-            proposalValidity: proposalValidity.toISOString(),
-        };
-        
-        const response = await fetch('/api/gerar-pdf', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(proposalData),
-        });
-
-        const body = await response.json();
-
-        if (!response.ok) {
-            throw new Error(body.error || 'A resposta do servidor não foi bem-sucedida.');
-        }
-
-        const { htmlContent } = body;
-        
-        const { default: html2canvas } = await import('html2canvas');
-
-        const tempDiv = document.createElement('div');
-        tempDiv.style.position = 'absolute';
-        tempDiv.style.left = '-9999px';
-        tempDiv.style.width = '800px'; 
-        document.body.appendChild(tempDiv);
-        tempDiv.innerHTML = htmlContent;
-        
-        const proposalElement = tempDiv.querySelector('#proposal-content') as HTMLElement;
-        
-        if (!proposalElement) {
-            throw new Error("Elemento da proposta não encontrado no HTML recebido.");
-        }
-
-        const canvas = await html2canvas(proposalElement, {
-            scale: 2, 
-            useCORS: true,
-            logging: false,
-        });
-
-        const imgData = canvas.toDataURL('image/png');
-        
-        const pdf = new jsPDF({
-            orientation: 'p',
-            unit: 'mm',
-            format: 'a4',
-        });
-        
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgWidth = canvas.width;
-        const imgHeight = canvas.height;
-        const ratio = imgWidth / imgHeight;
-        
-        const pageImgHeight = pdfWidth / ratio;
-        
-        let heightLeft = pageImgHeight;
-        let position = 0;
-
+      const htmlString = ReactDOMServer.renderToString(
+        <ProposalDocument
+          results={results}
+          formData={formMethods.getValues().calculationInput}
+          companyData={companyData}
+          clientData={clientData || { name: "Cliente Final", document: "-", address: "-" }}
+          customization={customization}
+          proposalId={proposalId}
+          proposalDate={proposalDate}
+          proposalValidity={proposalValidity}
+        />
+      );
+  
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.width = '800px'; 
+      document.body.appendChild(tempDiv);
+      tempDiv.innerHTML = htmlString;
+      
+      const proposalElement = tempDiv.querySelector('#proposal-content') as HTMLElement;
+      
+      if (!proposalElement) {
+        throw new Error("Elemento da proposta não encontrado no HTML renderizado.");
+      }
+  
+      const canvas = await html2canvas(proposalElement, {
+        scale: 2, 
+        useCORS: true,
+        logging: false,
+      });
+  
+      const imgData = canvas.toDataURL('image/png');
+      
+      const pdf = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4',
+      });
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = imgWidth / imgHeight;
+      
+      const pageImgHeight = pdfWidth / ratio;
+      
+      let heightLeft = pageImgHeight;
+      let position = 0;
+  
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pageImgHeight);
+      heightLeft -= pdfHeight;
+      
+      while (heightLeft > 0) {
+        position -= pdfHeight;
+        pdf.addPage();
         pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pageImgHeight);
         heightLeft -= pdfHeight;
-        
-        while (heightLeft > 0) {
-          position -= pdfHeight;
-          pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pageImgHeight);
-          heightLeft -= pdfHeight;
-        }
-
-        pdf.save(`proposta-${proposalId}.pdf`);
-
-        document.body.removeChild(tempDiv);
-
+      }
+  
+      pdf.save(`proposta-${proposalId}.pdf`);
+  
+      document.body.removeChild(tempDiv);
+  
     } catch (error: any) {
-        console.error("Falha ao gerar PDF:", error);
-        toast({ title: "Erro ao Gerar PDF", description: error.message, variant: "destructive" });
+      console.error("Falha ao gerar PDF:", error);
+      toast({ title: "Erro ao Gerar PDF", description: error.message, variant: "destructive" });
     } finally {
-        setIsExporting(false);
+      setIsExporting(false);
     }
-};
+  };
   
   const handleAiRefinement = async () => {
     setIsRefining(true);
@@ -479,3 +468,5 @@ const ComparisonItem = ({ label, value, highlight = false }: { label: string, va
         <p className={`font-semibold text-base ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
     </div>
 );
+
+    
