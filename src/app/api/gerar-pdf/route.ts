@@ -6,6 +6,8 @@ import { formatCurrency, formatNumber, formatDate } from '@/lib/utils';
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings } from '@/types';
 import type { CompanyFormData } from '@/app/minha-empresa/page';
 import type { WizardFormData } from '@/components/wizard/Wizard';
+import path from 'path';
+import fs from 'fs';
 
 interface ProposalData {
   results: SolarCalculationResult;
@@ -19,16 +21,23 @@ interface ProposalData {
   proposalValidity: string; // ISO string
 }
 
-// Initialize printer without custom fonts to use the default embedded Roboto font.
-const printer = new PdfPrinter();
+const fonts = {
+  Roboto: {
+    normal: path.join(process.cwd(), 'node_modules/roboto-font/fonts/Roboto/roboto-regular-webfont.ttf'),
+    bold: path.join(process.cwd(), 'node_modules/roboto-font/fonts/Roboto/roboto-bold-webfont.ttf'),
+    italics: path.join(process.cwd(), 'node_modules/roboto-font/fonts/Roboto/roboto-italic-webfont.ttf'),
+    bolditalics: path.join(process.cwd(), 'node_modules/roboto-font/fonts/Roboto/roboto-bold-italic-webfont.ttf'),
+  },
+};
+
+const printer = new PdfPrinter(fonts);
 
 async function generatePdf(docDefinition: TDocumentDefinitions): Promise<Buffer> {
-  const pdfDoc = printer.createPdfKitDocument(docDefinition);
-
   return new Promise((resolve, reject) => {
     try {
+      const pdfDoc = printer.createPdfKitDocument(docDefinition);
       const chunks: Buffer[] = [];
-      pdfDoc.on('data', (chunk) => chunks.push(chunk));
+      pdfDoc.on('data', chunk => chunks.push(chunk));
       pdfDoc.on('end', () => resolve(Buffer.concat(chunks)));
       pdfDoc.end();
     } catch (err) {
@@ -117,7 +126,7 @@ export async function POST(req: NextRequest) {
                 headerRows: 1,
                 widths: ['*', 'auto', 'auto', 'auto'],
                 body: [
-                    ['Descrição', 'Qtde.', 'Preço Unit.', 'Preço Total'],
+                    [{text: 'Descrição', style: 'tableHeader'}, {text: 'Qtde.', style: 'tableHeader', alignment: 'center'}, {text: 'Preço Unit.', style: 'tableHeader', alignment: 'right'}, {text: 'Preço Total', style: 'tableHeader', alignment: 'right'}],
                     ...bomBody,
                     [
                       { text: 'Valor Total do Investimento', colSpan: 3, style: 'totalRow', alignment: 'right'}, {}, {}, 
@@ -126,6 +135,11 @@ export async function POST(req: NextRequest) {
                 ]
             },
             layout: {
+                hLineWidth: (i, node) => (i === 0 || i === node.table.body.length || i === 1 || i === node.table.body.length - 1) ? 1 : 0.5,
+                vLineWidth: (i, node) => 0,
+                hLineColor: (i, node) => '#ddd',
+                paddingTop: (i, node) => 8,
+                paddingBottom: (i, node) => 8,
                 fillColor: function (rowIndex) {
                     if (rowIndex === 0) return customization.colors.primary;
                     if (rowIndex === billOfMaterials.length + 1) return customization.colors.primary;
@@ -164,6 +178,7 @@ export async function POST(req: NextRequest) {
         }
       ],
       defaultStyle: {
+        font: 'Roboto',
         fontSize: 10,
         lineHeight: 1.15
       },
