@@ -4,7 +4,8 @@ import { ProposalDocument } from '@/components/proposal/ProposalDocument';
 import type { SolarCalculationResult, SolarCalculationInput, ClientFormData, CustomizationSettings, Quote } from '@/types';
 import type { CompanyFormData } from '@/app/minha-empresa/page';
 
-// This is a placeholder for where you might have default settings
+// Esta é uma camada extra de segurança para garantir que a API não quebre se o frontend enviar dados
+// incompletos.
 const defaultCustomization: CustomizationSettings = {
   colors: {
     primary: "#10B981",
@@ -23,18 +24,19 @@ const defaultCustomization: CustomizationSettings = {
   },
 };
 
-// POST function to handle PDF generation requests
+// A API Route agora é um "serviço burro". Ela não calcula nada.
+// Apenas recebe os dados prontos do frontend e renderiza o HTML.
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     
-    // Destructure all required data from the request body
+    // Destrutura todos os dados esperados do corpo da requisição
     const {
       results,
       formData,
       companyData,
       clientData,
-      customization = defaultCustomization, // Use default if not provided
+      customization = defaultCustomization, // Usa o padrão se não for fornecido
       proposalId,
       proposalDate,
       proposalValidity
@@ -42,20 +44,19 @@ export async function POST(req: NextRequest) {
       results: SolarCalculationResult;
       formData: SolarCalculationInput;
       companyData: CompanyFormData;
-      clientData: ClientFormData;
+      clientData: ClientFormData; // O frontend garantirá que isso nunca seja nulo
       customization: CustomizationSettings;
       proposalId: string;
-      proposalDate: string; // Dates will come as ISO strings
+      proposalDate: string; 
       proposalValidity: string;
     };
 
-    // Basic validation to ensure essential data is present
+    // Validação de segurança para garantir que os dados essenciais foram recebidos
     if (!results || !formData || !companyData || !proposalId) {
-      return new NextResponse(JSON.stringify({ error: 'Dados insuficientes para gerar a proposta.' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      return new NextResponse(JSON.stringify({ error: 'Dados insuficientes para gerar a proposta. O frontend não enviou todas as informações.' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
     
-    // RENDERIZAÇÃO SEGURA DO DOCUMENTO
-    // A sintaxe JSX foi corrigida para usar auto-fechamento (/>)
+    // Renderiza o componente React para uma string de HTML com os dados recebidos
     const htmlString = ReactDOMServer.renderToString(
       <ProposalDocument
         results={results}
@@ -70,13 +71,12 @@ export async function POST(req: NextRequest) {
     );
 
 
-    // This API route has been deprecated in favor of a client-side rendering approach.
-    // The client-side implementation will handle creating the PDF.
-    // This response is simplified and kept for reference, but the primary logic
-    // is now in `src/components/wizard/Step2Results.tsx`
+    // O fluxo de geração de PDF real agora é tratado pelo cliente.
+    // Esta API apenas fornece o HTML renderizado. A lógica de conversão para PDF
+    // foi movida para o frontend para evitar o erro de build.
     return new NextResponse(JSON.stringify({
-      message: "API DEPRECATED: PDF generation is now handled client-side.",
-      htmlContent: htmlString, // Still return content for potential debugging
+      message: "Renderização do HTML bem-sucedida.",
+      htmlContent: htmlString, 
     }), {
       status: 200,
       headers: {
@@ -85,8 +85,8 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error("===== PDF GENERATION ERROR (API) =====");
+    console.error("===== ERRO NA API DE GERAÇÃO DE HTML =====");
     console.error(error);
-    return new NextResponse(JSON.stringify({ error: 'Falha ao gerar o HTML no servidor.', details: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    return new NextResponse(JSON.stringify({ error: 'Falha ao renderizar o HTML no servidor.', details: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 }

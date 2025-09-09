@@ -10,7 +10,7 @@ interface ProposalDocumentProps {
   results: SolarCalculationResult;
   formData: SolarCalculationInput;
   companyData: CompanyFormData;
-  clientData: ClientFormData | null;
+  clientData: ClientFormData; // Agora é obrigatório
   customization: CustomizationSettings;
   proposalId: string;
   proposalDate: Date;
@@ -34,10 +34,6 @@ export function ProposalDocument({
 
   const { colors, content } = customization;
 
-  // Environmental Impact Calculation (example values)
-  const co2AvoidedKg = results.geracao.media_mensal_kwh * 12 * 0.475; // 0.475 kg CO2 per kWh
-  const treesSaved = Math.round(co2AvoidedKg / 21.77); // 21.77 kg CO2 absorbed by a tree per year
-
   const Section = ({ children, className, pageBreakBefore = false }: { children: React.ReactNode, className?: string, pageBreakBefore?: boolean }) => (
     <div className={cn("pdf-section", className, pageBreakBefore && "pdf-page-break-before")} style={{ marginBottom: '32px' }}>
       {children}
@@ -46,7 +42,6 @@ export function ProposalDocument({
   
   return (
     <div id="proposal-content" className="proposal-document bg-white text-black font-sans" style={{ fontFamily: '"Inter", sans-serif', fontSize: '10pt', padding: '40px', width: '800px' }}>
-      {/* Header */}
       <Section>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: '16px', borderBottom: '2px solid #EEE' }}>
             <div style={{ width: '33.33%' }}>
@@ -65,7 +60,6 @@ export function ProposalDocument({
       </Section>
 
       <main style={{ paddingTop: '32px', paddingBottom: '32px' }}>
-        {/* Proposal Title */}
         <Section>
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                 <h2 style={{ fontSize: '20pt', fontWeight: 'bold', textTransform: 'uppercase', color: colors.primary, fontFamily: '"Poppins", sans-serif', margin: 0, marginBottom: '24px' }}>Proposta de Sistema Fotovoltaico</h2>
@@ -85,20 +79,17 @@ export function ProposalDocument({
                 </div>
             </div>
         </Section>
-
-        {/* Client Info Placeholder */}
         
         <Section>
             <div style={{ border: '1px solid #EEE', padding: '16px', borderRadius: '8px' }}>
               <h3 style={{ fontWeight: 'bold', marginBottom: '8px', color: colors.primary, fontFamily: '"Poppins", sans-serif' }}>Preparado para:</h3>
-              <p style={{ fontWeight: '600', margin: 0 }}>{clientData?.name || 'Cliente Final'}</p>
-              <p style={{ margin: 0 }}>{clientData?.address || 'Endereço não informado'}</p>
-              <p style={{ margin: 0 }}>CPF/CNPJ: {clientData?.document || 'Documento não informado'}</p>
+              <p style={{ fontWeight: '600', margin: 0 }}>{clientData.name}</p>
+              <p style={{ margin: 0 }}>{clientData.address}</p>
+              <p style={{ margin: 0 }}>CPF/CNPJ: {clientData.document}</p>
             </div>
         </Section>
         
 
-        {/* System Description */}
         {content.showInvestmentTable && (
             <Section>
                 <h3 style={{ fontWeight: 'bold', fontSize: '14pt', marginBottom: '8px', borderBottom: '1px solid #EEE', paddingBottom: '4px', color: colors.primary, fontFamily: '"Poppins", sans-serif' }}>Descrição do Sistema e Investimento</h3>
@@ -152,8 +143,7 @@ export function ProposalDocument({
             </Section>
         )}
         
-         {/* Financial Summary & Performance */}
-        <Section>
+         <Section>
              <h3 style={{ fontWeight: 'bold', fontSize: '14pt', marginBottom: '16px', borderBottom: '1px solid #EEE', paddingBottom: '4px', color: colors.primary, fontFamily: '"Poppins", sans-serif' }}>Análise Financeira e de Geração</h3>
             <div style={{ display: 'flex', gap: '32px' }}>
                  {content.showFinancialSummary && (
@@ -191,5 +181,3 @@ const InfoRow = ({ label, value, highlightColor }: { label: string; value: strin
         <span style={{ color: highlightColor || 'inherit' }}>{value}</span>
     </div>
 )
-
-    

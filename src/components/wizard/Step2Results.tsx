@@ -84,7 +84,6 @@ export function Step2Results({
   
   const billOfMaterials = formMethods.watch('billOfMaterials');
   
-  // Prepare data for the cost breakdown chart
   const costBreakdownData = [
     { component: "Módulos", value: (billOfMaterials.find(i => i.category === 'PAINEL_SOLAR')?.cost || 0) * (billOfMaterials.find(i => i.category === 'PAINEL_SOLAR')?.quantity || 0), fill: "var(--color-modules)" },
     { component: "Inversor", value: (billOfMaterials.find(i => i.category === 'INVERSOR')?.cost || 0) * (billOfMaterials.find(i => i.category === 'INVERSOR')?.quantity || 0), fill: "var(--color-inverter)" },
@@ -111,50 +110,53 @@ export function Step2Results({
   const handleExportPdf = async () => {
     setIsExporting(true);
     try {
-      // ETAPA 1: VALIDAÇÃO DE SEGURANÇA
-      // Garante que os resultados do cálculo existem antes de prosseguir.
-      if (!results || !results.financeiro || !results.dimensionamento) {
-          console.error("ERRO CRÍTICO: Tentativa de gerar PDF com dados de cálculo inválidos.", results);
-          toast({
-              title: "Erro ao Gerar PDF",
-              description: "Os dados do cálculo parecem estar incompletos. Por favor, recalcule a proposta.",
-              variant: "destructive"
-          });
-          setIsExporting(false);
-          return;
+      // 1. Validar e reunir todos os dados no frontend
+      if (!results) {
+        toast({ title: "Erro", description: "Os resultados do cálculo não estão disponíveis.", variant: "destructive" });
+        setIsExporting(false);
+        return;
       }
       
-      // 2. Gather all data
       const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
       if (!companyData || !companyData.name) {
-        toast({
-          title: "Empresa não configurada",
-          description: "Aceda a Definições > Minha Empresa para configurar os seus dados.",
-          variant: "destructive"
-        });
+        toast({ title: "Empresa não configurada", description: "Aceda a Definições > Minha Empresa para configurar os seus dados.", variant: "destructive" });
         setIsExporting(false);
         return;
       }
 
       const customization: CustomizationSettings = JSON.parse(localStorage.getItem(CUSTOMIZATION_KEY) || JSON.stringify(defaultCustomization));
-      const formData = formMethods.getValues().calculationInput;
-
-      const props = {
+      
+      const completeProposalData = {
         results,
-        formData,
+        formData: formMethods.getValues().calculationInput,
         companyData,
-        clientData: clientData || { name: "Cliente Final", document: "-", address: "-" },
+        clientData: clientData || { name: "Cliente Final", document: "-", address: "-" }, // Garante que nunca seja nulo
         customization,
         proposalId,
-        proposalDate: proposalDate,
-        proposalValidity: proposalValidity,
+        proposalDate: proposalDate.toISOString(),
+        proposalValidity: proposalValidity.toISOString(),
       };
 
-      // 3. Render component to HTML string
-      const htmlString = ReactDOMServer.renderToString(<ProposalDocument {...props} />);
+      // 2. Chamar a API Route com os dados já processados
+      const response = await fetch('/api/gerar-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(completeProposalData),
+      });
 
-      // 4. Store in sessionStorage and open print view
-      sessionStorage.setItem('proposalHtmlToPrint', htmlString);
+      if (!response.ok) {
+        const errorBody = await response.json();
+        throw new Error(errorBody.error || 'A resposta do servidor não foi bem-sucedida.');
+      }
+      
+      const { htmlContent } = await response.json();
+
+      if (!htmlContent) {
+          throw new Error("A API não retornou o conteúdo HTML para o PDF.");
+      }
+
+      // 3. Abrir a página de impressão com o HTML recebido
+      sessionStorage.setItem('proposalHtmlToPrint', htmlContent);
       window.open('/orcamento/imprimir', '_blank');
 
     } catch (error: any) {
@@ -206,7 +208,7 @@ export function Step2Results({
           title: "Sugestão Aplicada!",
           description: `Quantidade de painéis ajustada para ${nova_quantidade_paineis}. Recalcule para ver o impacto.`,
       });
-      onGoToDataInput(); // Go back to the previous step
+      onGoToDataInput();
     } else {
         toast({ title: "Erro", description: "Nenhum painel solar encontrado na lista para aplicar a sugestão.", variant: "destructive" });
     }
@@ -219,7 +221,6 @@ export function Step2Results({
   return (
     <>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 xl:gap-8">
-        {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                <ResultCard
@@ -290,7 +291,6 @@ export function Step2Results({
             </Card>
         </div>
 
-        {/* Sidebar */}
         <div className="lg:col-span-1 space-y-6">
              <Card className="shadow-md">
                 <CardHeader>
@@ -356,7 +356,7 @@ export function Step2Results({
 
             <Button type="button" onClick={handleExportPdf} disabled={isExporting}>
                 {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                {isExporting ? "A Gerar..." : "Gerar PDF"}
+                {isExporting ? "A Gerar..." : "Gerar Proposta"}
             </Button>
           </div>
       </div>
