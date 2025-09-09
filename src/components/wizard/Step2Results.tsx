@@ -141,8 +141,16 @@ export function Step2Results({
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.details || 'Falha ao gerar o PDF no servidor.');
+            let errorDetails = 'Falha ao gerar o PDF no servidor.';
+            try {
+              // Try to parse the error response as JSON
+              const errorData = await response.json();
+              errorDetails = errorData.details || errorData.error || errorDetails;
+            } catch (e) {
+              // If parsing fails, the response was not JSON (e.g., HTML error page)
+              console.error("Could not parse error response as JSON:", e);
+            }
+            throw new Error(errorDetails);
         }
 
         const blob = await response.blob();

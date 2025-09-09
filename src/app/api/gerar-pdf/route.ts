@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import PdfPrinter from 'pdfmake';
 import type { TDocumentDefinitions, StyleDictionary, TFontDictionary } from 'pdfmake/interfaces';
@@ -18,16 +19,8 @@ interface ProposalData {
   proposalValidity: string; // ISO string
 }
 
-const fonts: TFontDictionary = {
-  Roboto: {
-    normal: Buffer.from([]), // pdfmake requires a buffer, even if empty, will fallback to embedded fonts
-    bold: Buffer.from([]),
-    italics: Buffer.from([]),
-    bolditalics: Buffer.from([]),
-  }
-};
-
-const printer = new PdfPrinter(fonts);
+// Initialize printer without custom fonts to use the default embedded Roboto font.
+const printer = new PdfPrinter();
 
 async function generatePdf(docDefinition: TDocumentDefinitions): Promise<Buffer> {
   const pdfDoc = printer.createPdfKitDocument(docDefinition);
@@ -166,7 +159,6 @@ export async function POST(req: NextRequest) {
         }
       ],
       defaultStyle: {
-        font: 'Roboto',
         fontSize: 10,
         lineHeight: 1.15
       },
