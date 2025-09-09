@@ -6,8 +6,10 @@ import './imprimir.css';
 
 export default function ImprimirPropostaPage() {
   useEffect(() => {
-    // This component relies on client-side browser APIs.
+    // Ponto de Inspeção 3: Conteúdo lido do sessionStorage
     const content = sessionStorage.getItem('proposalHtmlToPrint');
+    console.log("3. CONTEÚDO LIDO DO SESSIONSTORAGE:", content);
+
     const printRoot = document.getElementById('print-root');
 
     if (content && printRoot) {

@@ -137,20 +137,39 @@ export function Step2Results({
           address: "Endereço não informado",
       };
       
+      const documentProps = {
+        results,
+        formData,
+        companyData,
+        clientData: finalClientData,
+        customization,
+        proposalId,
+        proposalDate,
+        proposalValidity,
+      };
+
+      // Ponto de Inspeção 1: Dados enviados para renderização
+      console.log("1. DADOS A SEREM ENVIADOS PARA O DOCUMENTO:", documentProps);
+      
       const docToRender = (
-        <ProposalDocument
-          results={results}
-          formData={formData}
-          companyData={companyData}
-          clientData={finalClientData}
-          customization={customization!}
-          proposalId={proposalId}
-          proposalDate={proposalDate}
-          proposalValidity={proposalValidity}
-        />
+        <ProposalDocument {...documentProps} />
       );
 
       const htmlString = ReactDOMServer.renderToString(docToRender);
+      
+      // Ponto de Inspeção 2: String HTML resultante
+      console.log("2. STRING HTML GERADA:", htmlString);
+
+      if (!htmlString || htmlString.trim() === '') {
+          console.error("ERRO CRÍTICO: A renderização do documento resultou numa string vazia.");
+          toast({
+            title: "Erro de Renderização",
+            description: "Não foi possível gerar o conteúdo do documento. Verifique os logs do console.",
+            variant: "destructive",
+          });
+          setIsExporting(false);
+          return;
+      }
       
       sessionStorage.setItem('proposalHtmlToPrint', htmlString);
       
