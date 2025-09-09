@@ -47,7 +47,7 @@ export default function ProposalTemplatePage() {
       console.error("Failed to parse or load proposal data", err);
       setError("Ocorreu um erro ao processar os dados da proposta. Verifique a consola para mais detalhes.");
     }
-  }, []);
+  }, []); // Empty dependency array ensures this runs only once on the client after hydration.
 
   if (error) {
     return (
