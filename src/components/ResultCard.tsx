@@ -1,5 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 interface ResultCardProps {
   icon: React.ReactNode;
@@ -22,7 +25,18 @@ export function ResultCard({ icon, title, value, description, className }: Resul
       </CardHeader>
       <CardContent>
         <p className="text-2xl font-bold">{value}</p>
-        {description && <p className="text-xs text-muted-foreground truncate">{description}</p>}
+        {description && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <p className="text-xs text-muted-foreground truncate">{description}</p>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{description}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </CardContent>
     </Card>
   );
