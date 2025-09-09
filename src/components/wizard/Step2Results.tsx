@@ -3,6 +3,8 @@
 
 import { useState, useEffect } from "react";
 import ReactDOMServer from 'react-dom/server';
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings, SolarCalculationInput } from "@/types";
 import { ResultCard } from "@/components/ResultCard";
 import { Button } from "@/components/ui/button";
@@ -107,88 +109,95 @@ export function Step2Results({
   const tirText = isFinite(tirValue) ? `${formatNumber(tirValue, 2)}%` : "N/A";
 
   const handleExportPdf = async () => {
-    setIsExporting(true);
-    try {
-        const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
-        
-        if (!companyData || !companyData.name) {
-            toast({
-                title: "Empresa não configurada",
-                description: "Por favor, aceda a Definições > Minha Empresa e configure os seus dados antes de exportar.",
-                variant: "destructive",
-                duration: 5000,
-            });
-            setIsExporting(false);
-            return;
-        }
+      setIsExporting(true);
+      try {
+          // 1. Gather all data
+          const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
+          if (!companyData || !companyData.name) {
+              toast({
+                  title: "Empresa não configurada",
+                  description: "Aceda a Definições > Minha Empresa para configurar os seus dados.",
+                  variant: "destructive"
+              });
+              setIsExporting(false);
+              return;
+          }
 
-        const customizationData = localStorage.getItem(CUSTOMIZATION_KEY);
-        const customization: CustomizationSettings = customizationData ? JSON.parse(customizationData) : defaultCustomization;
-        
-        // Use the validated form data already processed by the Wizard
-        const formData = formMethods.getValues().calculationInput;
+          const customization: CustomizationSettings = JSON.parse(localStorage.getItem(CUSTOMIZATION_KEY) || JSON.stringify(defaultCustomization));
+          const formData = formMethods.getValues().calculationInput;
 
-        const finalClientData = clientData || {
-            name: "Cliente Final",
-            document: "Documento não informado",
-            address: "Endereço não informado",
-        };
-        
-        const documentProps = {
-            results, // Use the results passed as props
-            formData, // Use the form data
-            companyData,
-            clientData: finalClientData,
-            customization,
-            proposalId,
-            proposalDate,
-            proposalValidity,
-        };
-        
-        // Ponto de Inspeção 1: Dados enviados para renderização
-        console.log("1. DADOS A SEREM ENVIADOS PARA O DOCUMENTO:", documentProps);
-        
-        const docToRender = (
-            <ProposalDocument {...documentProps} />
-        );
+          const dataToSend = {
+              results,
+              formData,
+              companyData,
+              clientData: clientData || { name: "Cliente Final", document: "-", address: "-" },
+              customization,
+              proposalId,
+              proposalDate: proposalDate.toISOString(),
+              proposalValidity: proposalValidity.toISOString(),
+          };
 
-        const htmlString = ReactDOMServer.renderToString(docToRender);
-        
-        // Ponto de Inspeção 2: String HTML resultante
-        console.log("2. STRING HTML GERADA:", htmlString);
+          // 2. Call the new API route
+          const response = await fetch('/api/gerar-pdf', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(dataToSend),
+          });
 
-        if (!htmlString || htmlString.trim() === '') {
-            console.error("ERRO CRÍTICO: A renderização do documento resultou numa string vazia.");
-            toast({
-                title: "Erro de Renderização",
-                description: "Não foi possível gerar o conteúdo do documento. Verifique os logs do console.",
-                variant: "destructive",
-            });
-            setIsExporting(false);
-            return;
-        }
-        
-        sessionStorage.setItem('proposalHtmlToPrint', htmlString);
-        
-        const printWindow = window.open('/orcamento/imprimir', '_blank');
-        if (!printWindow) {
-            toast({
-                title: "Bloqueador de Pop-up Ativado",
-                description: "Por favor, desative o bloqueador de pop-ups para este site para gerar o PDF.",
-                variant: "destructive",
-            });
-        }
+          if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.error || `O servidor respondeu com o estado ${response.status}`);
+          }
 
-    } catch (error) {
-        console.error("Failed to prepare for PDF export:", error);
-        toast({
-            title: "Erro ao Preparar para Exportação",
-            description: "Não foi possível preparar os dados para o PDF. Verifique o console para mais detalhes.",
-            variant: "destructive",
-        });
-    } finally {
-        setIsExporting(false);
-    }
+          // 3. Handle the HTML content from the response
+          const { htmlContent } = await response.json();
+
+          if (!htmlContent) {
+              throw new Error("A API não retornou conteúdo HTML para o PDF.");
+          }
+
+          // 4. Use html2canvas and jspdf to create the PDF on the client-side
+          const pdfContainer = document.createElement('div');
+          pdfContainer.style.position = 'absolute';
+          pdfContainer.style.left = '-9999px'; // Render off-screen
+          pdfContainer.innerHTML = htmlContent;
+          document.body.appendChild(pdfContainer);
+          
+          const proposalElement = pdfContainer.querySelector('.proposal-document') as HTMLElement;
+
+          if(!proposalElement) {
+              document.body.removeChild(pdfContainer);
+              throw new Error("Elemento da proposta não encontrado no HTML renderizado.");
+          }
+
+          const canvas = await html2canvas(proposalElement, {
+              scale: 2, // Higher scale for better quality
+              useCORS: true,
+              logging: false,
+          });
+
+          const imgData = canvas.toDataURL('image/png');
+          const pdf = new jsPDF({
+              orientation: 'portrait',
+              unit: 'px',
+              format: [canvas.width, canvas.height]
+          });
+
+          pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+          pdf.save(`proposta-${proposalId}.pdf`);
+          
+          document.body.removeChild(pdfContainer); // Clean up the container
+
+      } catch (error: any) {
+          console.error("Falha ao gerar o PDF:", error);
+          toast({
+              title: "Erro ao Gerar PDF",
+              description: error.message || "Ocorreu um erro inesperado. Tente novamente.",
+              variant: "destructive",
+          });
+      } finally {
+          setIsExporting(false);
+      }
   };
   
   const handleAiRefinement = async () => {
@@ -378,7 +387,7 @@ export function Step2Results({
 
             <Button type="button" onClick={handleExportPdf} disabled={isExporting}>
                 {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                {isExporting ? "A Preparar..." : "Gerar PDF"}
+                {isExporting ? "A Gerar..." : "Gerar PDF"}
             </Button>
           </div>
       </div>
@@ -462,7 +471,3 @@ const ComparisonItem = ({ label, value, highlight = false }: { label: string, va
         <p className={`font-semibold text-base ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
     </div>
 );
-
-    
-
-    
