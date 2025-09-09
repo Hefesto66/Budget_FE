@@ -94,7 +94,17 @@ export function Step2Results({
       if (savedCompanyData) setCompanyData(JSON.parse(savedCompanyData));
 
       const savedCustomization = localStorage.getItem(CUSTOMIZATION_KEY);
-      if (savedCustomization) setCustomization(JSON.parse(savedCustomization));
+       if (savedCustomization) {
+        const parsed = JSON.parse(savedCustomization);
+        // Merge with defaults to ensure all keys are present
+        setCustomization(prev => ({
+          ...defaultCustomization,
+          ...parsed,
+          colors: { ...defaultCustomization.colors, ...parsed.colors },
+          content: { ...defaultCustomization.content, ...parsed.content },
+          footer: { ...defaultCustomization.footer, ...parsed.footer },
+        }));
+      }
     } catch (e) {
       console.error("Failed to load data for printing from localStorage", e);
     }
@@ -104,7 +114,7 @@ export function Step2Results({
     content: () => proposalRef.current,
     onBeforeGetContent: () => {
       if (!companyData || !companyData.name) {
-        toast({ title: "Empresa não configurada", description: "Aceda a Definições > Minha Empresa.", variant: "destructive" });
+        toast({ title: "Empresa não configurada", description: "Aceda a Definições > Minha Empresa para preencher os seus dados.", variant: "destructive" });
         return Promise.reject();
       }
       return Promise.resolve();
@@ -351,7 +361,7 @@ export function Step2Results({
         </AlertDialogContent>
       </AlertDialog>
 
-      <div style={{ display: 'none' }}>
+      <div className="hidden">
         {companyData && (
           <div ref={proposalRef}>
             <ProposalDocument
