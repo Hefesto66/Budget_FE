@@ -5,11 +5,13 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     
-    // Determine the Netlify function URL. In development, it might be different.
-    const functionUrl = process.env.NODE_ENV === 'development' 
-      ? 'http://localhost:9999/.netlify/functions/gemini' 
-      : `${process.env.URL}/.netlify/functions/gemini`;
+    // Use an explicit environment variable for the Netlify function URL.
+    const functionUrl = process.env.NETLIFY_FUNCTION_URL;
 
+    if (!functionUrl) {
+        throw new Error("A URL da função Netlify (NETLIFY_FUNCTION_URL) não está configurada.");
+    }
+    
     // Forward the request to the Netlify serverless function
     const response = await fetch(functionUrl, {
       method: 'POST',
@@ -21,7 +23,7 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.details || 'Netlify function returned an error.');
+      throw new Error(errorData.details || 'A função Netlify retornou um erro.');
     }
 
     const pdfBuffer = await response.arrayBuffer();
