@@ -60,6 +60,11 @@ export async function POST(req: NextRequest) {
       { text: formatCurrency(item.cost), style: 'tableCell', alignment: 'right' },
       { text: formatCurrency(item.cost * item.quantity), style: 'tableCell', alignment: 'right' },
     ]);
+
+    const tirValue = results.financeiro.tir_percentual;
+    const tirText = (isFinite(tirValue) && tirValue !== Infinity) 
+        ? `${formatNumber(tirValue, 2)}%` 
+        : 'N/A';
     
     const docDefinition: TDocumentDefinitions = {
       content: [
@@ -154,7 +159,7 @@ export async function POST(req: NextRequest) {
         {
             columns: [
                  { text: `VPL (Valor Presente Líquido):\n${formatCurrency(results.financeiro.vpl_reais)}`, style: 'bodyText' },
-                 { text: `TIR (Taxa Interna de Retorno):\n${isFinite(results.financeiro.tir_percentual) ? `${formatNumber(results.financeiro.tir_percentual, 2)}%` : 'N/A'}`, style: 'bodyText' },
+                 { text: `TIR (Taxa Interna de Retorno):\n${tirText}`, style: 'bodyText' },
             ]
         }
       ],
