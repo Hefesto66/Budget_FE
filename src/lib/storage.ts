@@ -400,3 +400,9 @@ export const saveProduct = (newProduct: Product): void => {
   }
   saveToStorage(PRODUCTS_STORAGE_KEY, products);
 };
+
+export const deleteProduct = (productId: string): void => {
+    let products = getProducts();
+    products = products.filter(product => product.id !== productId);
+    saveToStorage(PRODUCTS_STORAGE_KEY, products);
+};

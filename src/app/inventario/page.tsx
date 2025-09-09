@@ -6,10 +6,23 @@ import Link from 'next/link';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Search, Package, Sun, GitBranch, Wrench } from 'lucide-react';
-import { getProducts, type Product, PRODUCT_CATEGORIES } from '@/lib/storage';
+import { PlusCircle, Search, Package, Sun, GitBranch, Wrench, Trash2, CheckSquare, X } from 'lucide-react';
+import { getProducts, type Product, PRODUCT_CATEGORIES, deleteProduct } from '@/lib/storage';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 const ProductIcon = ({ category }: { category: Product['category'] }) => {
     switch (category) {
@@ -20,35 +33,107 @@ const ProductIcon = ({ category }: { category: Product['category'] }) => {
     }
 }
 
-const ProductCard = ({ product }: { product: Product }) => (
-  <Link href={`/inventario/${product.id}`}>
-    <div className="group flex h-full flex-col items-start gap-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm transition-all hover:shadow-md hover:-translate-y-1">
-        <div className="flex w-full items-start justify-between">
-            <div className="flex-1">
-                <h3 className="font-bold text-lg text-primary">{product.name}</h3>
-                <p className="text-sm font-bold text-muted-foreground">{formatCurrency(product.salePrice)}</p>
-            </div>
-            <div className="relative flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
-                <ProductIcon category={product.category} />
-            </div>
-        </div>
-         <div className="flex flex-wrap gap-1 mt-auto">
-            <Badge variant="secondary" className="text-xs">{PRODUCT_CATEGORIES[product.category]}</Badge>
-        </div>
+interface ProductCardProps {
+  product: Product;
+  onDelete: (productId: string) => void;
+  selectionMode: boolean;
+  isSelected: boolean;
+  onSelectionChange: (productId: string, checked: boolean) => void;
+}
+
+const ProductCard = ({ product, onDelete, selectionMode, isSelected, onSelectionChange }: ProductCardProps) => (
+  <div className="relative group">
+    <div className="absolute top-3 left-3 z-10 transition-opacity duration-200" style={{ opacity: selectionMode ? 1 : 0, pointerEvents: selectionMode ? 'auto' : 'none' }}>
+        <Checkbox
+            id={`select-${product.id}`}
+            checked={isSelected}
+            onCheckedChange={(checked) => onSelectionChange(product.id, !!checked)}
+            className="h-5 w-5 bg-background border-primary"
+        />
     </div>
-  </Link>
+    <Link href={`/inventario/${product.id}`} className="block">
+        <div className="flex h-full flex-col items-start gap-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm transition-all hover:shadow-md hover:-translate-y-1">
+            <div className="flex w-full items-start justify-between">
+                <div className="flex-1">
+                    <h3 className="font-bold text-lg text-primary">{product.name}</h3>
+                    <p className="text-sm font-bold text-muted-foreground">{formatCurrency(product.salePrice)}</p>
+                </div>
+                <div className="relative flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
+                    <ProductIcon category={product.category} />
+                </div>
+            </div>
+            <div className="flex flex-wrap gap-1 mt-auto">
+                <Badge variant="secondary" className="text-xs">{PRODUCT_CATEGORIES[product.category]}</Badge>
+            </div>
+        </div>
+    </Link>
+    <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="icon" className="h-8 w-8">
+                    <Trash2 className="h-4 w-4" />
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir Produto?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Esta ação não pode ser desfeita. Isto irá apagar permanentemente o produto "{product.name}".
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => onDelete(product.id)}>Confirmar Exclusão</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    </div>
+  </div>
 );
 
 
 export default function InventarioPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [selectionMode, setSelectionMode] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const { toast } = useToast();
+
+  const fetchProducts = () => {
+    setProducts(getProducts());
+  };
 
   useEffect(() => {
     setIsClient(true);
-    setProducts(getProducts());
+    fetchProducts();
   }, []);
+
+  const handleSelectionChange = (productId: string, checked: boolean) => {
+    setSelectedProducts(prev => 
+      checked ? [...prev, productId] : prev.filter(id => id !== productId)
+    );
+  };
+  
+  const handleDelete = (productIds: string[]) => {
+    const plural = productIds.length > 1;
+    productIds.forEach(id => deleteProduct(id));
+    fetchProducts();
+    toast({
+        title: `Produto${plural ? 's' : ''} Excluído${plural ? 's' : ''}`,
+        description: `O${plural ? 's' : ''} item${plural ? 's' : ''} selecionado${plural ? 's' : ''} foi removido do inventário.`
+    });
+    setSelectedProducts([]);
+    setSelectionMode(false);
+  };
+  
+  const toggleSelectAll = () => {
+    if (selectedProducts.length === filteredProducts.length) {
+      setSelectedProducts([]);
+    } else {
+      setSelectedProducts(filteredProducts.map(p => p.id));
+    }
+  };
 
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -71,18 +156,60 @@ export default function InventarioPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button size="lg" asChild>
-            <Link href="/inventario/novo">
-              <PlusCircle className="mr-2 h-5 w-5" />
-              Novo Produto
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            {selectionMode ? (
+              <>
+                 <Button variant="outline" onClick={toggleSelectAll}>
+                    Selecionar Todos ({selectedProducts.length})
+                 </Button>
+                 <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" disabled={selectedProducts.length === 0}>
+                        <Trash2 className="mr-2 h-5 w-5" /> Excluir Selecionados
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                       <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir {selectedProducts.length} Produtos?</AlertDialogTitle>
+                          <AlertDialogDescription>Esta ação é irreversível.</AlertDialogDescription>
+                       </AlertDialogHeader>
+                       <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(selectedProducts)}>Confirmar</AlertDialogAction>
+                       </AlertDialogFooter>
+                    </AlertDialogContent>
+                 </AlertDialog>
+                 <Button variant="ghost" onClick={() => { setSelectionMode(false); setSelectedProducts([]); }}>
+                    <X className="mr-2 h-5 w-5"/> Cancelar
+                 </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => setSelectionMode(true)}>
+                    <CheckSquare className="mr-2 h-5 w-5"/> Selecionar
+                </Button>
+                <Button size="lg" asChild>
+                  <Link href="/inventario/novo">
+                    <PlusCircle className="mr-2 h-5 w-5" />
+                    Novo Produto
+                  </Link>
+                </Button>
+              </>
+            )}
+          </div>
         </div>
         
         {filteredProducts.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {filteredProducts.map(product => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard 
+                key={product.id} 
+                product={product} 
+                onDelete={(id) => handleDelete([id])}
+                selectionMode={selectionMode}
+                isSelected={selectedProducts.includes(product.id)}
+                onSelectionChange={handleSelectionChange}
+              />
             ))}
           </div>
         ) : (
