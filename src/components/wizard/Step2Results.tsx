@@ -123,7 +123,6 @@ export function Step2Results({
       
       const customization: CustomizationSettings = JSON.parse(localStorage.getItem(CUSTOMIZATION_KEY) || JSON.stringify(defaultCustomization));
       
-      // Dynamic import of html2canvas
       const { default: html2canvas } = await import('html2canvas');
 
       const htmlString = ReactDOMServer.renderToString(
@@ -164,6 +163,7 @@ export function Step2Results({
         orientation: 'p',
         unit: 'mm',
         format: 'a4',
+        compress: true,
       });
       
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -180,7 +180,7 @@ export function Step2Results({
       pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pageImgHeight);
       heightLeft -= pdfHeight;
       
-      while (heightLeft > 0) {
+      while (heightLeft > 1) { // Changed condition to prevent empty pages for small remainders
         position -= pdfHeight;
         pdf.addPage();
         pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pageImgHeight);
