@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings, Quote } from "@/types";
 import { ResultCard } from "@/components/ResultCard";
 import { Button } from "@/components/ui/button";
@@ -27,11 +27,12 @@ import { useFormContext } from "react-hook-form";
 import type { WizardFormData } from "./Wizard";
 import { AnimatePresence, motion } from "framer-motion";
 import { DetailedAnalysisChart } from "./DetailedAnalysisChart";
+import { useReactToPrint } from 'react-to-print';
+import { ProposalDocument } from "../proposal/ProposalDocument";
 
 
 const COMPANY_DATA_KEY = "companyData";
 const CUSTOMIZATION_KEY = "proposalCustomization";
-const PROPOSAL_DATA_SESSION_KEY = "printableProposalData";
 
 const defaultCustomization: CustomizationSettings = {
   colors: {
@@ -75,8 +76,6 @@ export function Step2Results({
   const { toast } = useToast();
   const formMethods = useFormContext<WizardFormData>();
   
-  const [isExporting, setIsExporting] = useState(false);
-  
   const [isRefining, setIsRefining] = useState(false);
   const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
 
@@ -84,49 +83,35 @@ export function Step2Results({
   
   const billOfMaterials = formMethods.watch('billOfMaterials');
 
-  const handleExportPdf = async () => {
-    setIsExporting(true);
+  // --- Start Print Logic ---
+  const proposalRef = useRef<HTMLDivElement>(null);
+  const [companyData, setCompanyData] = useState<CompanyFormData | null>(null);
+  const [customization, setCustomization] = useState<CustomizationSettings>(defaultCustomization);
+
+  useEffect(() => {
     try {
-      const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
+      const savedCompanyData = localStorage.getItem(COMPANY_DATA_KEY);
+      if (savedCompanyData) setCompanyData(JSON.parse(savedCompanyData));
+
+      const savedCustomization = localStorage.getItem(CUSTOMIZATION_KEY);
+      if (savedCustomization) setCustomization(JSON.parse(savedCustomization));
+    } catch (e) {
+      console.error("Failed to load data for printing from localStorage", e);
+    }
+  }, []);
+
+  const handlePrint = useReactToPrint({
+    content: () => proposalRef.current,
+    onBeforeGetContent: () => {
       if (!companyData || !companyData.name) {
         toast({ title: "Empresa não configurada", description: "Aceda a Definições > Minha Empresa.", variant: "destructive" });
-        setIsExporting(false);
-        return;
+        return Promise.reject();
       }
-      
-      const savedSettings = localStorage.getItem(CUSTOMIZATION_KEY);
-      const customization: CustomizationSettings = savedSettings ? JSON.parse(savedSettings) : defaultCustomization;
-      
-      const quoteData: Quote = {
-        id: proposalId,
-        leadId: '',
-        createdAt: new Date().toISOString(),
-        formData: formMethods.getValues().calculationInput,
-        results: results,
-        billOfMaterials: formMethods.getValues().billOfMaterials,
-      };
-
-      const finalClientData = clientData || { name: "Cliente Final", document: "-", address: "-" };
-
-      const printableData = {
-        quote: quoteData,
-        client: finalClientData,
-        company: companyData,
-        customization: customization,
-      };
-      
-      sessionStorage.setItem(PROPOSAL_DATA_SESSION_KEY, JSON.stringify(printableData));
-
-      const url = new URL("/orcamento/imprimir", window.location.origin);
-      window.open(url.toString(), "_blank");
-
-    } catch (error: any) {
-      console.error("Falha ao preparar para gerar PDF:", error);
-      toast({ title: "Erro ao Preparar PDF", description: error.message, variant: "destructive" });
-    } finally {
-      setIsExporting(false);
-    }
-  };
+      return Promise.resolve();
+    },
+    documentTitle: `Proposta-${proposalId}-${clientData?.name || 'Cliente'}`,
+  });
+  // --- End Print Logic ---
   
   const handleAiRefinement = async () => {
     setIsRefining(true);
@@ -180,6 +165,8 @@ export function Step2Results({
   
   const tirValue = results?.financeiro?.tir_percentual;
   const tirText = isFinite(tirValue) ? `${formatNumber(tirValue, 2)}%` : "N/A";
+
+  const finalClientData = clientData || { name: "Cliente Final", document: "-", address: "-" };
 
   return (
     <>
@@ -299,17 +286,18 @@ export function Step2Results({
                 Refinar com IA
             </Button>
             
-            <Button type="button" onClick={onSave} disabled={isExporting}>
+            <Button type="button" onClick={onSave}>
                 <Save className="mr-2 h-4 w-4" />
                 {isEditing ? "Atualizar Cotação" : "Salvar Cotação"}
             </Button>
 
-            <Button type="button" onClick={handleExportPdf} disabled={isExporting}>
-                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                {isExporting ? "A Preparar..." : "Gerar Proposta"}
+            <Button type="button" onClick={handlePrint}>
+                <FileDown className="mr-2 h-4 w-4" />
+                Gerar Proposta
             </Button>
           </div>
       </div>
+
        <AlertDialog open={!!refinedSuggestion} onOpenChange={(isOpen) => !isOpen && setRefinedSuggestion(null)}>
         <AlertDialogContent className="max-w-2xl">
         <AlertDialogHeader>
@@ -361,7 +349,25 @@ export function Step2Results({
             </Button>
         </AlertDialogFooter>
         </AlertDialogContent>
-    </AlertDialog>
+      </AlertDialog>
+
+      <div style={{ display: 'none' }}>
+        {companyData && (
+          <div ref={proposalRef}>
+            <ProposalDocument
+                results={results}
+                formData={formMethods.getValues().calculationInput}
+                billOfMaterials={formMethods.getValues().billOfMaterials}
+                companyData={companyData}
+                clientData={finalClientData}
+                customization={customization}
+                proposalId={proposalId}
+                proposalDate={new Date()}
+                proposalValidity={new Date(new Date().setDate(new Date().getDate() + 20))}
+            />
+          </div>
+        )}
+      </div>
     </>
   );
 }
@@ -373,5 +379,3 @@ const ComparisonItem = ({ label, value, highlight = false }: { label: string, va
         <p className={`font-semibold text-base ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
     </div>
 );
-
-    
