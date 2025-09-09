@@ -54,21 +54,9 @@ export async function POST(req: NextRequest) {
       return new NextResponse(JSON.stringify({ error: 'Dados insuficientes para gerar a proposta.' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
     
-    // Render the React component to an HTML string
-    // THIS IS THE CORRECTED SYNTAX
-    const htmlString = ReactDOMServer.renderToString(
-      <ProposalDocument
-        results={results}
-        formData={formData}
-        companyData={companyData}
-        clientData={clientData}
-        customization={customization}
-        proposalId={proposalId}
-        proposalDate={new Date(proposalDate)}
-        proposalValidity={new Date(proposalValidity)}
-      />
-    );
-    
+    // ISOLATION TEST: Render a simple div instead of the complex component
+    const htmlString = ReactDOMServer.renderToString(<div>Teste</div>);
+
     // This API route has been deprecated in favor of a client-side rendering approach.
     // The client-side implementation will handle creating the PDF.
     // This response is simplified and kept for reference, but the primary logic
