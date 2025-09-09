@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
-import { getCalculation, getRefinedSuggestions } from "@/app/orcamento/actions";
+import { getRefinedSuggestions } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, BarChart, Zap, Calendar, FileDown, Loader2, FileSignature, CheckCircle, Pencil, Save, LineChart, Target, ChevronDown, Power, Wrench, Package } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
@@ -53,7 +53,6 @@ interface Step2ResultsProps {
   proposalId: string;
   clientData: ClientFormData | null;
   onBack: () => void;
-  onRecalculate: (newResults: SolarCalculationResult) => void;
   onSave: () => void;
   onGoToDataInput: () => void;
   isEditing: boolean;
@@ -64,7 +63,6 @@ export function Step2Results({
   proposalId,
   clientData,
   onBack, 
-  onRecalculate, 
   onSave, 
   onGoToDataInput, 
   isEditing 
@@ -110,85 +108,84 @@ export function Step2Results({
 
   const handleExportPdf = async () => {
     setIsExporting(true);
-    
     try {
-      const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
-      
-      // CRITICAL FIX: Abort if company data is missing
-      if (!companyData || !companyData.name) {
-        toast({
-          title: "Empresa não configurada",
-          description: "Por favor, aceda a Definições > Minha Empresa e configure os seus dados antes de exportar.",
-          variant: "destructive",
-          duration: 5000,
-        });
-        setIsExporting(false);
-        return; // Stop execution
-      }
+        const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
+        
+        if (!companyData || !companyData.name) {
+            toast({
+                title: "Empresa não configurada",
+                description: "Por favor, aceda a Definições > Minha Empresa e configure os seus dados antes de exportar.",
+                variant: "destructive",
+                duration: 5000,
+            });
+            setIsExporting(false);
+            return;
+        }
 
-      const customizationData = localStorage.getItem(CUSTOMIZATION_KEY);
-      const customization: CustomizationSettings = customizationData ? JSON.parse(customizationData) : defaultCustomization;
-      const formData = formMethods.getValues().calculationInput;
+        const customizationData = localStorage.getItem(CUSTOMIZATION_KEY);
+        const customization: CustomizationSettings = customizationData ? JSON.parse(customizationData) : defaultCustomization;
+        
+        // Use the validated form data already processed by the Wizard
+        const formData = formMethods.getValues().calculationInput;
 
-      // Handle optional client data safely
-      const finalClientData = clientData || {
-          name: "Cliente Final",
-          document: "Documento não informado",
-          address: "Endereço não informado",
-      };
-      
-      const documentProps = {
-        results,
-        formData,
-        companyData,
-        clientData: finalClientData,
-        customization,
-        proposalId,
-        proposalDate,
-        proposalValidity,
-      };
+        const finalClientData = clientData || {
+            name: "Cliente Final",
+            document: "Documento não informado",
+            address: "Endereço não informado",
+        };
+        
+        const documentProps = {
+            results, // Use the results passed as props
+            formData, // Use the form data
+            companyData,
+            clientData: finalClientData,
+            customization,
+            proposalId,
+            proposalDate,
+            proposalValidity,
+        };
+        
+        // Ponto de Inspeção 1: Dados enviados para renderização
+        console.log("1. DADOS A SEREM ENVIADOS PARA O DOCUMENTO:", documentProps);
+        
+        const docToRender = (
+            <ProposalDocument {...documentProps} />
+        );
 
-      // Ponto de Inspeção 1: Dados enviados para renderização
-      console.log("1. DADOS A SEREM ENVIADOS PARA O DOCUMENTO:", documentProps);
-      
-      const docToRender = (
-        <ProposalDocument {...documentProps} />
-      );
+        const htmlString = ReactDOMServer.renderToString(docToRender);
+        
+        // Ponto de Inspeção 2: String HTML resultante
+        console.log("2. STRING HTML GERADA:", htmlString);
 
-      const htmlString = ReactDOMServer.renderToString(docToRender);
-      
-      // Ponto de Inspeção 2: String HTML resultante
-      console.log("2. STRING HTML GERADA:", htmlString);
-
-      if (!htmlString || htmlString.trim() === '') {
-          console.error("ERRO CRÍTICO: A renderização do documento resultou numa string vazia.");
-          toast({
-            title: "Erro de Renderização",
-            description: "Não foi possível gerar o conteúdo do documento. Verifique os logs do console.",
-            variant: "destructive",
-          });
-          setIsExporting(false);
-          return;
-      }
-      
-      sessionStorage.setItem('proposalHtmlToPrint', htmlString);
-      
-      const printWindow = window.open('/orcamento/imprimir', '_blank');
-      if (!printWindow) {
-        toast({
-          title: "Bloqueador de Pop-up Ativado",
-          description: "Por favor, desative o bloqueador de pop-ups para este site para gerar o PDF.",
-          variant: "destructive",
-        });
-      }
+        if (!htmlString || htmlString.trim() === '') {
+            console.error("ERRO CRÍTICO: A renderização do documento resultou numa string vazia.");
+            toast({
+                title: "Erro de Renderização",
+                description: "Não foi possível gerar o conteúdo do documento. Verifique os logs do console.",
+                variant: "destructive",
+            });
+            setIsExporting(false);
+            return;
+        }
+        
+        sessionStorage.setItem('proposalHtmlToPrint', htmlString);
+        
+        const printWindow = window.open('/orcamento/imprimir', '_blank');
+        if (!printWindow) {
+            toast({
+                title: "Bloqueador de Pop-up Ativado",
+                description: "Por favor, desative o bloqueador de pop-ups para este site para gerar o PDF.",
+                variant: "destructive",
+            });
+        }
 
     } catch (error) {
-      console.error("Failed to prepare for PDF export:", error);
-      toast({
-        title: "Erro ao Preparar para Exportação",
-        description: "Não foi possível preparar os dados para o PDF. Verifique o console para mais detalhes.",
-        variant: "destructive",
-      });
+        console.error("Failed to prepare for PDF export:", error);
+        toast({
+            title: "Erro ao Preparar para Exportação",
+            description: "Não foi possível preparar os dados para o PDF. Verifique o console para mais detalhes.",
+            variant: "destructive",
+        });
     } finally {
         setIsExporting(false);
     }
@@ -465,5 +462,7 @@ const ComparisonItem = ({ label, value, highlight = false }: { label: string, va
         <p className={`font-semibold text-base ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
     </div>
 );
+
+    
 
     

@@ -197,111 +197,94 @@ export function Wizard() {
   const processForm = async (data: WizardFormData) => {
     setIsLoading(true);
     try {
-        // Use the raw, unparsed data from the form
-        const billOfMaterials = data.billOfMaterials;
+      const billOfMaterials = data.billOfMaterials;
   
-        // 1. Extração dos Dados Técnicos e Validação
-        const panelItem = billOfMaterials.find(item => item.category === 'PAINEL_SOLAR');
-        const inverterItem = billOfMaterials.find(item => item.category === 'INVERSOR');
+      const panelItem = billOfMaterials.find(item => item.category === 'PAINEL_SOLAR');
+      const inverterItem = billOfMaterials.find(item => item.category === 'INVERSOR');
   
-        if (!panelItem) {
-          toast({ title: "Erro de Validação", description: "Adicione um 'Painel Solar' à lista de materiais para continuar.", variant: "destructive" });
-          setIsLoading(false);
-          return;
-        }
-        if (!inverterItem) {
-          toast({ title: "Erro de Validação", description: "Adicione um 'Inversor' à lista de materiais para continuar.", variant: "destructive" });
-          setIsLoading(false);
-          return;
-        }
+      if (!panelItem) {
+        toast({ title: "Erro de Validação", description: "Adicione um 'Painel Solar' à lista de materiais.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+      }
+      if (!inverterItem) {
+        toast({ title: "Erro de Validação", description: "Adicione um 'Inversor' à lista de materiais.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+      }
   
-        const panelPowerWp = panelItem.technicalSpecifications?.['Potência (Wp)'] 
-          ? parseFloat(panelItem.technicalSpecifications['Potência (Wp)'])
-          : 0;
+      const panelPowerWp = parseFloat(panelItem.technicalSpecifications?.['Potência (Wp)'] || '0');
+      const inverterEfficiencyPercent = parseFloat(inverterItem.technicalSpecifications?.['Eficiência (%)'] || '0');
   
-        const inverterEfficiencyPercent = inverterItem.technicalSpecifications?.['Eficiência (%)']
-          ? parseFloat(inverterItem.technicalSpecifications['Eficiência (%)'])
-          : 0;
+      if (isNaN(panelPowerWp) || panelPowerWp <= 0) {
+        toast({ title: "Dados Incompletos", description: "O painel solar selecionado não possui a especificação 'Potência (Wp)' ou o valor é inválido.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+      }
   
-        if (isNaN(panelPowerWp) || panelPowerWp <= 0) {
-            toast({ title: "Dados Incompletos", description: "O painel solar selecionado não possui a especificação 'Potência (Wp)' ou o valor é inválido.", variant: "destructive" });
-            setIsLoading(false);
-            return;
-        }
+      if (isNaN(inverterEfficiencyPercent) || inverterEfficiencyPercent <= 0) {
+        toast({ title: "Dados Incompletos", description: "O inversor selecionado não possui a especificação 'Eficiência (%)' ou o valor é inválido.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+      }
   
-        if (isNaN(inverterEfficiencyPercent) || inverterEfficiencyPercent <= 0) {
-            toast({ title: "Dados Incompletos", description: "O inversor selecionado não possui a especificação 'Eficiência (%)' ou o valor é inválido.", variant: "destructive" });
-            setIsLoading(false);
-            return;
-        }
+      const totalSystemCost = billOfMaterials.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
+      const serviceItem = billOfMaterials.find(item => item.category === 'SERVICO');
   
-        // 2. Cálculo do Custo Total do Sistema
-        const totalSystemCost = billOfMaterials.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
-        const serviceItem = billOfMaterials.find(item => item.category === 'SERVICO');
+      const calculationData: SolarCalculationInput = {
+        ...(data.calculationInput as SolarCalculationInput),
+        custo_sistema_reais: totalSystemCost,
+        quantidade_modulos: panelItem.quantity,
+        potencia_modulo_wp: panelPowerWp,
+        eficiencia_inversor_percent: inverterEfficiencyPercent,
+        custo_inversor_reais: inverterItem.cost,
+        preco_modulo_reais: panelItem.cost,
+        fabricante_modulo: panelItem.manufacturer,
+        quantidade_inversores: inverterItem.quantity,
+        fabricante_inversor: inverterItem.manufacturer,
+        modelo_inversor: inverterItem.name,
+        potencia_inversor_kw: parseFloat(inverterItem.technicalSpecifications?.['Potência de Saída (kW)'] || '0'),
+        custo_fixo_instalacao_reais: serviceItem?.cost ?? 0,
+        garantia_defeito_modulo_anos: 12,
+        garantia_geracao_modulo_anos: 25,
+        tensao_inversor_v: 220,
+        garantia_inversor_anos: 5,
+      };
   
-        // 3. Montagem do Objeto Final
-        const calculationData: SolarCalculationInput = {
-            ...(data.calculationInput as SolarCalculationInput),
-            custo_sistema_reais: totalSystemCost,
-            quantidade_modulos: panelItem.quantity,
-            potencia_modulo_wp: panelPowerWp,
-            eficiencia_inversor_percent: inverterEfficiencyPercent,
-            custo_inversor_reais: inverterItem.cost,
-            preco_modulo_reais: panelItem.cost,
-            fabricante_modulo: panelItem.manufacturer,
-            quantidade_inversores: inverterItem.quantity,
-            fabricante_inversor: inverterItem.manufacturer,
-            modelo_inversor: inverterItem.name,
-            potencia_inversor_kw: parseFloat(inverterItem.technicalSpecifications?.['Potência de Saída (kW)'] || '0'),
-            custo_fixo_instalacao_reais: serviceItem?.cost ?? 0,
-            garantia_defeito_modulo_anos: 12, 
-            garantia_geracao_modulo_anos: 25, 
-            tensao_inversor_v: 220, 
-            garantia_inversor_anos: 5,
-        };
+      const finalValidatedData = solarCalculationSchema.parse(calculationData);
+      const result = await getCalculation(finalValidatedData);
   
-        // Validação final com o Zod schema antes de enviar
-        const finalValidatedData = solarCalculationSchema.parse(calculationData);
-        
-        const result = await getCalculation(finalValidatedData);
-  
-        if (result.success && result.data) {
-            toast({ title: "Cálculo bem-sucedido!", description: "A exibir análise financeira." });
-            setResults(result.data);
-            methods.setValue('calculationInput', finalValidatedData as any);
-            setCurrentStep(1);
-        } else {
-            toast({
-                title: "Erro no Cálculo",
-                description: result.error || "Ocorreu uma falha no servidor ao processar a cotação.",
-                variant: "destructive",
-            });
-            console.error("Server-side calculation failed:", result.error);
-        }
+      if (result.success && result.data) {
+        toast({ title: "Cálculo bem-sucedido!", description: "A exibir análise financeira." });
+        setResults(result.data);
+        methods.setValue('calculationInput', finalValidatedData as any);
+        setCurrentStep(1);
+      } else {
+        toast({
+          title: "Erro no Cálculo",
+          description: result.error || "Ocorreu uma falha no servidor ao processar a cotação.",
+          variant: "destructive",
+        });
+        console.error("Server-side calculation failed:", result.error);
+      }
   
     } catch (error: any) {
-        console.error("ERRO DE VALIDAÇÃO OU PROCESSAMENTO:", error);
-        toast({
-            title: "Erro de Validação",
-            description: `Verifique os campos do formulário. Detalhe: ${error.errors?.[0]?.message || error.message}`,
-            variant: "destructive",
-        });
+      console.error("ERRO DE VALIDAÇÃO OU PROCESSAMENTO:", error);
+      toast({
+        title: "Erro de Validação",
+        description: `Verifique os campos do formulário. Detalhe: ${error.errors?.[0]?.message || error.message}`,
+        variant: "destructive",
+      });
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
-
-  const handleManualSubmit = async () => {
+  const handleManualSubmit = () => {
     const currentFormValues = methods.getValues();
-    await processForm(currentFormValues);
+    processForm(currentFormValues);
   };
   
-  
-  const handleRecalculate = (newResults: SolarCalculationResult) => {
-    setResults(newResults);
-  }
-
   const handleSaveQuote = () => {
     if (!leadId || !clienteId) {
         toast({ title: "Erro", description: "Contexto do lead ou cliente não encontrados para salvar.", variant: "destructive" });
@@ -591,7 +574,6 @@ export function Wizard() {
                     proposalId={proposalId}
                     clientData={clientData}
                     onBack={() => { setResults(null); setCurrentStep(0); }}
-                    onRecalculate={handleRecalculate}
                     onSave={handleSaveQuote}
                     onGoToDataInput={() => setCurrentStep(0)}
                     isEditing={!!quoteId}
@@ -605,3 +587,5 @@ export function Wizard() {
     </div>
   );
 }
+
+    
