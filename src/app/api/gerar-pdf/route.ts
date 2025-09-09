@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
     }
     
     // Render the React component to an HTML string
+    // THIS IS THE CORRECTED SYNTAX
     const htmlString = ReactDOMServer.renderToString(
       <ProposalDocument
         results={results}
