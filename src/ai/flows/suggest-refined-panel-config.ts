@@ -12,7 +12,7 @@
  */
 
 import {z} from 'zod';
-import { solarCalculationSchema } from '@/types';
+import { solarCalculationSchema } from '../types';
 
 // Define a type for the system status
 type SystemStatus = 'OTIMIZADO' | 'SUBDIMENSIONADO' | 'SUPERDIMENSIONADO';
@@ -159,3 +159,5 @@ export async function suggestRefinedPanelConfig(
 
     return SuggestRefinedPanelConfigOutputSchema.parse(result);
 }
+
+    

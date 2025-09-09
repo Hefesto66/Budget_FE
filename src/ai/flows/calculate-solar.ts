@@ -6,7 +6,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { solarCalculationSchema, type SolarCalculationInput } from '@/types';
+import { solarCalculationSchema, type SolarCalculationInput } from '../types';
 import { z } from 'zod';
 
 const DISPONIBILITY_COST_KWH: Record<string, number> = {
@@ -179,3 +179,5 @@ const calculateSolarFlow = ai.defineFlow(
     };
   }
 );
+
+    
