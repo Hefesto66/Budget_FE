@@ -1,193 +1,60 @@
-import { NextRequest, NextResponse } from 'next/server';
-import PdfPrinter from 'pdfmake';
-import type { TDocumentDefinitions, StyleDictionary } from 'pdfmake/interfaces';
-import { formatCurrency, formatNumber, formatDate } from '@/lib/utils';
-import type { SolarCalculationResult, ClientFormData, CustomizationSettings } from '@/types';
-import type { CompanyFormData } from '@/app/minha-empresa/page';
-import type { WizardFormData } from '@/components/wizard/Wizard';
+# Relatório Técnico de Incidente: Geração de PDF
 
-interface ProposalData {
-  results: SolarCalculationResult;
-  formData: WizardFormData['calculationInput'];
-  billOfMaterials: WizardFormData['billOfMaterials'];
-  companyData: CompanyFormData;
-  clientData: ClientFormData;
-  customization: CustomizationSettings;
-  proposalId: string;
-  proposalDate: string; // ISO string
-  proposalValidity: string; // ISO string
-}
+## 1. Objetivo da Funcionalidade
 
-// Initialize printer without custom fonts to use the default embedded Roboto font.
-const printer = new PdfPrinter();
+O objetivo principal é gerar uma proposta comercial em formato PDF a partir de dados inseridos pelo utilizador na aplicação. A proposta deve ser visualmente bem formatada, com suporte para imagens (logótipo da empresa), tabelas, estilos personalizados e quebras de página inteligentes para evitar o corte de conteúdo.
 
-async function generatePdf(docDefinition: TDocumentDefinitions): Promise<Buffer> {
-  const pdfDoc = printer.createPdfKitDocument(docDefinition);
+## 2. Visão Geral da Arquitetura e Tecnologias
 
-  return new Promise((resolve, reject) => {
-    try {
-      const chunks: Buffer[] = [];
-      pdfDoc.on('data', (chunk) => chunks.push(chunk));
-      pdfDoc.on('end', () => resolve(Buffer.concat(chunks)));
-      pdfDoc.end();
-    } catch (err) {
-      reject(err);
-    }
-  });
-}
+- **Framework:** Next.js 15.x (App Router)
+- **Linguagem:** TypeScript
+- **UI:** React, ShadCN UI
+- **Estilização:** Tailwind CSS
+- **Geração de PDF (Biblioteca Atual):** `pdfmake` (versão 0.2.10)
+- **Hospedagem:** Ambiente Serverless (ex: Vercel, Netlify, Firebase App Hosting)
 
-export async function POST(req: NextRequest) {
-  try {
-    const body: ProposalData = await req.json();
-    const { results, billOfMaterials, companyData, clientData, customization, proposalId, proposalDate, proposalValidity } = body;
+## 3. Histórico de Tentativas e Evolução da Arquitetura
 
-    const styles: StyleDictionary = {
-      header: { fontSize: 20, bold: true, margin: [0, 0, 0, 20], color: customization.colors.primary },
-      subheader: { fontSize: 14, bold: true, margin: [0, 15, 0, 5], color: customization.colors.primary },
-      bodyText: { fontSize: 10, margin: [0, 0, 0, 5] },
-      tableHeader: { bold: true, fontSize: 11, color: customization.colors.textOnPrimary, fillColor: customization.colors.primary },
-      tableCell: { fontSize: 10 },
-      totalRow: { bold: true, fontSize: 12, color: customization.colors.textOnPrimary, fillColor: customization.colors.primary },
-      companyHeader: { fontSize: 16, bold: true, color: customization.colors.primary },
-      clientInfo: { margin: [0, 10, 0, 20] },
-      footer: { fontSize: 8, alignment: 'center', margin: [0, 20, 0, 0], color: '#666' }
-    };
-    
-    const bomBody = billOfMaterials.map(item => [
-      { text: `${item.name}\n${item.manufacturer}`, style: 'tableCell' },
-      { text: item.quantity, style: 'tableCell', alignment: 'center' },
-      { text: formatCurrency(item.cost), style: 'tableCell', alignment: 'right' },
-      { text: formatCurrency(item.cost * item.quantity), style: 'tableCell', alignment: 'right' },
-    ]);
+A solução atual é o resultado de um processo iterativo de depuração, onde várias abordagens falharam devido a restrições do ambiente de execução.
 
-    const tirValue = results.financeiro.tir_percentual;
-    const tirText = (isFinite(tirValue) && tirValue !== Infinity) 
-        ? `${formatNumber(tirValue, 2)}%` 
-        : 'N/A';
-    
-    const docDefinition: TDocumentDefinitions = {
-      content: [
-        // Header
-        {
-          columns: [
-            companyData.logo ? { image: companyData.logo, width: 120 } : { text: '' },
-            [
-              { text: companyData.name, style: 'companyHeader', alignment: 'right' },
-              { text: companyData.address, alignment: 'right' },
-              { text: `CNPJ: ${companyData.cnpj}`, alignment: 'right' },
-              { text: `Contato: ${companyData.phone} | ${companyData.email}`, alignment: 'right' },
-            ]
-          ],
-        },
-        { canvas: [{ type: 'line', x1: 0, y1: 10, x2: 515, y2: 10, lineWidth: 1, lineColor: '#ccc' }] },
-        
-        // Proposal Title & Client Info
-        { text: 'Proposta de Sistema Fotovoltaico', style: 'header', alignment: 'center' },
-        {
-          style: 'clientInfo',
-          table: {
-            widths: ['*', '*', '*'],
-            body: [
-              [
-                { text: `ID Proposta:\n${proposalId}`, bold: true },
-                { text: `Data:\n${formatDate(new Date(proposalDate))}`, bold: true },
-                { text: `Validade:\n${formatDate(new Date(proposalValidity))}`, bold: true },
-              ]
-            ]
-          },
-          layout: 'noBorders'
-        },
-        {
-            table: {
-                widths: ['*'],
-                body: [[{ text: `Preparado para: ${clientData.name}\n${clientData.address || ''}\nCPF/CNPJ: ${clientData.document || ''}`, style: 'bodyText' }]],
-            },
-            layout: {
-                hLineWidth: () => 1, vLineWidth: () => 1,
-                hLineColor: () => '#ddd', vLineColor: () => '#ddd',
-            },
-            margin: [0, 0, 0, 20]
-        },
+### Tentativa 1: Geração no Servidor com Puppeteer (Headless Browser)
 
-        // Investment Table
-        { text: 'Descrição do Sistema e Investimento', style: 'subheader' },
-        {
-            table: {
-                headerRows: 1,
-                widths: ['*', 'auto', 'auto', 'auto'],
-                body: [
-                    ['Descrição', 'Qtde.', 'Preço Unit.', 'Preço Total'],
-                    ...bomBody,
-                    [
-                      { text: 'Valor Total do Investimento', colSpan: 3, style: 'totalRow', alignment: 'right'}, {}, {}, 
-                      { text: formatCurrency(results.financeiro.custo_sistema_reais), style: 'totalRow', alignment: 'right' }
-                    ]
-                ]
-            },
-            layout: {
-                fillColor: function (rowIndex) {
-                    if (rowIndex === 0) return customization.colors.primary;
-                    if (rowIndex === billOfMaterials.length + 1) return customization.colors.primary;
-                    return (rowIndex! % 2 === 0) ? '#f9f9f9' : null;
-                }
-            }
-        },
+- **Descrição:** Uma API Route (`/api/gerar-pdf`) foi criada para usar o Puppeteer para controlar uma instância do Chromium, renderizar uma página HTML (`/proposal-template`) e exportá-la como PDF.
+- **Problema:** A aplicação falhou no ambiente de produção com o erro `error while loading shared libraries: libnss3.so: cannot open shared object file`.
+- **Conclusão:** Esta abordagem é inviável em ambientes serverless padrão devido à ausência de dependências de sistema operativo necessárias para o Chromium.
 
-        // Financial & Performance Analysis
-        { text: 'Análise Financeira e de Geração', style: 'subheader', pageBreak: 'before' },
-        {
-            columns: [
-                [
-                    { text: 'Resumo Financeiro', bold: true, margin: [0,0,0,5] },
-                    { text: `Conta Média Atual: ${formatCurrency(results.conta_media_mensal_reais.antes)}`},
-                    { text: `Conta Média Estimada: ${formatCurrency(results.conta_media_mensal_reais.depois)}`},
-                    { text: `Economia Mensal: ${formatCurrency(results.financeiro.economia_mensal_reais)}`},
-                    { text: `Payback Simples: ${formatNumber(results.financeiro.payback_simples_anos, 1)} anos`},
-                ],
-                [
-                    { text: 'Desempenho do Sistema', bold: true, margin: [0,0,0,5] },
-                    { text: `Potência do Sistema: ${formatNumber(results.dimensionamento.potencia_sistema_kwp, 2)} kWp` },
-                    { text: `Geração Média Mensal: ${formatNumber(results.geracao.media_mensal_kwh, 0)} kWh` },
-                ]
-            ],
-            margin: [0, 0, 0, 20]
-        },
+### Tentativa 2: Geração no Servidor com `pdfmake`
 
-        // Advanced Analysis
-        { text: 'Análise de Investimento Avançada', style: 'subheader' },
-        {
-            columns: [
-                 { text: `VPL (Valor Presente Líquido):\n${formatCurrency(results.financeiro.vpl_reais)}`, style: 'bodyText' },
-                 { text: `TIR (Taxa Interna de Retorno):\n${tirText}`, style: 'bodyText' },
-            ]
-        }
-      ],
-      defaultStyle: {
-        fontSize: 10,
-        lineHeight: 1.15
-      },
-      styles: styles,
-      footer: {
-        text: customization.footer.customText,
-        style: 'footer'
-      }
-    };
+- **Descrição:** O Puppeteer foi substituído pela biblioteca `pdfmake`, que é puramente em JavaScript e não deveria ter dependências de sistema. A API continuaria a receber os dados e a construir o PDF no servidor.
+- **Problema:** A API começou a falhar silenciosamente, retornando um erro 500 com uma página HTML em vez de um PDF ou de um erro JSON. O frontend recebia um `SyntaxError: Unexpected token '<'` ao tentar fazer o "parse" da resposta HTML.
+- **Causa Provável:** A forma como o `pdfmake` lida com o carregamento de módulos e, especialmente, de fontes (`vfs_fonts` ou caminhos para ficheiros `.ttf` em `node_modules`) é incompatível com o ambiente de execução do Next.js no servidor, causando um "crash" no momento da inicialização do módulo, antes mesmo de o código da função `POST` ser executado.
 
-    const pdfBuffer = await generatePdf(docDefinition);
+### Tentativa 3: Geração 100% no Cliente com `window.print()` (Abordagem Atual)
 
-    return new NextResponse(pdfBuffer, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="proposta-${proposalId}.pdf"`,
-      },
-    });
+- **Descrição:** Para eliminar todas as dependências do servidor, a arquitetura foi completamente refatorada para uma solução no lado do cliente.
+- **Fluxo Implementado:**
+    1.  **Gatilho:** O botão "Imprimir Proposta" na página de resultados (`/orcamento`) reúne todos os dados da proposta num objeto JavaScript.
+    2.  **Comunicação:** A função do botão abre uma nova janela do navegador na rota `/proposal-template`. É estabelecido um "aperto de mão" digital:
+        - A janela principal ouve por uma mensagem de prontidão (`'ready-for-data'`).
+        - A nova janela de impressão, ao carregar, envia essa mensagem de prontidão para a janela que a abriu.
+    3.  **Transferência de Dados:** Ao receber a confirmação, a janela principal envia o objeto completo com os dados da proposta diretamente para a nova janela usando `window.postMessage()`.
+    4.  **Recetor:** A nova janela ouve pela mensagem que contém os dados (`'PROPOSAL_DATA'`), atualiza o seu estado com esses dados, renderiza o componente da proposta e, finalmente, aciona a caixa de diálogo de impressão do navegador com `window.print()`.
 
-  } catch (error: any) {
-    console.error('ERRO CRÍTICO AO GERAR PDF:', error);
-    return new NextResponse(
-      JSON.stringify({ error: 'Falha ao gerar o PDF no servidor.', details: error.message }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
-}
+## 4. Problema Atual
+
+Apesar de a arquitetura atual com `postMessage` ser a mais robusta teoricamente, o fluxo ainda falha. O sintoma é o mesmo: a nova janela é aberta, mas exibe a mensagem de erro "Não foi possível carregar os dados da proposta".
+
+**Diagnóstico:**
+- A lógica de "pedido e resposta" parece não estar a completar-se.
+- A janela de impressão envia o seu sinal de `'ready-for-data'`.
+- No entanto, a janela principal parece não receber este sinal ou não consegue enviar a resposta com os dados a tempo, antes de a nova janela desistir e mostrar o erro.
+- O erro ocorre de forma inconsistente, o que sugere um problema de timing (*race condition*) que a arquitetura `postMessage` deveria ter resolvido, mas não o fez.
+
+## 5. Pedido de Ajuda
+
+Precisamos de uma análise sobre a implementação atual do fluxo de comunicação com `postMessage` entre as duas janelas do navegador. O código relevante está principalmente em dois ficheiros:
+
+1.  `src/components/wizard/Step2Results.tsx` (a função `handleExportPdf` que atua como o "fornecedor de dados").
+2.  `src/app/proposal-template/page.tsx` (o componente que atua como o "requisitante").
+
+A questão principal é: **Por que é que o mecanismo de "aperto de mão" com `postMessage` está a falhar de forma intermitente, e qual seria a forma mais fiável de garantir que a transferência de dados entre as janelas ocorra com sucesso sempre?** Existe algum detalhe subtil ou prática recomendada na API de `postMessage` ou nos hooks do React (`useEffect`) que possa estar a ser negligenciado?
