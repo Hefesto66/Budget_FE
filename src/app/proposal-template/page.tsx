@@ -20,41 +20,44 @@ interface ReceivedData {
   proposalValidity: string; // ISO string
 }
 
-// Esta é a página de impressão que comunica com a janela principal.
 export default function ProposalTemplatePage() {
   const [data, setData] = useState<ReceivedData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // 1. Avisa a janela principal que esta página está pronta para receber os dados.
-    if (window.opener) {
-        window.opener.postMessage('ready-for-data', '*');
-    } else {
-        setError("Esta página foi aberta de forma inválida. Não foi possível encontrar a janela de origem.");
-    }
-    
-    // 2. Adiciona um "ouvinte" para esperar pelos dados.
     const handleMessage = (event: MessageEvent) => {
-      // Pequena verificação de segurança para garantir que a mensagem é da nossa aplicação
+      // Basic security check: ensure the message is from our app and has the expected structure.
       if (event.data && event.data.type === 'PROPOSAL_DATA') {
         const receivedData: ReceivedData = event.data.payload;
         setData(receivedData);
+
+        // Tell the parent window we've received the data and are ready to print.
+        if (window.opener) {
+            window.opener.postMessage('data-received-and-ready', '*');
+        }
         
-        // Aciona a impressão após um pequeno delay para garantir que o DOM foi atualizado com os novos dados.
+        // Trigger print after a short delay to ensure the DOM is fully updated with the new data.
         setTimeout(() => {
           window.print();
         }, 500);
-
       }
     };
 
     window.addEventListener('message', handleMessage);
 
-    // 3. Limpa o ouvinte quando o componente for desmontado para evitar fugas de memória.
+    // Set a timeout to show an error if data isn't received within a reasonable time.
+    const timeoutId = setTimeout(() => {
+      if (!data) {
+        setError("Não foi possível carregar os dados da proposta. A comunicação com a janela principal falhou. Por favor, feche esta janela e tente novamente.");
+      }
+    }, 5000); // 5 seconds timeout
+
+    // Cleanup function to remove the listener and timeout when the component unmounts.
     return () => {
       window.removeEventListener('message', handleMessage);
+      clearTimeout(timeoutId);
     };
-  }, []); // O array de dependências vazio [] é crucial para que isto execute apenas uma vez.
+  }, [data]); // Depend on `data` to clear the timeout once data is received.
 
   if (error) {
     return (
@@ -66,7 +69,7 @@ export default function ProposalTemplatePage() {
   }
 
   if (!data) {
-    // Estado de carregamento inicial, que é idêntico no servidor e no cliente para evitar erros de hidratação.
+    // Initial loading state, which is identical on server and client to avoid hydration errors.
     return (
         <div style={{ fontFamily: 'sans-serif', textAlign: 'center', padding: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
             <Loader2 className="h-8 w-8 animate-spin" />
@@ -76,11 +79,11 @@ export default function ProposalTemplatePage() {
     );
   }
 
-  // Uma vez que os dados são recebidos, renderiza o documento da proposta.
+  // Once data is received, render the actual proposal document.
   return (
     <ProposalDocument
       {...data}
-      // Converte as datas em string ISO de volta para objetos Date
+      // Convert ISO string dates back to Date objects for the document component
       proposalDate={new Date(data.proposalDate)}
       proposalValidity={new Date(data.proposalValidity)}
     />

@@ -114,58 +114,67 @@ export function Step2Results({
         return;
     }
 
-    const messageHandler = (event: MessageEvent) => {
-        if (event.source === printWindow && event.data === 'ready-for-data') {
-            try {
-                const companyDataStr = localStorage.getItem(COMPANY_DATA_KEY);
-                const customizationStr = localStorage.getItem(CUSTOMIZATION_KEY);
+    // Prepare all data once.
+    let dataForPrint;
+    try {
+        const companyDataStr = localStorage.getItem(COMPANY_DATA_KEY);
+        const customizationStr = localStorage.getItem(CUSTOMIZATION_KEY);
 
-                if (!companyDataStr) {
-                    toast({ title: "Empresa não configurada", description: "Aceda a Definições > Minha Empresa para preencher os seus dados.", variant: "destructive" });
-                    printWindow.close(); // Fecha a janela de impressão se houver um erro
-                    return;
-                }
+        if (!companyDataStr) {
+            toast({ title: "Empresa não configurada", description: "Aceda a Definições > Minha Empresa para preencher os seus dados.", variant: "destructive" });
+            printWindow.close();
+            setIsPrinting(false);
+            return;
+        }
 
-                const companyData = JSON.parse(companyDataStr);
-                const customization = customizationStr ? JSON.parse(customizationStr) : defaultCustomization;
-                const formData = formMethods.getValues();
-                const finalClientData = clientData || { name: "Cliente Final", document: "-", address: "-" };
+        const companyData = JSON.parse(companyDataStr);
+        const customization = customizationStr ? JSON.parse(customizationStr) : defaultCustomization;
+        const formData = formMethods.getValues();
+        const finalClientData = clientData || { name: "Cliente Final", document: "-", address: "-" };
 
-                const dataForPrint = {
-                    type: 'PROPOSAL_DATA',
-                    payload: {
-                        results: results,
-                        formData: formData.calculationInput,
-                        billOfMaterials: formData.billOfMaterials,
-                        companyData: companyData,
-                        clientData: finalClientData,
-                        customization: customization,
-                        proposalId: proposalId,
-                        // As datas são convertidas para ISO string para serem serializáveis
-                        proposalDate: new Date().toISOString(),
-                        proposalValidity: new Date(new Date().setDate(new Date().getDate() + 20)).toISOString(),
-                    }
-                };
-
-                printWindow.postMessage(dataForPrint, '*');
-
-            } catch (error: any) {
-                console.error("Erro ao preparar dados para impressão:", error);
-                toast({
-                    title: "Erro ao Preparar Impressão",
-                    description: error.message || "Ocorreu um erro desconhecido.",
-                    variant: "destructive",
-                });
-                printWindow.close();
-            } finally {
-                // Remove o ouvinte após o uso
-                window.removeEventListener('message', messageHandler);
-                setIsPrinting(false);
+        dataForPrint = {
+            type: 'PROPOSAL_DATA',
+            payload: {
+                results: results,
+                formData: formData.calculationInput,
+                billOfMaterials: formData.billOfMaterials,
+                companyData: companyData,
+                clientData: finalClientData,
+                customization: customization,
+                proposalId: proposalId,
+                proposalDate: new Date().toISOString(),
+                proposalValidity: new Date(new Date().setDate(new Date().getDate() + 20)).toISOString(),
             }
+        };
+    } catch (error: any) {
+        console.error("Erro ao preparar dados para impressão:", error);
+        toast({ title: "Erro ao Preparar Impressão", description: error.message || "Ocorreu um erro desconhecido.", variant: "destructive" });
+        printWindow.close();
+        setIsPrinting(false);
+        return;
+    }
+
+
+    // This interval will repeatedly try to send the data until it gets a confirmation.
+    const sendInterval = setInterval(() => {
+        if (printWindow.closed) {
+            clearInterval(sendInterval);
+            setIsPrinting(false);
+            return;
+        }
+        printWindow.postMessage(dataForPrint, '*');
+    }, 200);
+
+    // This listener waits for the confirmation from the child window.
+    const messageListener = (event: MessageEvent) => {
+        if (event.source === printWindow && event.data === 'data-received-and-ready') {
+            clearInterval(sendInterval); // Stop sending the data.
+            setIsPrinting(false);
+            window.removeEventListener('message', messageListener); // Clean up the listener.
         }
     };
 
-    window.addEventListener('message', messageHandler);
+    window.addEventListener('message', messageListener);
   };
 
 
