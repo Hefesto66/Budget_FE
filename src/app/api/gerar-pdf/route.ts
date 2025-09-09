@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
     const templateUrl = `${baseUrl}/proposal-template?data=${encodedData}`;
     
     const browser = await puppeteer.launch({
-      args: chromium.args,
+      args: [...chromium.args, '--no-sandbox'],
       defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath(),
       headless: chromium.headless,
