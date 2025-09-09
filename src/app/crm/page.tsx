@@ -119,17 +119,27 @@ export default function CrmPage() {
     const allLeads = getLeads();
     setStages(allStages);
     
-    const leadsGrouped: Record<string, Lead[]> = {};
+    // Efficiently group leads by stage
+    const stageIds = new Set(allStages.map(s => s.id));
+    const leadsGrouped = allLeads.reduce((acc, lead) => {
+        let stageId = lead.stage;
+        // If lead's stage is invalid or doesn't exist, assign it to the first available stage
+        if (!stageIds.has(stageId) && allStages.length > 0) {
+            stageId = allStages[0].id;
+            saveLead({ ...lead, stage: stageId }); // Correct the lead in storage
+        }
+        
+        if (!acc[stageId]) {
+            acc[stageId] = [];
+        }
+        acc[stageId].push(lead);
+        return acc;
+    }, {} as Record<string, Lead[]>);
+
+    // Ensure all stages exist in the state, even if they have no leads
     allStages.forEach(stage => {
-        leadsGrouped[stage.id] = [];
-    });
-    
-    allLeads.forEach(lead => {
-        if (leadsGrouped[lead.stage]) {
-            leadsGrouped[lead.stage].push(lead);
-        } else if(allStages.length > 0){
-            leadsGrouped[allStages[0].id].push(lead);
-            saveLead({...lead, stage: allStages[0].id});
+        if (!leadsGrouped[stage.id]) {
+            leadsGrouped[stage.id] = [];
         }
     });
 
