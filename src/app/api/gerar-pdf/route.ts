@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
-import ReactDOMServer from 'react-dom/server';
-import React from 'react';
-import { ProposalDocument } from '@/components/proposal/ProposalDocument';
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings } from '@/types';
 import type { CompanyFormData } from '@/app/minha-empresa/page';
 import type { WizardFormData } from '@/components/wizard/Wizard';
+import { renderProposalToHtml } from '@/lib/pdf-renderer';
+
 
 interface ProposalRequestData {
   results: SolarCalculationResult;
@@ -20,60 +19,17 @@ interface ProposalRequestData {
   proposalValidity: string; // ISO string
 }
 
-// Helper function to render component and generate HTML
-const createHtmlString = (props: ProposalRequestData): string => {
-    const proposalComponent = React.createElement(ProposalDocument, {
-        ...props,
-        // Convert ISO strings back to Date objects for the component
-        proposalDate: new Date(props.proposalDate),
-        proposalValidity: new Date(props.proposalValidity),
-    });
-
-    const reactHtml = ReactDOMServer.renderToString(proposalComponent);
-
-    return `
-      <!DOCTYPE html>
-      <html lang="pt-BR">
-      <head>
-          <meta charset="UTF-8">
-          <title>Proposta ${props.proposalId}</title>
-           <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet" />
-          <style>
-            body { 
-              font-family: 'Inter', sans-serif; 
-              background-color: white !important; 
-              -webkit-print-color-adjust: exact !important; 
-              print-color-adjust: exact !important; 
-            }
-            .proposal-document { 
-              margin: auto; 
-              width: 210mm; 
-              min-height: 297mm; 
-              box-sizing: border-box; 
-            }
-            .pdf-block { 
-              page-break-inside: avoid !important; 
-            }
-            .pdf-page-break-before { 
-              page-break-before: always !important; 
-            }
-          </style>
-      </head>
-      <body>
-          ${reactHtml}
-      </body>
-      </html>
-    `;
-};
-
 
 export async function POST(req: NextRequest) {
   try {
     const props: ProposalRequestData = await req.json();
 
-    const html = createHtmlString(props);
+    const html = renderProposalToHtml({
+      ...props,
+      // Convert ISO strings back to Date objects for the component
+      proposalDate: new Date(props.proposalDate),
+      proposalValidity: new Date(props.proposalValidity),
+    });
 
     const browser = await puppeteer.launch({
       args: chromium.args,
