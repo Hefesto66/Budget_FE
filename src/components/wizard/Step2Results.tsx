@@ -42,6 +42,8 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
 } from "@/components/ui/chart"
 import { Pie, PieChart } from "recharts"
 
@@ -354,11 +356,12 @@ export function Step2Results({
                     <CardTitle className="font-headline text-xl">Composição do Custo Total</CardTitle>
                     <CardDescription>{formatCurrency(results.financeiro.custo_sistema_reais)}</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex-1 pb-0">
                     <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[200px]">
                         <PieChart>
                              <ChartTooltip content={<ChartTooltipContent nameKey="component" hideLabel />} />
                             <Pie data={costBreakdownData} dataKey="value" nameKey="component" innerRadius={50} strokeWidth={2} />
+                             <ChartLegend content={<ChartLegendContent nameKey="component" />} />
                         </PieChart>
                     </ChartContainer>
                 </CardContent>
