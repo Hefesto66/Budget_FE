@@ -191,3 +191,5 @@ const InfoRow = ({ label, value, highlightColor }: { label: string; value: strin
         <span style={{ color: highlightColor || 'inherit' }}>{value}</span>
     </div>
 )
+
+    
