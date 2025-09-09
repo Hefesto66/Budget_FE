@@ -113,26 +113,36 @@ export function Step2Results({
     
     try {
       const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
-      const customizationData = localStorage.getItem(CUSTOMIZATION_KEY);
-      const customization: CustomizationSettings | null = customizationData ? JSON.parse(customizationData) : defaultCustomization;
-      const formData = formMethods.getValues().calculationInput;
-
-      if (!companyData) {
+      
+      // CRITICAL FIX: Abort if company data is missing
+      if (!companyData || !companyData.name) {
         toast({
           title: "Empresa não configurada",
-          description: "Por favor, configure os dados da sua empresa na página 'Minha Empresa' antes de exportar.",
+          description: "Por favor, aceda a Definições > Minha Empresa e configure os seus dados antes de exportar.",
           variant: "destructive",
+          duration: 5000,
         });
         setIsExporting(false);
-        return;
+        return; // Stop execution
       }
+
+      const customizationData = localStorage.getItem(CUSTOMIZATION_KEY);
+      const customization: CustomizationSettings = customizationData ? JSON.parse(customizationData) : defaultCustomization;
+      const formData = formMethods.getValues().calculationInput;
+
+      // Handle optional client data safely
+      const finalClientData = clientData || {
+          name: "Cliente Final",
+          document: "Documento não informado",
+          address: "Endereço não informado",
+      };
       
       const docToRender = (
         <ProposalDocument
           results={results}
           formData={formData}
           companyData={companyData}
-          clientData={clientData}
+          clientData={finalClientData}
           customization={customization!}
           proposalId={proposalId}
           proposalDate={proposalDate}
@@ -145,9 +155,7 @@ export function Step2Results({
       sessionStorage.setItem('proposalHtmlToPrint', htmlString);
       
       const printWindow = window.open('/orcamento/imprimir', '_blank');
-      if (printWindow) {
-        printWindow.focus();
-      } else {
+      if (!printWindow) {
         toast({
           title: "Bloqueador de Pop-up Ativado",
           description: "Por favor, desative o bloqueador de pop-ups para este site para gerar o PDF.",
@@ -162,8 +170,9 @@ export function Step2Results({
         description: "Não foi possível preparar os dados para o PDF. Verifique o console para mais detalhes.",
         variant: "destructive",
       });
+    } finally {
+        setIsExporting(false);
     }
-    setIsExporting(false);
   };
   
   const handleAiRefinement = async () => {
@@ -437,3 +446,5 @@ const ComparisonItem = ({ label, value, highlight = false }: { label: string, va
         <p className={`font-semibold text-base ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
     </div>
 );
+
+    
