@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings } from "@/types";
 import { ResultCard } from "@/components/ResultCard";
 import { Button } from "@/components/ui/button";
@@ -115,6 +115,7 @@ export function Step2Results({
 
     const cleanup = () => {
         if (cleanedUp) return;
+        
         if (intervalRef.current) {
             clearInterval(intervalRef.current);
             intervalRef.current = null;
@@ -125,30 +126,42 @@ export function Step2Results({
     };
 
     const handleMessage = (event: MessageEvent) => {
+        // Security checks
         if (event.source !== printWindow || event.origin !== window.location.origin) {
             return;
         }
-        if (event.data?.type === "PROPOSAL_ACK" && event.data?.requestId === requestId) {
-            toast({ title: "Sucesso!", description: "Dados recebidos pela janela de impressão.", className: "bg-green-100 dark:bg-green-900" });
+        
+        const msg = event.data;
+        if (!msg || typeof msg !== 'object') return;
+
+        // If child window confirms receipt, we can stop trying to send.
+        if (msg.type === "PROPOSAL_ACK" && msg.requestId === requestId) {
+            console.log(`[Step2Results] Received ACK for requestId: ${requestId}. Cleaning up.`);
+            toast({ title: "Sucesso!", description: "A janela de impressão confirmou o recebimento dos dados.", className: "bg-green-100 dark:bg-green-900" });
             cleanup();
         }
-        if (event.data?.type === "PROPOSAL_ERROR") {
-             toast({ title: "Erro na Janela de Impressão", description: event.data?.error || "Ocorreu um erro desconhecido.", variant: "destructive" });
+
+        if (msg.type === "PROPOSAL_ERROR" && msg.requestId === requestId) {
+             console.error(`[Step2Results] Received error from proposal window for requestId ${requestId}:`, msg.error);
+             toast({ title: "Erro na Janela de Impressão", description: msg.error || "Ocorreu um erro desconhecido.", variant: "destructive" });
              cleanup();
         }
     };
-
+    
+    // 1. Add listener BEFORE opening the window to avoid race conditions
     window.addEventListener("message", handleMessage);
 
+    // 2. Open the window
     const url = `/proposal-template?requestId=${encodeURIComponent(requestId)}`;
     printWindow = window.open(url, "_blank");
 
     if (!printWindow) {
-        toast({ title: "Erro", description: "O seu navegador bloqueou a janela de impressão. Por favor, permita pop-ups para este site.", variant: "destructive" });
+        toast({ title: "Erro: Pop-up Bloqueado", description: "O seu navegador bloqueou a janela de impressão. Por favor, permita pop-ups para este site.", variant: "destructive" });
         cleanup();
         return;
     }
 
+    // 3. Prepare payload
     let payload;
     try {
         const companyDataStr = localStorage.getItem(COMPANY_DATA_KEY);
@@ -182,23 +195,25 @@ export function Step2Results({
         return;
     }
 
+    // 4. Start sending data repeatedly until ACK is received or timeout
     const start = Date.now();
     const TIMEOUT_MS = 15000;
     const INTERVAL_MS = 250;
 
     intervalRef.current = window.setInterval(() => {
         if (printWindow?.closed) {
-            toast({ title: "Janela Fechada", description: "A janela de impressão foi fechada antes da confirmação.", variant: "destructive" });
+            toast({ title: "Janela Fechada", description: "A janela de impressão foi fechada antes de confirmar o recebimento.", variant: "destructive" });
             cleanup();
             return;
         }
 
         if (Date.now() - start > TIMEOUT_MS) {
-            toast({ title: "Tempo Esgotado", description: "Não foi possível comunicar com a janela de impressão.", variant: "destructive" });
+            toast({ title: "Tempo Esgotado", description: "Não foi possível comunicar com a janela de impressão. Verifique a consola para erros.", variant: "destructive" });
             cleanup();
             return;
         }
         
+        console.log(`[Step2Results] Posting PROPOSAL_DATA for requestId: ${requestId}`);
         printWindow.postMessage(payload, window.location.origin);
 
     }, INTERVAL_MS);

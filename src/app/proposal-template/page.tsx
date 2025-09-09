@@ -39,47 +39,51 @@ export default function ProposalTemplatePage() {
     }
 
     function onMessage(e: MessageEvent) {
-      try {
-        if (e.origin !== origin) {
-            console.warn(`Message from different origin ignored: ${e.origin}`);
-            return;
+      // Security: only accept messages from same origin
+      if (e.origin !== origin) {
+        console.warn(`[ProposalTemplate] Ignored message from different origin: ${e.origin}`);
+        return;
+      }
+
+      const msg = e.data;
+      if (!msg || typeof msg !== "object" || !msg.type) {
+        return;
+      }
+
+      if (msg.type === "PROPOSAL_DATA") {
+        const currentUrlRequestId = new URLSearchParams(window.location.search).get("requestId");
+
+        // Security: if a request ID is present in URL, it MUST match the message
+        if (currentUrlRequestId && msg.requestId && msg.requestId !== currentUrlRequestId) {
+          console.warn(`[ProposalTemplate] Message requestId mismatch. Expected ${currentUrlRequestId}, got ${msg.requestId}. Ignoring.`);
+          return;
         }
 
-        const msg = e.data;
-        if (!msg || typeof msg !== "object") return;
+        console.log(`[ProposalTemplate] Received PROPOSAL_DATA for requestId: ${msg.requestId}`);
+        setData(msg.payload);
 
-        if (msg.type === "PROPOSAL_DATA") {
-          const currentUrlRequestId = new URLSearchParams(window.location.search).get("requestId");
-          if (currentUrlRequestId && msg.requestId && msg.requestId !== currentUrlRequestId) {
-            console.warn("Message requestId mismatch", msg.requestId, currentUrlRequestId);
-            return;
-          }
-          
-          setData(msg.payload);
-
-          try {
-            window.opener?.postMessage(
-              { type: "PROPOSAL_ACK", requestId: msg.requestId },
-              e.origin
-            );
-          } catch (err) {
-            console.warn("Failed to post ACK to opener", err);
-          }
+        // Send ACK back to opener to confirm receipt
+        try {
+          window.opener?.postMessage(
+            { type: "PROPOSAL_ACK", requestId: msg.requestId },
+            e.origin
+          );
+        } catch (err) {
+          console.warn("[ProposalTemplate] Failed to post ACK to opener window.", err);
         }
-      } catch (err: any) {
-        console.error("onMessage error", err);
-        setError(err.message || 'Erro ao processar dados recebidos.');
       }
     }
 
     window.addEventListener("message", onMessage);
 
     const timeout = setTimeout(() => {
-        if (!data) {
+        if (!data && !error) { // only set error if no data has been received yet
             setError("Tempo esgotado. Não foi possível carregar os dados da proposta. Por favor, feche esta janela e tente novamente.");
             try {
-                 window.opener?.postMessage({ type: "PROPOSAL_ERROR", requestId, error: 'Timeout' }, origin);
-            } catch(e) {}
+                 window.opener?.postMessage({ type: "PROPOSAL_ERROR", requestId, error: 'Timeout waiting for data.' }, origin);
+            } catch(e) {
+                // Opener might be closed, ignore
+            }
         }
     }, 10000); // 10 second timeout
 
@@ -87,21 +91,24 @@ export default function ProposalTemplatePage() {
       window.removeEventListener("message", onMessage);
       clearTimeout(timeout);
     };
-  }, [origin]); // Removed requestId from deps to avoid re-running listener
+  }, [origin, data, error, requestId]); // Re-run if requestId is parsed from URL
 
   useEffect(() => {
     if (!data) return;
 
+    // Wait for a short moment to ensure the component has rendered with the new data
     const t = setTimeout(() => {
       try {
         window.print();
         window.opener?.postMessage({ type: "PRINT_STARTED", requestId }, origin);
       } catch (err: any) {
-        console.error("window.print error", err);
+        console.error("[ProposalTemplate] window.print() error:", err);
         setError(`Erro ao iniciar a impressão: ${err.message}`);
         try {
           window.opener?.postMessage({ type: "PROPOSAL_ERROR", requestId, error: String(err) }, origin);
-        } catch (e) {}
+        } catch (e) {
+             // Opener might be closed, ignore
+        }
       }
     }, 100);
 
