@@ -1,36 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
-import type { SolarCalculationResult, ClientFormData, CustomizationSettings } from '@/types';
-import type { CompanyFormData } from '@/app/minha-empresa/page';
-import type { WizardFormData } from '@/components/wizard/Wizard';
-import { renderProposalToHtml } from '@/lib/pdf-renderer';
-
-
-interface ProposalRequestData {
-  results: SolarCalculationResult;
-  formData: WizardFormData['calculationInput'];
-  billOfMaterials: WizardFormData['billOfMaterials'];
-  companyData: CompanyFormData;
-  clientData: ClientFormData;
-  customization: CustomizationSettings;
-  proposalId: string;
-  proposalDate: string; // ISO string
-  proposalValidity: string; // ISO string
-}
-
 
 export async function POST(req: NextRequest) {
   try {
-    const props: ProposalRequestData = await req.json();
+    const body = await req.json();
 
-    const html = renderProposalToHtml({
-      ...props,
-      // Convert ISO strings back to Date objects for the component
-      proposalDate: new Date(props.proposalDate),
-      proposalValidity: new Date(props.proposalValidity),
-    });
+    // The base URL of the currently running application
+    const baseUrl = req.nextUrl.origin;
 
+    // Encode the JSON data to be passed as a URL parameter
+    const encodedData = encodeURIComponent(JSON.stringify(body));
+
+    // Construct the URL to the hidden proposal template page
+    const templateUrl = `${baseUrl}/proposal-template?data=${encodedData}`;
+    
     const browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
@@ -39,8 +23,10 @@ export async function POST(req: NextRequest) {
     });
 
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
-
+    // Go to the template page and wait until the network is idle
+    await page.goto(templateUrl, { waitUntil: 'networkidle0' });
+    
+    // Generate the PDF from the rendered page
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
@@ -49,11 +35,12 @@ export async function POST(req: NextRequest) {
 
     await browser.close();
 
+    // Return the PDF as a response
     return new NextResponse(pdfBuffer, {
         status: 200,
         headers: {
             'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="proposta-${props.proposalId}.pdf"`,
+            'Content-Disposition': `attachment; filename="proposta-${body.proposalId}.pdf"`,
         },
     });
 
