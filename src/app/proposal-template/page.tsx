@@ -8,7 +8,7 @@ import type { CompanyFormData } from '@/app/minha-empresa/page';
 import type { WizardFormData } from '@/components/wizard/Wizard';
 import { Loader2 } from 'lucide-react';
 
-interface ProposalData {
+interface ReceivedData {
   results: SolarCalculationResult;
   formData: WizardFormData['calculationInput'];
   billOfMaterials: WizardFormData['billOfMaterials'];
@@ -20,35 +20,41 @@ interface ProposalData {
   proposalValidity: string; // ISO string
 }
 
-// This is a special page that is not meant to be navigated to directly by the user.
-// It acts as a client-side renderer for the print dialog.
+// Esta é a página de impressão que comunica com a janela principal.
 export default function ProposalTemplatePage() {
-  const [data, setData] = useState<ProposalData | null>(null);
+  const [data, setData] = useState<ReceivedData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // This logic now runs only on the client, after hydration
-    try {
-      const storedData = sessionStorage.getItem('proposalDataForPrint');
-      if (storedData) {
-        const parsedData: ProposalData = JSON.parse(storedData);
-        setData(parsedData);
-        // Clean up immediately after reading
-        sessionStorage.removeItem('proposalDataForPrint');
+    // 1. Avisa a janela principal que esta página está pronta para receber os dados.
+    if (window.opener) {
+        window.opener.postMessage('ready-for-data', '*');
+    } else {
+        setError("Esta página foi aberta de forma inválida. Não foi possível encontrar a janela de origem.");
+    }
+    
+    // 2. Adiciona um "ouvinte" para esperar pelos dados.
+    const handleMessage = (event: MessageEvent) => {
+      // Pequena verificação de segurança para garantir que a mensagem é da nossa aplicação
+      if (event.data && event.data.type === 'PROPOSAL_DATA') {
+        const receivedData: ReceivedData = event.data.payload;
+        setData(receivedData);
         
-        // Trigger print dialog after a short delay to allow the page to render with the new data
+        // Aciona a impressão após um pequeno delay para garantir que o DOM foi atualizado com os novos dados.
         setTimeout(() => {
           window.print();
         }, 500);
 
-      } else {
-        setError("Não foi possível carregar os dados da proposta. Por favor, feche esta janela e tente novamente.");
       }
-    } catch (err) {
-      console.error("Failed to parse or load proposal data", err);
-      setError("Ocorreu um erro ao processar os dados da proposta. Verifique a consola para mais detalhes.");
-    }
-  }, []); // Empty dependency array ensures this runs only once on mount, on the client-side.
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    // 3. Limpa o ouvinte quando o componente for desmontado para evitar fugas de memória.
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, []); // O array de dependências vazio [] é crucial para que isto execute apenas uma vez.
 
   if (error) {
     return (
@@ -60,21 +66,21 @@ export default function ProposalTemplatePage() {
   }
 
   if (!data) {
-    // This is the initial state rendered on both server and client, ensuring no hydration mismatch.
+    // Estado de carregamento inicial, que é idêntico no servidor e no cliente para evitar erros de hidratação.
     return (
         <div style={{ fontFamily: 'sans-serif', textAlign: 'center', padding: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
             <Loader2 className="h-8 w-8 animate-spin" />
-            <h1>A preparar a sua proposta para impressão...</h1>
-            <p>A caixa de diálogo de impressão deverá aparecer em breve.</p>
+            <h1>A aguardar dados da proposta...</h1>
+            <p>Se esta mensagem persistir, feche esta janela e tente gerar a proposta novamente.</p>
         </div>
     );
   }
 
-  // Once data is loaded on the client, this part will be rendered.
+  // Uma vez que os dados são recebidos, renderiza o documento da proposta.
   return (
     <ProposalDocument
       {...data}
-      // Convert ISO strings back to Date objects for the component
+      // Converte as datas em string ISO de volta para objetos Date
       proposalDate={new Date(data.proposalDate)}
       proposalValidity={new Date(data.proposalValidity)}
     />

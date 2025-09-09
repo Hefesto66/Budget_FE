@@ -105,69 +105,67 @@ export function Step2Results({
   
   const handleExportPdf = () => {
     setIsPrinting(true);
-    toast({ title: "A preparar a proposta...", description: "A sua proposta está a ser aberta numa nova janela para impressão." });
-    
-    console.log("--- INÍCIO DA DEPURAÇÃO DO PDF ---");
+    toast({ title: "A preparar a proposta...", description: "A janela de impressão será aberta." });
 
-    try {
-        const companyDataStr = localStorage.getItem(COMPANY_DATA_KEY);
-        const customizationStr = localStorage.getItem(CUSTOMIZATION_KEY);
-
-        if (!companyDataStr) {
-            toast({ title: "Empresa não configurada", description: "Aceda a Definições > Minha Empresa para preencher os seus dados.", variant: "destructive" });
-            setIsPrinting(false);
-            return;
-        }
-
-        const companyData = JSON.parse(companyDataStr);
-        const customization = customizationStr ? JSON.parse(customizationStr) : defaultCustomization;
-        const formData = formMethods.getValues();
-        const finalClientData = clientData || { name: "Cliente Final", document: "-", address: "-" };
-
-        const dataForPrint = {
-            results: results,
-            formData: formData.calculationInput,
-            billOfMaterials: formData.billOfMaterials,
-            companyData: companyData,
-            clientData: finalClientData,
-            customization: customization,
-            proposalId: proposalId,
-            proposalDate: new Date().toISOString(),
-            proposalValidity: new Date(new Date().setDate(new Date().getDate() + 20)).toISOString(),
-        };
-
-        // 1. Inspeção Inicial
-        console.log("1. Objeto de dados da proposta reunido:", dataForPrint);
-        
-        // 2. Inspeção da Serialização
-        const dadosEmString = JSON.stringify(dataForPrint);
-        console.log("2. Dados convertidos para string JSON:", dadosEmString);
-
-        // 3. Inspeção da Escrita
-        try {
-            sessionStorage.setItem('proposalDataForPrint', dadosEmString);
-            console.log("3. DADOS GUARDADOS COM SUCESSO no sessionStorage.");
-        } catch (error) {
-            console.error("4. ERRO CRÍTICO ao tentar guardar no sessionStorage:", error);
-            alert("Falha ao guardar os dados na sessão do navegador. Verifique a consola. Pode ser que os dados sejam grandes demais.");
-            setIsPrinting(false);
-            return; // Aborta a operação
-        }
-        
-        // 5. Abertura da Janela
-        console.log("5. A abrir a janela de impressão...");
-        window.open('/proposal-template', '_blank');
-
-    } catch (error: any) {
-        console.error("Print Preparation Error:", error);
-        toast({
-            title: "Erro ao Preparar Impressão",
-            description: error.message || "Ocorreu um erro desconhecido.",
-            variant: "destructive",
-        });
-    } finally {
+    const printWindow = window.open('/proposal-template', '_blank');
+    if (!printWindow) {
+        toast({ title: "Erro", description: "Não foi possível abrir a janela de impressão. Verifique se o seu navegador está a bloquear pop-ups.", variant: "destructive" });
         setIsPrinting(false);
+        return;
     }
+
+    const messageHandler = (event: MessageEvent) => {
+        if (event.source === printWindow && event.data === 'ready-for-data') {
+            try {
+                const companyDataStr = localStorage.getItem(COMPANY_DATA_KEY);
+                const customizationStr = localStorage.getItem(CUSTOMIZATION_KEY);
+
+                if (!companyDataStr) {
+                    toast({ title: "Empresa não configurada", description: "Aceda a Definições > Minha Empresa para preencher os seus dados.", variant: "destructive" });
+                    printWindow.close(); // Fecha a janela de impressão se houver um erro
+                    return;
+                }
+
+                const companyData = JSON.parse(companyDataStr);
+                const customization = customizationStr ? JSON.parse(customizationStr) : defaultCustomization;
+                const formData = formMethods.getValues();
+                const finalClientData = clientData || { name: "Cliente Final", document: "-", address: "-" };
+
+                const dataForPrint = {
+                    type: 'PROPOSAL_DATA',
+                    payload: {
+                        results: results,
+                        formData: formData.calculationInput,
+                        billOfMaterials: formData.billOfMaterials,
+                        companyData: companyData,
+                        clientData: finalClientData,
+                        customization: customization,
+                        proposalId: proposalId,
+                        // As datas são convertidas para ISO string para serem serializáveis
+                        proposalDate: new Date().toISOString(),
+                        proposalValidity: new Date(new Date().setDate(new Date().getDate() + 20)).toISOString(),
+                    }
+                };
+
+                printWindow.postMessage(dataForPrint, '*');
+
+            } catch (error: any) {
+                console.error("Erro ao preparar dados para impressão:", error);
+                toast({
+                    title: "Erro ao Preparar Impressão",
+                    description: error.message || "Ocorreu um erro desconhecido.",
+                    variant: "destructive",
+                });
+                printWindow.close();
+            } finally {
+                // Remove o ouvinte após o uso
+                window.removeEventListener('message', messageHandler);
+                setIsPrinting(false);
+            }
+        }
+    };
+
+    window.addEventListener('message', messageHandler);
   };
 
 
@@ -394,5 +392,3 @@ const ComparisonItem = ({ label, value, highlight = false }: { label: string, va
         <p className={`font-semibold text-base ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
     </div>
 );
-
-    
