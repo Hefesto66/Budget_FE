@@ -109,95 +109,51 @@ export function Step2Results({
   const tirText = isFinite(tirValue) ? `${formatNumber(tirValue, 2)}%` : "N/A";
 
   const handleExportPdf = async () => {
-      setIsExporting(true);
-      try {
-          // 1. Gather all data
-          const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
-          if (!companyData || !companyData.name) {
-              toast({
-                  title: "Empresa não configurada",
-                  description: "Aceda a Definições > Minha Empresa para configurar os seus dados.",
-                  variant: "destructive"
-              });
-              setIsExporting(false);
-              return;
-          }
-
-          const customization: CustomizationSettings = JSON.parse(localStorage.getItem(CUSTOMIZATION_KEY) || JSON.stringify(defaultCustomization));
-          const formData = formMethods.getValues().calculationInput;
-
-          const dataToSend = {
-              results,
-              formData,
-              companyData,
-              clientData: clientData || { name: "Cliente Final", document: "-", address: "-" },
-              customization,
-              proposalId,
-              proposalDate: proposalDate.toISOString(),
-              proposalValidity: proposalValidity.toISOString(),
-          };
-
-          // 2. Call the new API route
-          const response = await fetch('/api/gerar-pdf', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(dataToSend),
-          });
-
-          if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(errorData.error || `O servidor respondeu com o estado ${response.status}`);
-          }
-
-          // 3. Handle the HTML content from the response
-          const { htmlContent } = await response.json();
-
-          if (!htmlContent) {
-              throw new Error("A API não retornou conteúdo HTML para o PDF.");
-          }
-
-          // 4. Use html2canvas and jspdf to create the PDF on the client-side
-          const pdfContainer = document.createElement('div');
-          pdfContainer.style.position = 'absolute';
-          pdfContainer.style.left = '-9999px'; // Render off-screen
-          pdfContainer.innerHTML = htmlContent;
-          document.body.appendChild(pdfContainer);
-          
-          const proposalElement = pdfContainer.querySelector('.proposal-document') as HTMLElement;
-
-          if(!proposalElement) {
-              document.body.removeChild(pdfContainer);
-              throw new Error("Elemento da proposta não encontrado no HTML renderizado.");
-          }
-
-          const canvas = await html2canvas(proposalElement, {
-              scale: 2, // Higher scale for better quality
-              useCORS: true,
-              logging: false,
-          });
-
-          const imgData = canvas.toDataURL('image/png');
-          const pdf = new jsPDF({
-              orientation: 'portrait',
-              unit: 'px',
-              format: [canvas.width, canvas.height]
-          });
-
-          pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-          pdf.save(`proposta-${proposalId}.pdf`);
-          
-          document.body.removeChild(pdfContainer); // Clean up the container
-
-      } catch (error: any) {
-          console.error("Falha ao gerar o PDF:", error);
-          toast({
-              title: "Erro ao Gerar PDF",
-              description: error.message || "Ocorreu um erro inesperado. Tente novamente.",
-              variant: "destructive",
-          });
-      } finally {
-          setIsExporting(false);
+    setIsExporting(true);
+    try {
+      // 1. Gather all data
+      const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
+      if (!companyData || !companyData.name) {
+        toast({
+          title: "Empresa não configurada",
+          description: "Aceda a Definições > Minha Empresa para configurar os seus dados.",
+          variant: "destructive"
+        });
+        setIsExporting(false);
+        return;
       }
+
+      const customization: CustomizationSettings = JSON.parse(localStorage.getItem(CUSTOMIZATION_KEY) || JSON.stringify(defaultCustomization));
+      const formData = formMethods.getValues().calculationInput;
+
+      const props = {
+        results,
+        formData,
+        companyData,
+        clientData: clientData || { name: "Cliente Final", document: "-", address: "-" },
+        customization,
+        proposalId,
+        proposalDate: proposalDate,
+        proposalValidity: proposalValidity,
+      };
+
+      // 2. Render component to HTML string
+      const htmlString = ReactDOMServer.renderToString(<ProposalDocument {...props} />);
+
+      // 3. Store in sessionStorage and open print view
+      sessionStorage.setItem('proposalHtmlToPrint', htmlString);
+      window.open('/orcamento/imprimir', '_blank');
+
+    } catch (error: any) {
+      console.error("Falha ao gerar o PDF:", error);
+      toast({
+        title: "Erro ao Gerar PDF",
+        description: error.message || "Ocorreu um erro inesperado. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
   
   const handleAiRefinement = async () => {
@@ -471,3 +427,4 @@ const ComparisonItem = ({ label, value, highlight = false }: { label: string, va
         <p className={`font-semibold text-base ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
     </div>
 );
+

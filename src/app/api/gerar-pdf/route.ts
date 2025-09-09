@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import ReactDOMServer from 'react-dom/server';
 import { ProposalDocument } from '@/components/proposal/ProposalDocument';
@@ -69,26 +68,23 @@ export async function POST(req: NextRequest) {
       />
     );
     
-    // Note: Puppeteer is not available in this environment.
-    // A production-grade solution would use a service like Puppeteer on a serverless function.
-    // For this context, we will return a success message, and the client will handle the rendering.
-    // This is a simulation, as we cannot execute a browser instance here.
-    
-    // In a real scenario with a PDF library, you would convert htmlString to a PDF here.
-    // Since we cannot do that, we will send back a success response.
+    // This API route has been deprecated in favor of a client-side rendering approach.
     // The client-side implementation will handle creating the PDF.
-    
-    // This response is simplified. A real implementation would return a PDF file stream.
-    return new NextResponse(JSON.stringify({ htmlContent: htmlString }), {
-        status: 200,
-        headers: {
-            'Content-Type': 'application/json',
-        }
+    // This response is simplified and kept for reference, but the primary logic
+    // is now in `src/components/wizard/Step2Results.tsx`
+    return new NextResponse(JSON.stringify({
+      message: "API DEPRECATED: PDF generation is now handled client-side.",
+      htmlContent: htmlString, // Still return content for potential debugging
+    }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      }
     });
 
   } catch (error: any) {
-    console.error("===== PDF GENERATION ERROR =====");
+    console.error("===== PDF GENERATION ERROR (API) =====");
     console.error(error);
-    return new NextResponse(JSON.stringify({ error: 'Falha ao gerar o PDF no servidor.', details: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    return new NextResponse(JSON.stringify({ error: 'Falha ao gerar o HTML no servidor.', details: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 }
