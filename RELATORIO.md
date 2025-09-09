@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import PdfPrinter from 'pdfmake';
-import type { TDocumentDefinitions, StyleDictionary, TFontDictionary } from 'pdfmake/interfaces';
+import type { TDocumentDefinitions, StyleDictionary } from 'pdfmake/interfaces';
 import { formatCurrency, formatNumber, formatDate } from '@/lib/utils';
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings } from '@/types';
 import type { CompanyFormData } from '@/app/minha-empresa/page';
@@ -18,16 +18,8 @@ interface ProposalData {
   proposalValidity: string; // ISO string
 }
 
-const fonts: TFontDictionary = {
-  Roboto: {
-    normal: Buffer.from([]), // pdfmake requires a buffer, even if empty, will fallback to embedded fonts
-    bold: Buffer.from([]),
-    italics: Buffer.from([]),
-    bolditalics: Buffer.from([]),
-  }
-};
-
-const printer = new PdfPrinter(fonts);
+// Initialize printer without custom fonts to use the default embedded Roboto font.
+const printer = new PdfPrinter();
 
 async function generatePdf(docDefinition: TDocumentDefinitions): Promise<Buffer> {
   const pdfDoc = printer.createPdfKitDocument(docDefinition);
@@ -67,6 +59,11 @@ export async function POST(req: NextRequest) {
       { text: formatCurrency(item.cost), style: 'tableCell', alignment: 'right' },
       { text: formatCurrency(item.cost * item.quantity), style: 'tableCell', alignment: 'right' },
     ]);
+
+    const tirValue = results.financeiro.tir_percentual;
+    const tirText = (isFinite(tirValue) && tirValue !== Infinity) 
+        ? `${formatNumber(tirValue, 2)}%` 
+        : 'N/A';
     
     const docDefinition: TDocumentDefinitions = {
       content: [
@@ -161,12 +158,11 @@ export async function POST(req: NextRequest) {
         {
             columns: [
                  { text: `VPL (Valor Presente Líquido):\n${formatCurrency(results.financeiro.vpl_reais)}`, style: 'bodyText' },
-                 { text: `TIR (Taxa Interna de Retorno):\n${isFinite(results.financeiro.tir_percentual) ? `${formatNumber(results.financeiro.tir_percentual, 2)}%` : 'N/A'}`, style: 'bodyText' },
+                 { text: `TIR (Taxa Interna de Retorno):\n${tirText}`, style: 'bodyText' },
             ]
         }
       ],
       defaultStyle: {
-        font: 'Roboto',
         fontSize: 10,
         lineHeight: 1.15
       },
@@ -188,10 +184,10 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('PDF Generation Error:', error);
+    console.error('ERRO CRÍTICO AO GERAR PDF:', error);
     return new NextResponse(
-      JSON.stringify({ error: 'Failed to generate PDF.', details: error.message }),
-      { status: 500 }
+      JSON.stringify({ error: 'Falha ao gerar o PDF no servidor.', details: error.message }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }
