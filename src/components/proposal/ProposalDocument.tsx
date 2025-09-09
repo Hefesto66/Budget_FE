@@ -1,15 +1,17 @@
 
-import type { SolarCalculationInput, SolarCalculationResult, ClientFormData, CustomizationSettings } from '@/types';
+import type { SolarCalculationResult, ClientFormData, CustomizationSettings } from '@/types';
 import type { CompanyFormData } from '@/app/minha-empresa/page';
 import { formatCurrency, formatNumber, formatDate } from '@/lib/utils';
 import { Leaf, Car, Globe, FileSignature, Wrench, Zap, CheckCircle, Package, Settings, PenLine, Power, LineChart, Target, Calendar, Wallet, TrendingUp, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import React from 'react';
 import { SavingsChart } from '../SavingsChart'; // Será necessário adaptar para renderização estática
+import type { WizardFormData } from '../wizard/Wizard';
 
 interface ProposalDocumentProps {
   results: SolarCalculationResult;
-  formData: SolarCalculationInput;
+  formData: WizardFormData['calculationInput'];
+  billOfMaterials: WizardFormData['billOfMaterials'];
   companyData: CompanyFormData;
   clientData: ClientFormData;
   customization: CustomizationSettings;
@@ -66,11 +68,7 @@ const HeaderBlock = ({ companyData, proposalId, proposalDate, proposalValidity, 
   </Block>
 );
 
-const InvestmentTableBlock = ({ formData, results, customization }: Pick<ProposalDocumentProps, 'formData' | 'results' | 'customization'>) => {
-    const custoModulos = (formData.quantidade_modulos ?? 0) * (formData.preco_modulo_reais ?? 0);
-    const custoInversor = (formData.custo_inversor_reais ?? 0);
-    const custoInstalacao = (formData.custo_fixo_instalacao_reais ?? 0);
-
+const InvestmentTableBlock = ({ billOfMaterials, results, customization }: Pick<ProposalDocumentProps, 'billOfMaterials' | 'results' | 'customization'>) => {
     return (
         <Block>
             <h3 style={{ fontWeight: 'bold', fontSize: '14pt', marginBottom: '8px', borderBottom: '1px solid #EEE', paddingBottom: '4px', color: customization.colors.primary, fontFamily: '"Poppins", sans-serif' }}>Descrição do Sistema e Investimento</h3>
@@ -84,33 +82,21 @@ const InvestmentTableBlock = ({ formData, results, customization }: Pick<Proposa
                 </tr>
                 </thead>
                 <tbody>
-                <tr style={{ borderBottom: '1px solid #EEE' }}>
-                    <td style={{ padding: '8px 0' }}>
-                        <p style={{ fontWeight: '600', margin: 0 }}>Módulo Fotovoltaico {formData.fabricante_modulo}</p>
-                        <p style={{ fontSize: '9pt', color: '#666', margin: 0 }}>Potência: {formData.potencia_modulo_wp}Wp | Garantia: {formData.garantia_defeito_modulo_anos} anos (produto), {formData.garantia_geracao_modulo_anos} anos (geração)</p>
-                    </td>
-                    <td style={{ padding: '8px 0', textAlign: 'center' }}>{results.dimensionamento.quantidade_modulos}</td>
-                    <td style={{ padding: '8px 0', textAlign: 'right' }}>{formatCurrency(formData.preco_modulo_reais ?? 0)}</td>
-                    <td style={{ padding: '8px 0', textAlign: 'right' }}>{formatCurrency(custoModulos)}</td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid #EEE' }}>
-                    <td style={{ padding: '8px 0' }}>
-                        <p style={{ fontWeight: '600', margin: 0 }}>Inversor {formData.fabricante_inversor} {formData.modelo_inversor}</p>
-                        <p style={{ fontSize: '9pt', color: '#666', margin: 0 }}>Potência: {formData.potencia_inversor_kw}kW | Tensão: {formData.tensao_inversor_v}V | Garantia: {formData.garantia_inversor_anos} anos</p>
-                    </td>
-                    <td style={{ padding: '8px 0', textAlign: 'center' }}>{formData.quantidade_inversores}</td>
-                    <td style={{ padding: '8px 0', textAlign: 'right' }}>{formatCurrency(custoInversor)}</td>
-                    <td style={{ padding: '8px 0', textAlign: 'right' }}>{formatCurrency(custoInversor * (formData.quantidade_inversores ?? 1))}</td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid #EEE' }}>
-                    <td style={{ padding: '8px 0' }}>
-                        <p style={{ fontWeight: '600', margin: 0 }}>Projeto, Instalação e Homologação</p>
-                        <p style={{ fontSize: '9pt', color: '#666', margin: 0 }}>Inclui mão de obra, estruturas, cabos, proteções e documentação.</p>
-                    </td>
-                    <td style={{ padding: '8px 0', textAlign: 'center' }}>1</td>
-                    <td style={{ padding: '8px 0', textAlign: 'right' }}>{formatCurrency(custoInstalacao)}</td>
-                    <td style={{ padding: '8px 0', textAlign: 'right' }}>{formatCurrency(custoInstalacao)}</td>
-                </tr>
+                {billOfMaterials.map((item) => (
+                    <tr key={item.productId} style={{ borderBottom: '1px solid #EEE' }}>
+                        <td style={{ padding: '8px 0' }}>
+                            <p style={{ fontWeight: '600', margin: 0 }}>{item.name}</p>
+                            <p style={{ fontSize: '9pt', color: '#666', margin: 0 }}>
+                                Fabricante: {item.manufacturer}
+                                {item.technicalSpecifications?.['Potência (Wp)'] && ` | Potência: ${item.technicalSpecifications['Potência (Wp)']}Wp`}
+                                {item.technicalSpecifications?.['Eficiência (%)'] && ` | Eficiência: ${item.technicalSpecifications['Eficiência (%)']}%`}
+                            </p>
+                        </td>
+                        <td style={{ padding: '8px 0', textAlign: 'center' }}>{item.quantity}</td>
+                        <td style={{ padding: '8px 0', textAlign: 'right' }}>{formatCurrency(item.cost)}</td>
+                        <td style={{ padding: '8px 0', textAlign: 'right' }}>{formatCurrency(item.cost * item.quantity)}</td>
+                    </tr>
+                ))}
                 </tbody>
             </table>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
@@ -218,7 +204,8 @@ const FooterBlock = ({ customization }: Pick<ProposalDocumentProps, 'customizati
 
 export function ProposalDocument({ 
     results, 
-    formData, 
+    formData,
+    billOfMaterials,
     companyData, 
     clientData, 
     customization,
@@ -238,7 +225,7 @@ export function ProposalDocument({
       />
 
       <main style={{ paddingTop: '32px', paddingBottom: '32px' }}>
-        {customization.content.showInvestmentTable && <InvestmentTableBlock formData={formData} results={results} customization={customization} />}
+        {customization.content.showInvestmentTable && <InvestmentTableBlock billOfMaterials={billOfMaterials} results={results} customization={customization} />}
         
         <SummaryBlock results={results} formData={formData} customization={customization} />
 

@@ -2,9 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import jsPDF from "jspdf";
-import ReactDOMServer from "react-dom/server";
-import type { SolarCalculationResult, ClientFormData, CustomizationSettings, SolarCalculationInput } from "@/types";
+import type { SolarCalculationResult, ClientFormData, CustomizationSettings, Quote } from "@/types";
 import { ResultCard } from "@/components/ResultCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,15 +23,6 @@ import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { SavingsChart } from "@/components/SavingsChart";
 import type { CompanyFormData } from "@/app/minha-empresa/page";
-import { ProposalDocument } from "../proposal/ProposalDocument";
-import { Label } from "../ui/label";
-import { Input } from "../ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { cn } from "@/lib/utils";
-import { Calendar as CalendarIcon } from "lucide-react";
-import { format, addDays } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useFormContext } from "react-hook-form";
 import type { WizardFormData } from "./Wizard";
 import { AnimatePresence, motion } from "framer-motion";
@@ -87,9 +76,6 @@ export function Step2Results({
   
   const [isExporting, setIsExporting] = useState(false);
   
-  const [proposalDate, setProposalDate] = useState<Date>(new Date());
-  const [proposalValidity, setProposalValidity] = useState<Date>(addDays(new Date(), 20));
-
   const [isRefining, setIsRefining] = useState(false);
   const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
 
@@ -97,94 +83,54 @@ export function Step2Results({
   
   const billOfMaterials = formMethods.watch('billOfMaterials');
 
-  useEffect(() => {
-    setProposalValidity(addDays(proposalDate, 20));
-  }, [proposalDate]);
-
   const handleExportPdf = async () => {
     setIsExporting(true);
     try {
-      if (!results) {
-        toast({ title: "Erro", description: "Resultados do cálculo não disponíveis.", variant: "destructive" });
-        return;
-      }
-  
+      // 1. Fetch all necessary data
       const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
       if (!companyData || !companyData.name) {
         toast({ title: "Empresa não configurada", description: "Aceda a Definições > Minha Empresa.", variant: "destructive" });
-        setIsExporting(false);
         return;
       }
       
       const savedSettings = localStorage.getItem(CUSTOMIZATION_KEY);
       const customization: CustomizationSettings = savedSettings ? JSON.parse(savedSettings) : defaultCustomization;
       
-      const { default: html2canvas } = await import('html2canvas');
+      const quoteData: Quote = {
+        id: proposalId,
+        leadId: '', // Not needed for printing
+        createdAt: new Date().toISOString(),
+        formData: formMethods.getValues().calculationInput,
+        results: results,
+        billOfMaterials: formMethods.getValues().billOfMaterials,
+      };
 
-      const htmlString = ReactDOMServer.renderToString(
-        <ProposalDocument
-          results={results}
-          formData={formMethods.getValues().calculationInput}
-          companyData={companyData}
-          clientData={clientData || { name: "Cliente Final", document: "-", address: "-" }}
-          customization={customization}
-          proposalId={proposalId}
-          proposalDate={proposalDate}
-          proposalValidity={proposalValidity}
-        />
-      );
-  
-      const tempDiv = document.createElement('div');
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      tempDiv.style.width = '800px'; 
-      document.body.appendChild(tempDiv);
-      tempDiv.innerHTML = htmlString;
-      
-      const proposalElement = tempDiv.querySelector('#proposal-content') as HTMLElement;
-      
-      if (!proposalElement) {
-        throw new Error("Elemento da proposta não encontrado no HTML renderizado.");
-      }
-  
-      const canvas = await html2canvas(proposalElement, {
-        scale: 2, 
-        useCORS: true,
-        logging: false,
-      });
-  
-      const imgData = canvas.toDataURL('image/png');
-      
-      const pdf = new jsPDF({
-        orientation: 'p',
-        unit: 'mm',
-        format: 'a4',
-        compress: true,
-      });
-      
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pageImgHeight = (canvas.height * pdfWidth) / canvas.width;
-      
-      let heightLeft = pageImgHeight;
-      let position = 0;
-  
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pageImgHeight);
-      heightLeft -= pdf.internal.pageSize.getHeight();
-      
-      while (heightLeft > 10) { // Add a small margin to prevent empty pages
-        position -= pdf.internal.pageSize.getHeight();
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pageImgHeight);
-        heightLeft -= pdf.internal.pageSize.getHeight();
-      }
-  
-      pdf.save(`proposta-${proposalId}.pdf`);
-  
-      document.body.removeChild(tempDiv);
-  
+      const finalClientData = clientData || { name: "Cliente Final", document: "-", address: "-" };
+
+      // Helper function to compress data for URL
+      const compressData = (data: object): string => {
+        return Buffer.from(JSON.stringify(data)).toString("base64");
+      };
+
+      // 2. Compress all data into Base64 strings
+      const compressedQuote = compressData(quoteData);
+      const compressedClient = compressData(finalClientData);
+      const compressedCompany = compressData(companyData);
+      const compressedCustomization = compressData(customization);
+
+      // 3. Build the URL for the print page
+      const url = new URL("/orcamento/imprimir", window.location.origin);
+      url.searchParams.set("quote", compressedQuote);
+      url.searchParams.set("client", compressedClient);
+      url.searchParams.set("company", compressedCompany);
+      url.searchParams.set("customization", compressedCustomization);
+
+      // 4. Open the print page in a new tab
+      window.open(url.toString(), "_blank");
+
     } catch (error: any) {
-      console.error("Falha ao gerar PDF:", error);
-      toast({ title: "Erro ao Gerar PDF", description: error.message, variant: "destructive" });
+      console.error("Falha ao preparar para gerar PDF:", error);
+      toast({ title: "Erro ao Preparar PDF", description: error.message, variant: "destructive" });
     } finally {
       setIsExporting(false);
     }
@@ -368,7 +314,7 @@ export function Step2Results({
 
             <Button type="button" onClick={handleExportPdf} disabled={isExporting}>
                 {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                {isExporting ? "A Gerar..." : "Gerar Proposta"}
+                {isExporting ? "A Preparar..." : "Gerar Proposta"}
             </Button>
           </div>
       </div>

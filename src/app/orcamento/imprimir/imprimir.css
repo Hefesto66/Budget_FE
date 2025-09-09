@@ -1,0 +1,46 @@
+
+/* This CSS file is specifically for the print page */
+body, html {
+    background-color: #f0f4f8 !important; /* A light grey to see the document container */
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.proposal-document {
+    margin: 2rem auto;
+    box-shadow: 0 0 15px rgba(0,0,0,0.15);
+}
+
+.print-error-container, .print-loading-container {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-family: sans-serif;
+    color: #333;
+}
+
+/* Print-specific overrides */
+@media print {
+    body, html {
+        background-color: white !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        display: block;
+    }
+
+    .proposal-document {
+        box-shadow: none !important;
+        border: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+}
+
