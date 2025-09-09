@@ -107,7 +107,6 @@ export function Step2Results({
     setIsPrinting(true);
     toast({ title: "A preparar a proposta...", description: "A sua proposta está a ser aberta numa nova janela para impressão." });
     
-    // --- INÍCIO DA DEPURAÇÃO DO PDF ---
     console.log("--- INÍCIO DA DEPURAÇÃO DO PDF ---");
 
     try {
@@ -150,7 +149,7 @@ export function Step2Results({
             console.log("3. DADOS GUARDADOS COM SUCESSO no sessionStorage.");
         } catch (error) {
             console.error("4. ERRO CRÍTICO ao tentar guardar no sessionStorage:", error);
-            alert("Falha ao guardar os dados na sessão do navegador. Verifique a consola.");
+            alert("Falha ao guardar os dados na sessão do navegador. Verifique a consola. Pode ser que os dados sejam grandes demais.");
             setIsPrinting(false);
             return; // Aborta a operação
         }
@@ -395,3 +394,5 @@ const ComparisonItem = ({ label, value, highlight = false }: { label: string, va
         <p className={`font-semibold text-base ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
     </div>
 );
+
+    
