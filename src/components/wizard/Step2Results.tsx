@@ -103,10 +103,13 @@ export function Step2Results({
     setIsRefining(false);
   };
   
-  const handlePrint = () => {
+  const handleExportPdf = () => {
     setIsPrinting(true);
     toast({ title: "A preparar a proposta...", description: "A sua proposta está a ser aberta numa nova janela para impressão." });
     
+    // --- INÍCIO DA DEPURAÇÃO DO PDF ---
+    console.log("--- INÍCIO DA DEPURAÇÃO DO PDF ---");
+
     try {
         const companyDataStr = localStorage.getItem(COMPANY_DATA_KEY);
         const customizationStr = localStorage.getItem(CUSTOMIZATION_KEY);
@@ -134,7 +137,26 @@ export function Step2Results({
             proposalValidity: new Date(new Date().setDate(new Date().getDate() + 20)).toISOString(),
         };
 
-        sessionStorage.setItem('proposalDataForPrint', JSON.stringify(dataForPrint));
+        // 1. Inspeção Inicial
+        console.log("1. Objeto de dados da proposta reunido:", dataForPrint);
+        
+        // 2. Inspeção da Serialização
+        const dadosEmString = JSON.stringify(dataForPrint);
+        console.log("2. Dados convertidos para string JSON:", dadosEmString);
+
+        // 3. Inspeção da Escrita
+        try {
+            sessionStorage.setItem('proposalDataForPrint', dadosEmString);
+            console.log("3. DADOS GUARDADOS COM SUCESSO no sessionStorage.");
+        } catch (error) {
+            console.error("4. ERRO CRÍTICO ao tentar guardar no sessionStorage:", error);
+            alert("Falha ao guardar os dados na sessão do navegador. Verifique a consola.");
+            setIsPrinting(false);
+            return; // Aborta a operação
+        }
+        
+        // 5. Abertura da Janela
+        console.log("5. A abrir a janela de impressão...");
         window.open('/proposal-template', '_blank');
 
     } catch (error: any) {
@@ -303,7 +325,7 @@ export function Step2Results({
                 {isEditing ? "Atualizar Cotação" : "Salvar Cotação"}
             </Button>
 
-            <Button type="button" onClick={handlePrint} disabled={isPrinting}>
+            <Button type="button" onClick={handleExportPdf} disabled={isPrinting}>
                 {isPrinting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
                 Imprimir Proposta
             </Button>
