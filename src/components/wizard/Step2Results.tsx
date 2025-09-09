@@ -245,6 +245,38 @@ export function Step2Results({
                 />
             </div>
             
+             <AnimatePresence>
+                {showAdvancedAnalysis && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                    >
+                        <ResultCard
+                          icon={<LineChart className="text-purple-500" />}
+                          title="VPL (Valor Presente Líquido)"
+                          value={formatCurrency(results.financeiro.vpl_reais)}
+                          description="Lucro total do projeto em valor de hoje. VPL > 0 indica um bom investimento."
+                        />
+                        <ResultCard
+                          icon={<Target className="text-orange-500" />}
+                          title="TIR (Taxa Interna de Retorno)"
+                          value={tirText}
+                          description="Rentabilidade anual do seu investimento."
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <div className="text-center">
+                <Button variant="link" onClick={() => setShowAdvancedAnalysis(!showAdvancedAnalysis)}>
+                    <ChevronDown className={cn("mr-2 h-4 w-4 transition-transform", showAdvancedAnalysis && "rotate-180")} />
+                    {showAdvancedAnalysis ? 'Ocultar Análise Avançada' : 'Mostrar Análise Avançada'}
+                </Button>
+            </div>
+
             <Card className="shadow-md">
                 <CardHeader>
                     <CardTitle className="font-headline text-2xl">Projeção de Economia Acumulada (25 anos)</CardTitle>
@@ -288,7 +320,7 @@ export function Step2Results({
             
             <Card className="shadow-md">
                 <CardHeader>
-                    <CardTitle className="font-headline text-xl">Divisão do Custo Total</CardTitle>
+                    <CardTitle className="font-headline text-xl">Composição do Custo Total</CardTitle>
                     <CardDescription>{formatCurrency(results.financeiro.custo_sistema_reais)}</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -298,22 +330,6 @@ export function Step2Results({
                             <Pie data={costBreakdownData} dataKey="value" nameKey="component" innerRadius={50} strokeWidth={2} />
                         </PieChart>
                     </ChartContainer>
-                </CardContent>
-            </Card>
-            
-             <Card className="shadow-md">
-                <CardHeader>
-                    <CardTitle className="font-headline text-xl">Análise de Investimento</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">VPL</span>
-                        <span className="font-bold">{formatCurrency(results.financeiro.vpl_reais)}</span>
-                    </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">TIR</span>
-                        <span className="font-bold">{tirText}</span>
-                    </div>
                 </CardContent>
             </Card>
         </div>
