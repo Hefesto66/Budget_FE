@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Header } from "@/components/layout/Header";
 import { ArrowRight, BookUser, Briefcase, Building2, Users, Settings } from "lucide-react";
@@ -42,6 +43,13 @@ const AppCard = ({ href, icon, name, description, className, disabled }: AppCard
 );
 
 export default function Home() {
+  const [year, setYear] = useState<number | null>(null);
+
+  useEffect(() => {
+    // This code runs only on the client, after hydration
+    setYear(new Date().getFullYear());
+  }, []);
+
   return (
     <div className="flex min-h-screen flex-col bg-gray-900 text-white">
        <div className="absolute inset-0 -z-10 h-full w-full bg-white bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]">
@@ -90,7 +98,7 @@ export default function Home() {
 
       <footer className="py-8">
         <div className="container mx-auto px-4 text-center text-white/50">
-          <p>&copy; {new Date().getFullYear()} Solaris. Todos os direitos reservados.</p>
+          {year && <p>&copy; {year} Solaris. Todos os direitos reservados.</p>}
         </div>
       </footer>
     </div>
