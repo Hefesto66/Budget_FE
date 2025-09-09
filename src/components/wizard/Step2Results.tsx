@@ -90,6 +90,7 @@ export function Step2Results({
       const companyData: CompanyFormData | null = JSON.parse(localStorage.getItem(COMPANY_DATA_KEY) || 'null');
       if (!companyData || !companyData.name) {
         toast({ title: "Empresa não configurada", description: "Aceda a Definições > Minha Empresa.", variant: "destructive" });
+        setIsExporting(false);
         return;
       }
       
