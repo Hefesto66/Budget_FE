@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import PdfPrinter from 'pdfmake';
-import type { TDocumentDefinitions, StyleDictionary, TFontDictionary } from 'pdfmake/interfaces';
+import type { TDocumentDefinitions, StyleDictionary } from 'pdfmake/interfaces';
 import { formatCurrency, formatNumber, formatDate } from '@/lib/utils';
 import type { SolarCalculationResult, ClientFormData, CustomizationSettings } from '@/types';
 import type { CompanyFormData } from '@/app/minha-empresa/page';
@@ -185,9 +185,9 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('PDF Generation Error:', error);
+    console.error('ERRO CRÍTICO AO GERAR PDF:', error);
     return new NextResponse(
-      JSON.stringify({ error: 'Failed to generate PDF.', details: error.message }),
+      JSON.stringify({ error: 'Falha ao gerar o PDF no servidor.', details: error.message }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
