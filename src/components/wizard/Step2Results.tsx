@@ -18,7 +18,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { getCalculation, getRefinedSuggestions } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, BarChart, Zap, Calendar, FileDown, Loader2, FileSignature, CheckCircle, Pencil, Save, LineChart, Target, ChevronDown } from "lucide-react";
+import { ArrowLeft, Sparkles, Wallet, TrendingUp, DollarSign, BarChart, Zap, Calendar, FileDown, Loader2, FileSignature, CheckCircle, Pencil, Save, LineChart, Target, ChevronDown, Power, Wrench, Package } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { SuggestRefinedPanelConfigOutput } from "@/ai/flows/suggest-refined-panel-config";
 import { formatCurrency, formatNumber } from "@/lib/utils";
@@ -36,6 +36,14 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useFormContext } from "react-hook-form";
 import type { WizardFormData } from "./Wizard";
 import { AnimatePresence, motion } from "framer-motion";
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart"
+import { Pie, PieChart } from "recharts"
+
 
 const COMPANY_DATA_KEY = "companyData";
 const CUSTOMIZATION_KEY = "proposalCustomization";
@@ -66,19 +74,31 @@ export function Step2Results({
   
   const [isExporting, setIsExporting] = useState(false);
   
-  // State for the editable document details
   const [proposalDate, setProposalDate] = useState<Date>(new Date());
   const [proposalValidity, setProposalValidity] = useState<Date>(addDays(new Date(), 20));
 
-  // State for AI Refinement
   const [isRefining, setIsRefining] = useState(false);
   const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
 
-  // State for advanced analysis visibility
   const [showAdvancedAnalysis, setShowAdvancedAnalysis] = useState(false);
+  
+  const billOfMaterials = formMethods.watch('billOfMaterials');
+  
+  // Prepare data for the cost breakdown chart
+  const costBreakdownData = [
+    { component: "Módulos", value: (billOfMaterials.find(i => i.category === 'PAINEL_SOLAR')?.cost || 0) * (billOfMaterials.find(i => i.category === 'PAINEL_SOLAR')?.quantity || 0), fill: "var(--color-modules)" },
+    { component: "Inversor", value: (billOfMaterials.find(i => i.category === 'INVERSOR')?.cost || 0) * (billOfMaterials.find(i => i.category === 'INVERSOR')?.quantity || 0), fill: "var(--color-inverter)" },
+    { component: "Instalação", value: (billOfMaterials.find(i => i.category === 'SERVICO')?.cost || 0) * (billOfMaterials.find(i => i.category === 'SERVICO')?.quantity || 0), fill: "var(--color-installation)" },
+  ];
+
+  const chartConfig: ChartConfig = {
+    value: { label: "Custo" },
+    modules: { label: "Módulos", color: "hsl(var(--chart-1))" },
+    inverter: { label: "Inversor", color: "hsl(var(--chart-2))" },
+    installation: { label: "Instalação", color: "hsl(var(--chart-3))" },
+  };
 
   useEffect(() => {
-    // Automatically update validity date when proposal date changes
     setProposalValidity(addDays(proposalDate, 20));
   }, [proposalDate]);
 
@@ -193,199 +213,118 @@ export function Step2Results({
 
   const totalCostFromBom = formMethods.watch('billOfMaterials').reduce((acc, item) => acc + (item.cost * item.quantity), 0);
 
-
   return (
     <>
-      <div className="space-y-8 bg-background p-4 sm:p-0">
-        <Card>
-           <CardHeader>
-            <CardTitle className="font-headline text-2xl">Sua Análise Financeira</CardTitle>
-            <CardDescription>
-             Esta é uma simulação com base nos dados fornecidos. Os valores são estimativas.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <ResultCard
-                  icon={<Wallet />}
-                  title="Fatura Mensal SEM Sistema"
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 xl:gap-8">
+        {/* Main Content */}
+        <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+               <ResultCard
+                  icon={<Wallet className="text-red-500" />}
+                  title="Fatura Anterior"
                   value={formatCurrency(results.conta_media_mensal_reais.antes)}
+                  description="Custo médio mensal s/ solar"
                 />
                 <ResultCard
-                  icon={<TrendingUp />}
-                  title="Fatura Mensal COM Sistema"
+                  icon={<TrendingUp className="text-green-500" />}
+                  title="Nova Fatura Estimada"
                   value={formatCurrency(results.conta_media_mensal_reais.depois)}
-                  className="bg-accent/10 border-accent"
+                  description="Custo com energia solar"
                 />
                 <ResultCard
-                  icon={<DollarSign />}
-                  title="Economia Média Mensal"
+                  icon={<DollarSign className="text-green-500" />}
+                  title="Economia Mensal"
                   value={formatCurrency(results.financeiro.economia_mensal_reais)}
+                   description="Valor economizado por mês"
                 />
                  <ResultCard
-                  icon={<BarChart />}
-                  title="Economia no 1º Ano"
-                  value={formatCurrency(results.financeiro.economia_primeiro_ano)}
-                  className="bg-accent/10 border-accent"
-                />
-              </div>
-              <Separator className="my-6" />
-               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <ResultCard
-                    icon={<Zap />}
-                    title="Sistema Sugerido"
-                    value={`${results.dimensionamento.quantidade_modulos} painéis`}
-                    description={`${formMethods.getValues().calculationInput.potencia_modulo_wp}Wp | ${formatNumber(results.geracao.media_mensal_kwh, 0)} kWh/mês`}
-                />
-                <ResultCard
-                  icon={<Calendar />}
+                  icon={<Calendar className="text-blue-500" />}
                   title="Retorno (Payback)"
                   value={paybackText}
-                  description="Período para o sistema se pagar"
+                  description="Tempo para o sistema se pagar"
                 />
-                <ResultCard
-                  icon={<BarChart />}
-                  title="Custo Total Estimado"
-                  value={formatCurrency(results.financeiro.custo_sistema_reais)}
-                  description="Valor do sistema + instalação"
-                />
-              </div>
-               <Separator className="my-6" />
+            </div>
+            
+            <Card className="shadow-md">
+                <CardHeader>
+                    <CardTitle className="font-headline text-2xl">Projeção de Economia Acumulada (25 anos)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <SavingsChart annualSavings={results.financeiro.economia_anual_reais} />
+                </CardContent>
+            </Card>
+        </div>
 
-               {/* Advanced Analysis Toggle Button */}
-               <div className="text-center">
-                 <Button variant="link" onClick={() => setShowAdvancedAnalysis(!showAdvancedAnalysis)}>
-                    {showAdvancedAnalysis ? 'Ocultar Análise Avançada' : 'Mostrar Análise Avançada'}
-                    <ChevronDown className={cn("ml-2 h-4 w-4 transition-transform", showAdvancedAnalysis && "rotate-180")} />
-                 </Button>
-               </div>
-               
-               {/* Advanced Analysis Section */}
-               <AnimatePresence>
-                {showAdvancedAnalysis && (
-                  <motion.div
-                    key="advanced-analysis"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 pt-6">
-                        <ResultCard
-                            icon={<LineChart />}
-                            title="Valor Presente Líquido (VPL)"
-                            value={formatCurrency(results.financeiro.vpl_reais)}
-                            description="Traz a valor presente o fluxo de caixa futuro"
-                        />
-                        <ResultCard
-                            icon={<Target />}
-                            title="Taxa Interna de Retorno (TIR)"
-                            value={tirText}
-                            description="Rentabilidade anual do investimento"
-                        />
+        {/* Sidebar */}
+        <div className="lg:col-span-1 space-y-6">
+             <Card className="shadow-md">
+                <CardHeader>
+                    <CardTitle className="font-headline text-xl">Sistema Sugerido</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center gap-4">
+                        <div className="bg-primary/10 p-3 rounded-lg"><Zap className="h-6 w-6 text-primary" /></div>
+                        <div>
+                            <p className="text-sm text-muted-foreground">Potência Total</p>
+                            <p className="font-bold text-lg">{`${formatNumber(results.dimensionamento.potencia_sistema_kwp, 2)} kWp`}</p>
+                        </div>
                     </div>
-                   </motion.div>
-                )}
-                </AnimatePresence>
-          </CardContent>
-        </Card>
-        
-        <Card>
-            <CardHeader>
-                <CardTitle className="font-headline text-2xl">Projeção de Economia Acumulada</CardTitle>
-                <CardDescription>Este gráfico mostra como sua economia cresce ao longo de 25 anos.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <SavingsChart annualSavings={results.financeiro.economia_anual_reais} />
-            </CardContent>
-        </Card>
-
-        <Card>
-            <CardHeader>
-                <CardTitle className="font-headline text-xl flex items-center gap-2">
-                    <FileSignature />
-                    Detalhes do Documento
-                </CardTitle>
-                <CardDescription>
-                    Revise as informações de identificação e validade da proposta antes de a gerar.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                    <Label htmlFor="proposalId">ID da Proposta</Label>
-                    <Input id="proposalId" value={proposalId || "A ser gerado"} disabled />
-                </div>
-                <div className="space-y-2">
-                    <Label>Data do Documento</Label>
-                     <Popover>
-                        <PopoverTrigger asChild>
-                        <Button
-                            variant={"outline"}
-                            className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !proposalDate && "text-muted-foreground"
-                            )}
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {proposalDate ? format(proposalDate, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                        <CalendarComponent
-                            locale={ptBR}
-                            mode="single"
-                            selected={proposalDate}
-                            onSelect={(date) => date && setProposalDate(date)}
-                            initialFocus
-                        />
-                        </PopoverContent>
-                    </Popover>
-                </div>
-                <div className="space-y-2">
-                    <Label>Data de Vencimento</Label>
-                     <Popover>
-                        <PopoverTrigger asChild>
-                        <Button
-                            variant={"outline"}
-                            className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !proposalValidity && "text-muted-foreground"
-                            )}
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {proposalValidity ? format(proposalValidity, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                        <CalendarComponent
-                            locale={ptBR}
-                            mode="single"
-                            selected={proposalValidity}
-                            onSelect={(date) => date && setProposalValidity(date)}
-                            initialFocus
-                        />
-                        </PopoverContent>
-                    </Popover>
-                </div>
-            </CardContent>
-        </Card>
-
+                     <div className="flex items-center gap-4">
+                        <div className="bg-primary/10 p-3 rounded-lg"><Package className="h-6 w-6 text-primary" /></div>
+                        <div>
+                            <p className="text-sm text-muted-foreground">Módulos</p>
+                            <p className="font-bold text-lg">{`${results.dimensionamento.quantidade_modulos} x ${formMethods.getValues().calculationInput.potencia_modulo_wp}Wp`}</p>
+                        </div>
+                    </div>
+                     <div className="flex items-center gap-4">
+                        <div className="bg-primary/10 p-3 rounded-lg"><Power className="h-6 w-6 text-primary" /></div>
+                        <div>
+                            <p className="text-sm text-muted-foreground">Geração Estimada</p>
+                            <p className="font-bold text-lg">{`${formatNumber(results.geracao.media_mensal_kwh, 0)} kWh/mês`}</p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+            
+            <Card className="shadow-md">
+                <CardHeader>
+                    <CardTitle className="font-headline text-xl">Divisão do Custo Total</CardTitle>
+                    <CardDescription>{formatCurrency(results.financeiro.custo_sistema_reais)}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[200px]">
+                        <PieChart>
+                             <ChartTooltip content={<ChartTooltipContent nameKey="component" hideLabel />} />
+                            <Pie data={costBreakdownData} dataKey="value" nameKey="component" innerRadius={50} strokeWidth={2} />
+                        </PieChart>
+                    </ChartContainer>
+                </CardContent>
+            </Card>
+            
+             <Card className="shadow-md">
+                <CardHeader>
+                    <CardTitle className="font-headline text-xl">Análise de Investimento</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">VPL</span>
+                        <span className="font-bold">{formatCurrency(results.financeiro.vpl_reais)}</span>
+                    </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">TIR</span>
+                        <span className="font-bold">{tirText}</span>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
       </div>
 
-      <div className="mt-8 flex flex-col-reverse gap-4 sm:flex-row sm:justify-between">
+      <div className="mt-8 flex flex-col-reverse gap-4 sm:flex-row sm:justify-between items-center">
           <Button type="button" variant="outline" onClick={onBack}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
+            Voltar e Editar Dados
           </Button>
           <div className="flex flex-col-reverse gap-4 sm:flex-row">
-            {isEditing && (
-              <Button type="button" variant="outline" onClick={onGoToDataInput}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Editar Dados
-              </Button>
-            )}
-
             <Button type="button" variant="outline" onClick={handleAiRefinement} disabled={isRefining}>
                 {isRefining ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                 Refinar com IA
@@ -482,6 +421,3 @@ const ComparisonItem = ({ label, value, highlight = false }: { label: string, va
         <p className={`font-semibold text-base ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
     </div>
 );
-
-
-    
