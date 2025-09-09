@@ -19,25 +19,27 @@ import { useToast } from "@/hooks/use-toast";
 import { Header } from "@/components/layout/Header";
 import { Save } from "lucide-react";
 import type { CustomizationSettings } from "@/types";
+import { Textarea } from "@/components/ui/textarea";
 
 const CUSTOMIZATION_KEY = "proposalCustomization";
 
 const defaultSettings: CustomizationSettings = {
   colors: {
-    primary: "#10B981", // Um verde vibrante como padrão
+    primary: "#10B981",
     textOnPrimary: "#FFFFFF",
   },
   content: {
     showInvestmentTable: true,
     showFinancialSummary: true,
     showSystemPerformance: true,
-    showTerms: true,
-    showGenerationChart: false, // advanced
-    showSavingsChart: true, // important for user
-    showEnvironmentalImpact: false, // advanced
-    showEquipmentDetails: false, // advanced
-    showTimeline: false, // advanced
+    showSavingsChart: true,
+    showCashflowTable: false,
+    showAdvancedAnalysis: false,
+    showNextSteps: false,
   },
+  footer: {
+    customText: "Condições de Pagamento: 50% de entrada, 50% na finalização da instalação.\nEsta proposta é válida por 20 dias.\n\n© 2024 Solaris. Todos os direitos reservados."
+  }
 };
 
 export default function PersonalizarPropostaPage() {
@@ -50,13 +52,13 @@ export default function PersonalizarPropostaPage() {
     try {
       const savedSettings = localStorage.getItem(CUSTOMIZATION_KEY);
       if (savedSettings) {
-        // Merge saved settings with defaults to avoid errors if new keys are added
         const parsed = JSON.parse(savedSettings);
         setSettings(prev => ({
-          ...prev,
+          ...defaultSettings, // Start with defaults
           ...parsed,
-          colors: { ...prev.colors, ...parsed.colors },
-          content: { ...prev.content, ...parsed.content },
+          colors: { ...defaultSettings.colors, ...parsed.colors },
+          content: { ...defaultSettings.content, ...parsed.content },
+          footer: { ...defaultSettings.footer, ...parsed.footer },
         }));
       }
     } catch (error) {
@@ -80,6 +82,16 @@ export default function PersonalizarPropostaPage() {
         content: {
             ...prev.content,
             [key]: value
+        }
+    }));
+  }
+
+  const handleFooterChange = (value: string) => {
+    setSettings(prev => ({
+        ...prev,
+        footer: {
+            ...prev.footer,
+            customText: value
         }
     }));
   }
@@ -125,7 +137,6 @@ export default function PersonalizarPropostaPage() {
                 <CardContent>
                   <div className="grid grid-cols-1 gap-12 md:grid-cols-2">
                     <div className="space-y-6">
-                        {/* Seletor de Cor Principal */}
                         <div>
                             <Label htmlFor="primaryColor">Cor Principal (cabeçalhos e totais)</Label>
                             <div className="flex items-center gap-2 mt-2">
@@ -144,7 +155,6 @@ export default function PersonalizarPropostaPage() {
                                 />
                             </div>
                         </div>
-                         {/* Seletor de Cor do Texto */}
                         <div>
                             <Label htmlFor="textColor">Cor do Texto dos Títulos</Label>
                             <div className="flex items-center gap-2 mt-2">
@@ -164,7 +174,6 @@ export default function PersonalizarPropostaPage() {
                             </div>
                         </div>
                     </div>
-                    {/* Preview em Tempo Real */}
                     <div>
                         <Label>Preview do Cabeçalho</Label>
                         <div className="mt-2 rounded-lg border p-4">
@@ -189,9 +198,9 @@ export default function PersonalizarPropostaPage() {
             <TabsContent value="content">
               <Card>
                 <CardHeader>
-                  <CardTitle>Seções da Proposta</CardTitle>
+                  <CardTitle>Gerir Secções da Proposta</CardTitle>
                   <CardDescription>
-                    Ative ou desative as seções que você deseja exibir no PDF final.
+                    Ative ou desative as secções que você deseja exibir no PDF final.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -217,18 +226,42 @@ export default function PersonalizarPropostaPage() {
                         onCheckedChange={(val) => handleContentToggle('showSystemPerformance', val)}
                     />
                      <ContentSwitch
+                        id="showAdvancedAnalysis"
+                        label="Exibir Análise de Investimento Avançada"
+                        description="Mostra o bloco com os valores de VPL (Valor Presente Líquido) e TIR (Taxa Interna de Retorno)."
+                        checked={settings.content.showAdvancedAnalysis}
+                        onCheckedChange={(val) => handleContentToggle('showAdvancedAnalysis', val)}
+                    />
+                    <ContentSwitch
+                        id="showCashflowTable"
+                        label="Exibir Tabela de Fluxo de Caixa"
+                        description="Mostra a projeção detalhada do fluxo de caixa e economia acumulada ao longo de 25 anos."
+                        checked={settings.content.showCashflowTable}
+                        onCheckedChange={(val) => handleContentToggle('showCashflowTable', val)}
+                    />
+                    <ContentSwitch
                         id="showSavingsChart"
                         label="Exibir Gráfico de Economia Acumulada"
-                        description="Mostra a projeção da economia ao longo de 25 anos. (Não interativo no PDF)"
+                        description="Mostra a projeção visual da economia ao longo de 25 anos. (Não interativo no PDF)"
                         checked={settings.content.showSavingsChart}
                         onCheckedChange={(val) => handleContentToggle('showSavingsChart', val)}
                     />
-                    <ContentSwitch
-                        id="showTerms"
-                        label="Exibir Termos e Condições no Rodapé"
-                        description="Inclui a linha de texto sobre condições de pagamento e direitos reservados no final do documento."
-                        checked={settings.content.showTerms}
-                        onCheckedChange={(val) => handleContentToggle('showTerms', val)}
+                </CardContent>
+              </Card>
+
+               <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle>Editor de Rodapé</CardTitle>
+                  <CardDescription>
+                    Insira aqui informações da sua empresa, termos de pagamento ou uma mensagem de agradecimento.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Textarea
+                        placeholder="Escreva aqui o texto do rodapé..."
+                        value={settings.footer.customText}
+                        onChange={(e) => handleFooterChange(e.target.value)}
+                        rows={5}
                     />
                 </CardContent>
               </Card>

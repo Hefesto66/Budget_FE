@@ -37,20 +37,31 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useFormContext } from "react-hook-form";
 import type { WizardFormData } from "./Wizard";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
-} from "@/components/ui/chart"
-import { Pie, PieChart } from "recharts"
 import { DetailedAnalysisChart } from "./DetailedAnalysisChart";
 
 
 const COMPANY_DATA_KEY = "companyData";
 const CUSTOMIZATION_KEY = "proposalCustomization";
+
+const defaultCustomization: CustomizationSettings = {
+  colors: {
+    primary: "#10B981",
+    textOnPrimary: "#FFFFFF",
+  },
+  content: {
+    showInvestmentTable: true,
+    showFinancialSummary: true,
+    showSystemPerformance: true,
+    showSavingsChart: true,
+    showCashflowTable: false,
+    showAdvancedAnalysis: false,
+    showNextSteps: false,
+  },
+  footer: {
+    customText: "Condições de Pagamento: 50% de entrada, 50% na finalização da instalação.\nEsta proposta é válida por 20 dias.\n\n© 2024 Solaris. Todos os direitos reservados."
+  }
+};
+
 
 interface Step2ResultsProps {
   results: SolarCalculationResult;
@@ -85,19 +96,6 @@ export function Step2Results({
   const [showAdvancedAnalysis, setShowAdvancedAnalysis] = useState(false);
   
   const billOfMaterials = formMethods.watch('billOfMaterials');
-  
-  const costBreakdownData = [
-    { component: "Módulos", value: (billOfMaterials.find(i => i.category === 'PAINEL_SOLAR')?.cost || 0) * (billOfMaterials.find(i => i.category === 'PAINEL_SOLAR')?.quantity || 0), fill: "var(--color-modules)" },
-    { component: "Inversor", value: (billOfMaterials.find(i => i.category === 'INVERSOR')?.cost || 0) * (billOfMaterials.find(i => i.category === 'INVERSOR')?.quantity || 0), fill: "var(--color-inverter)" },
-    { component: "Instalação", value: (billOfMaterials.find(i => i.category === 'SERVICO')?.cost || 0) * (billOfMaterials.find(i => i.category === 'SERVICO')?.quantity || 0), fill: "var(--color-installation)" },
-  ];
-
-  const chartConfig: ChartConfig = {
-    value: { label: "Custo" },
-    modules: { label: "Módulos", color: "hsl(var(--chart-1))" },
-    inverter: { label: "Inversor", color: "hsl(var(--chart-2))" },
-    installation: { label: "Instalação", color: "hsl(var(--chart-3))" },
-  };
 
   useEffect(() => {
     setProposalValidity(addDays(proposalDate, 20));
@@ -118,7 +116,8 @@ export function Step2Results({
         return;
       }
       
-      const customization: CustomizationSettings = JSON.parse(localStorage.getItem(CUSTOMIZATION_KEY) || JSON.stringify(defaultCustomization));
+      const savedSettings = localStorage.getItem(CUSTOMIZATION_KEY);
+      const customization: CustomizationSettings = savedSettings ? JSON.parse(savedSettings) : defaultCustomization;
       
       const { default: html2canvas } = await import('html2canvas');
 
@@ -172,7 +171,7 @@ export function Step2Results({
       pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pageImgHeight);
       heightLeft -= pdf.internal.pageSize.getHeight();
       
-      while (heightLeft > 1) { 
+      while (heightLeft > 10) { // Add a small margin to prevent empty pages
         position -= pdf.internal.pageSize.getHeight();
         pdf.addPage();
         pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pageImgHeight);
@@ -429,23 +428,6 @@ export function Step2Results({
   );
 }
 
-const defaultCustomization: CustomizationSettings = {
-  colors: {
-    primary: "#10B981",
-    textOnPrimary: "#FFFFFF",
-  },
-  content: {
-    showInvestmentTable: true,
-    showFinancialSummary: true,
-    showSystemPerformance: true,
-    showTerms: true,
-    showGenerationChart: false,
-    showSavingsChart: true,
-    showEnvironmentalImpact: false,
-    showEquipmentDetails: false,
-    showTimeline: false,
-  },
-};
 
 const ComparisonItem = ({ label, value, highlight = false }: { label: string, value: string, highlight?: boolean }) => (
     <div>

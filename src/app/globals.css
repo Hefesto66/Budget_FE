@@ -113,14 +113,12 @@
     width: 100% !important;
   }
 
-  .pdf-section {
+  .pdf-block {
     page-break-inside: avoid !important;
-    break-inside: avoid-page !important;
   }
 
   .pdf-page-break-before {
     page-break-before: always !important;
-    break-before: page !important;
   }
 }
 
