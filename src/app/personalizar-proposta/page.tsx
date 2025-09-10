@@ -221,7 +221,6 @@ export default function PersonalizarPropostaPage() {
                             description="Ative para mostrar as colunas 'Preço Unit.' e 'Preço Total' na tabela de investimento."
                             checked={settings.content.showPriceColumns}
                             onCheckedChange={(val) => handleContentToggle('showPriceColumns', val)}
-                            className="ml-10"
                         />
                     )}
                     <ContentSwitch
@@ -310,6 +309,8 @@ function ContentSwitch({ id, label, description, checked, onCheckedChange, class
         </div>
     )
 }
+
+    
 
     
 
