@@ -103,6 +103,9 @@ export default function ProductForm() {
     setIsProductLoaded(true);
   }, [productId, isEditing, form, router, toast]);
 
+  const handleSpecChange = (key: string, value: string) => {
+    setSpecifications(prev => ({ ...prev, [key]: value }));
+  };
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
