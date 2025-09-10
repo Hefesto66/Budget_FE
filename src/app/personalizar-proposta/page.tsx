@@ -22,6 +22,7 @@ import type { CustomizationSettings } from "@/types";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { getCompanyData, saveProposalSettings } from "@/lib/storage";
+import { AuthGuard } from "@/components/auth/AuthGuard";
 
 
 const defaultSettings: CustomizationSettings = {
@@ -43,7 +44,7 @@ const defaultSettings: CustomizationSettings = {
   }
 };
 
-export default function PersonalizarPropostaPage() {
+function PersonalizarPropostaPageContent() {
   const { toast } = useToast();
   const [settings, setSettings] = useState<CustomizationSettings>(defaultSettings);
   const [isSaving, setIsSaving] = useState(false);
@@ -326,3 +327,13 @@ function ContentSwitch({ id, label, description, checked, onCheckedChange, class
         </div>
     )
 }
+
+export default function PersonalizarPropostaPage() {
+    return (
+        <AuthGuard>
+            <PersonalizarPropostaPageContent />
+        </AuthGuard>
+    )
+}
+
+    

@@ -51,6 +51,7 @@ import {
   DialogDescription
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils";
+import { AuthGuard } from "@/components/auth/AuthGuard";
 
 
 const newLeadSchema = z.object({
@@ -62,7 +63,7 @@ const newLeadSchema = z.object({
 
 type NewLeadFormData = z.infer<typeof newLeadSchema>;
 
-export default function NewLeadPage() {
+function NewLeadPageContent() {
   const { toast } = useToast();
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
@@ -329,6 +330,15 @@ export default function NewLeadPage() {
       </Dialog>
     </div>
   )
+}
+
+
+export default function NewLeadPage() {
+    return (
+        <AuthGuard>
+            <NewLeadPageContent />
+        </AuthGuard>
+    )
 }
 
     

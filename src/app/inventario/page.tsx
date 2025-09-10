@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { AuthGuard } from '@/components/auth/AuthGuard';
 
 const ProductIcon = ({ category }: { category: Product['category'] }) => {
     switch (category) {
@@ -107,7 +108,7 @@ const ProductCard = ({ product, onDelete, selectionMode, isSelected, onSelection
 );
 
 
-export default function InventarioPage() {
+function InventarioPageContent() {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
@@ -310,3 +311,13 @@ export default function InventarioPage() {
     </div>
   );
 }
+
+export default function InventarioPage() {
+    return (
+        <AuthGuard>
+            <InventarioPageContent />
+        </AuthGuard>
+    )
+}
+
+    

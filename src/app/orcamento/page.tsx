@@ -4,6 +4,7 @@
 import { Suspense } from 'react';
 import { Wizard } from '@/components/wizard/Wizard';
 import { Header } from '@/components/layout/Header';
+import { AuthGuard } from '@/components/auth/AuthGuard';
 
 function OrcamentoPageComponent() {
   return (
@@ -19,9 +20,12 @@ function OrcamentoPageComponent() {
 // This is the component that will be rendered by the router
 export default function OrcamentoPage() {
   return (
-    // You could have a loading state here while the Suspense boundary is resolving
-    <Suspense fallback={<div>Carregando...</div>}>
-      <OrcamentoPageComponent />
-    </Suspense>
+    <AuthGuard>
+        <Suspense fallback={<div>Carregando...</div>}>
+            <OrcamentoPageComponent />
+        </Suspense>
+    </AuthGuard>
   )
 }
+
+    

@@ -23,8 +23,9 @@ import { getLeadById, getQuotesByLeadId, type Lead, type Quote, getStages, type 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { dispararFogos } from '@/lib/confetti';
+import { AuthGuard } from '@/components/auth/AuthGuard';
 
-export default function LeadDetailPage() {
+function LeadDetailPageContent() {
   const router = useRouter();
   const params = useParams();
   const leadId = params.leadId as string;
@@ -237,3 +238,13 @@ export default function LeadDetailPage() {
     </div>
   );
 }
+
+export default function LeadDetailPage() {
+    return (
+        <AuthGuard>
+            <LeadDetailPageContent />
+        </AuthGuard>
+    )
+}
+
+    

@@ -454,3 +454,5 @@ export const deleteProduct = async (productId: string): Promise<void> => {
 export const getSalespersons = async (): Promise<Salesperson[]> => [{ id: 'sp-1', name: 'Vendedor Padrão' }];
 export const getPaymentTerms = async (): Promise<PaymentTerm[]> => [{ id: 'pt-1', name: '30 Dias' }];
 export const getPriceLists = async (): Promise<PriceList[]> => [{ id: 'pl-1', name: 'Tabela de Preços Padrão' }];
+
+    

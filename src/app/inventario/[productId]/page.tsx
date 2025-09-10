@@ -24,6 +24,7 @@ import { PRODUCT_CATEGORIES, ProductCategory } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import Image from 'next/image';
+import { AuthGuard } from "@/components/auth/AuthGuard";
 
 const productFormSchema = z.object({
   name: z.string().min(1, "O nome do produto é obrigatório."),
@@ -50,7 +51,7 @@ const ProductIcon = ({ category }: { category: Product['category'] }) => {
     }
 }
 
-export default function ProductForm() {
+function ProductForm() {
   const { toast } = useToast();
   const router = useRouter();
   const params = useParams();
@@ -342,3 +343,13 @@ export default function ProductForm() {
     </div>
   );
 }
+
+export default function ProductFormPage() {
+    return (
+        <AuthGuard>
+            <ProductForm />
+        </AuthGuard>
+    )
+}
+
+    

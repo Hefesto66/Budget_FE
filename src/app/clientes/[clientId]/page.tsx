@@ -34,6 +34,7 @@ import { cn, formatDate } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { AuthGuard } from "@/components/auth/AuthGuard";
 
 
 const clientFormSchema = z.object({
@@ -113,7 +114,7 @@ const HistoryItem = ({ entry }: { entry: HistoryEntry }) => {
 };
 
 
-export default function ClientForm() {
+function ClientForm() {
   const { toast } = useToast();
   const router = useRouter();
   const params = useParams();
@@ -578,6 +579,14 @@ export default function ClientForm() {
       </main>
     </div>
   );
+}
+
+export default function ClientFormPage() {
+    return (
+        <AuthGuard>
+            <ClientForm />
+        </AuthGuard>
+    )
 }
 
     

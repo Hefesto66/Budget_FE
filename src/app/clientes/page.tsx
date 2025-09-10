@@ -11,6 +11,7 @@ import { getClients, type Client } from '@/lib/storage';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
+import { AuthGuard } from '@/components/auth/AuthGuard';
 
 const ClientCard = ({ client }: { client: Client }) => (
   <Link href={`/clientes/${client.id}`}>
@@ -39,7 +40,7 @@ const ClientCard = ({ client }: { client: Client }) => (
 );
 
 
-export default function ClientesPage() {
+function ClientesPageContent() {
   const [clients, setClients] = useState<Client[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -108,3 +109,13 @@ export default function ClientesPage() {
     </div>
   );
 }
+
+export default function ClientesPage() {
+    return (
+        <AuthGuard>
+            <ClientesPageContent />
+        </AuthGuard>
+    )
+}
+
+    

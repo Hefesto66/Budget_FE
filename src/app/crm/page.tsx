@@ -30,6 +30,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { dispararFogos } from '@/lib/confetti';
+import { AuthGuard } from '@/components/auth/AuthGuard';
 
 // Importa o DragDropContext dinamicamente para evitar problemas de SSR
 const DragDropContext = dynamic(
@@ -100,7 +101,7 @@ const LeadCard = ({ lead, index, onDelete }: { lead: Lead, index: number, onDele
 );
 
 
-export default function CrmPage() {
+function CrmPageContent() {
   const [leadsByStage, setLeadsByStage] = useState<Record<string, Lead[]>>({});
   const [stages, setStages] = useState<Stage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -452,3 +453,13 @@ export default function CrmPage() {
     </DragDropContext>
   );
 }
+
+export default function CrmPage() {
+    return (
+        <AuthGuard>
+            <CrmPageContent />
+        </AuthGuard>
+    )
+}
+
+    

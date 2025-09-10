@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/Header";
 import { ArrowRight, Building, Palette } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { AuthGuard } from "@/components/auth/AuthGuard";
 
 interface SettingsCardProps {
   href: string;
@@ -42,7 +43,7 @@ const SettingsCard = ({ href, icon, name, description }: SettingsCardProps) => (
 );
 
 
-export default function DefinicoesPage() {
+function DefinicoesPageContent() {
   return (
     <div className="flex min-h-screen flex-col bg-gray-900 text-white">
       <div className="absolute inset-0 -z-10 h-full w-full bg-white bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]">
@@ -79,3 +80,13 @@ export default function DefinicoesPage() {
     </div>
   );
 }
+
+export default function DefinicoesPage() {
+    return (
+        <AuthGuard>
+            <DefinicoesPageContent />
+        </AuthGuard>
+    )
+}
+
+    

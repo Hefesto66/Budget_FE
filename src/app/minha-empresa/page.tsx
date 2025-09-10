@@ -23,6 +23,7 @@ import { Loader2, Save, UploadCloud } from "lucide-react"
 import Image from "next/image"
 import { saveCompanyData, getCompanyData, CompanyData } from "@/lib/storage"
 import { Header } from "@/components/layout/Header"
+import { AuthGuard } from "@/components/auth/AuthGuard"
 
 const companySchema = z.object({
   logo: z.string().optional(),
@@ -35,7 +36,7 @@ const companySchema = z.object({
 
 export type CompanyFormData = z.infer<typeof companySchema>
 
-export default function MinhaEmpresaPage() {
+function MinhaEmpresaPageContent() {
   const { toast } = useToast()
   const router = useRouter()
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
@@ -239,3 +240,13 @@ export default function MinhaEmpresaPage() {
     </div>
   )
 }
+
+export default function MinhaEmpresaPage() {
+    return (
+        <AuthGuard>
+            <MinhaEmpresaPageContent />
+        </AuthGuard>
+    )
+}
+
+    
