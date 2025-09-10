@@ -177,7 +177,7 @@ export default function ProductForm() {
     } catch (error) {
         toast({
           title: "Erro ao Salvar",
-          description: "Não foi possível salvar o produto.",
+          description: "Não foi possível salvar o produto. Verifique o console do navegador (F12) para mais detalhes.",
           variant: "destructive"
         });
     } finally {

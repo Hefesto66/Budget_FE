@@ -215,8 +215,6 @@ export default function ClientForm() {
   const onSubmit = async (data: ClientFormData) => {
     setIsSaving(true);
     
-    // A UI apenas recolhe os dados. A lógica de negócio (adicionar companyId)
-    // é agora responsabilidade de `saveClient`.
     const clientData: Partial<Client> = {
       ...data,
       tags: selectedTags,
@@ -233,9 +231,10 @@ export default function ClientForm() {
             router.push(`/clientes/${savedClientId}`);
         }
     } catch (error) {
+       console.error("Firebase save error:", error);
        toast({
         title: "Erro ao salvar",
-        description: "Não foi possível salvar o cliente. Verifique a consola para mais detalhes.",
+        description: "Não foi possível salvar o cliente. Verifique o console do navegador (F12) para mais detalhes.",
         variant: "destructive"
       });
     } finally {
