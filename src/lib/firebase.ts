@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore, enableIndexedDbPersistence, FirestoreError } from "firebase/firestore";
+import { getFirestore, enableIndexedDbPersistence, type FirestoreError } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
