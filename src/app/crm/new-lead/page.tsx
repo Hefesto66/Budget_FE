@@ -143,16 +143,19 @@ export default function NewLeadPage() {
       return;
     }
     
+    // Este é o objeto enviado para a base de dados.
+    // O `companyId` é essencial para passar nas regras de segurança do Firestore.
     const newClientData: Partial<Client> = {
       name: newClientName.trim(),
-      type: 'individual', // Default type
+      type: 'individual', // Tipo padrão
+      companyId: 'dev_company_id_placeholder', // Adiciona a ID da empresa de desenvolvimento
       history: [],
     };
     
     try {
         const newClientId = await saveClient(newClientData, { isNew: true });
-        // The onSnapshot listener will automatically update the client list.
-        // We just need to select the new client.
+        // O onSnapshot listener irá automaticamente atualizar a lista de clientes.
+        // Apenas precisamos de selecionar o novo cliente.
         
         form.setValue("clientId", newClientId, { shouldValidate: true });
         setSelectedClientId(newClientId);
