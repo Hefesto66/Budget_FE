@@ -1,6 +1,8 @@
+
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getFirestore, enableIndexedDbPersistence, type Firestore } from "firebase/firestore";
+import { getAuth, type Auth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -14,6 +16,7 @@ const firebaseConfig = {
 
 let app: FirebaseApp;
 let db: Firestore;
+let auth: Auth;
 
 // Create a Promise that resolves with the db instance once persistence is enabled.
 const dbReady: Promise<Firestore | null> = new Promise((resolve) => {
@@ -21,6 +24,9 @@ const dbReady: Promise<Firestore | null> = new Promise((resolve) => {
     try {
       app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
       db = getFirestore(app);
+      
+      // Initialize Auth
+      auth = getAuth(app);
       
       enableIndexedDbPersistence(db)
         .then(() => {
@@ -48,5 +54,5 @@ const dbReady: Promise<Firestore | null> = new Promise((resolve) => {
   }
 });
 
-// Export the app instance and the promise for the db instance.
-export { app, db, dbReady };
+// Export the app instance, auth, and the promise for the db instance.
+export { app, db, auth, dbReady };
