@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { saveLead, getClients, saveClient, type Client, addHistoryEntry, getClientById, getStages, type Stage } from '@/lib/storage';
+import { saveLead, getClients, saveClient, type Client, addHistoryEntry, getStages, type Stage } from '@/lib/storage';
 import {
   Popover,
   PopoverContent,
@@ -144,16 +144,17 @@ export default function NewLeadPage() {
     }
     
     const newClientData: Partial<Client> = {
-      name: newClientName,
-      type: 'individual',
+      name: newClientName.trim(),
+      type: 'individual', // Default type
       history: [],
     };
     
     try {
         const newClientId = await saveClient(newClientData, { isNew: true });
         // The onSnapshot listener will automatically update the client list.
+        // We just need to select the new client.
         
-        form.setValue("clientId", newClientId);
+        form.setValue("clientId", newClientId, { shouldValidate: true });
         setSelectedClientId(newClientId);
         
         setNewClientName("");
@@ -224,7 +225,7 @@ export default function NewLeadPage() {
                                       key={client.id}
                                       value={client.name}
                                       onSelect={() => {
-                                        form.setValue("clientId", client.id);
+                                        form.setValue("clientId", client.id, { shouldValidate: true });
                                         setSelectedClientId(client.id);
                                         setComboboxOpen(false);
                                       }}

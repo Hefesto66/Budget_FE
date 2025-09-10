@@ -136,20 +136,20 @@ export default function CrmPage() {
 
   useEffect(() => {
     setIsLoading(true);
-    
-    // First, get the stages (assuming they don't change often)
+    let unsubscribeLeads: () => void = () => {};
+
     getStages().then(initialStages => {
         setStages(initialStages);
 
-        // Then, set up the real-time listener for leads
-        const unsubscribe = getLeads((allLeads) => {
+        unsubscribeLeads = getLeads((allLeads) => {
             processLeads(allLeads, initialStages);
             setIsLoading(false);
         });
-
-        // Return the unsubscribe function to clean up the listener
-        return () => unsubscribe();
     });
+
+    return () => {
+        unsubscribeLeads();
+    };
   }, []);
 
   useEffect(() => {

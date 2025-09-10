@@ -161,48 +161,39 @@ export default function ClientForm() {
     form.setValue("tags", newTags);
   };
 
-  const fetchClientData = useCallback(async () => {
-      if (!isEditing) {
-          setIsClientLoaded(true);
-          return;
-      }
-
-      const unsubscribe = await getClientById(clientId, (existingClient) => {
-          if (existingClient) {
-              form.reset(existingClient);
-              if (existingClient.photo) {
-                  setPhotoPreview(existingClient.photo);
-              }
-              setClientHistory(existingClient.history || []);
-          } else {
-              toast({ title: "Erro", description: "Cliente não encontrado.", variant: "destructive" });
-              router.push('/clientes');
-          }
-          setIsClientLoaded(true);
-      });
-
-      return unsubscribe;
-  }, [clientId, isEditing, form, router, toast]);
-
   useEffect(() => {
+    let unsubscribe: () => void = () => {};
+
     async function loadDropdowns() {
-      // These can be fetched in parallel if they become async
-      setSalespersons(await getSalespersons());
-      setPaymentTerms(await getPaymentTerms());
-      setPriceLists(await getPriceLists());
+        setSalespersons(await getSalespersons());
+        setPaymentTerms(await getPaymentTerms());
+        setPriceLists(await getPriceLists());
     }
 
-    loadDropdowns();
-    const unsubscribePromise = fetchClientData();
-    
-    return () => {
-        unsubscribePromise.then(unsubscribe => {
-            if (unsubscribe) {
-                unsubscribe();
+    if (isEditing) {
+        unsubscribe = getClientById(clientId, (existingClient) => {
+            if (existingClient) {
+                form.reset(existingClient);
+                if (existingClient.photo) {
+                    setPhotoPreview(existingClient.photo);
+                }
+                setClientHistory(existingClient.history || []);
+            } else {
+                toast({ title: "Erro", description: "Cliente não encontrado.", variant: "destructive" });
+                router.push('/clientes');
             }
+            setIsClientLoaded(true);
         });
+    } else {
+        setIsClientLoaded(true);
+    }
+    
+    loadDropdowns();
+
+    return () => {
+        unsubscribe();
     };
-  }, [fetchClientData]);
+  }, [clientId, isEditing, form, router, toast]);
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

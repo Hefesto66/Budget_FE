@@ -12,10 +12,11 @@ import {
   runTransaction,
   addDoc,
   onSnapshot,
-  getDocs
+  getDocs,
+  Unsubscribe
 } from 'firebase/firestore';
 
-import type { Quote, Client, Stage, Lead, Product, HistoryEntry, CustomizationSettings, Salesperson, PaymentTerm, PriceList, ClientFormData } from "@/types";
+import type { Quote, Client, Stage, Lead, Product, HistoryEntry, CustomizationSettings, Salesperson, PaymentTerm, PriceList } from "@/types";
 import type { CompanyFormData } from '@/app/minha-empresa/page';
 
 const getCurrentUserId = (): string => {
@@ -93,7 +94,7 @@ export const saveStages = async (stages: Stage[]): Promise<void> => {
 
 
 // Clients
-export const getClients = (callback: (clients: Client[]) => void): (() => void) => {
+export const getClients = (callback: (clients: Client[]) => void): Unsubscribe => {
     if (!checkDb()) {
       callback([]);
       return () => {}; // Return a no-op unsubscribe function
@@ -112,18 +113,27 @@ export const getClients = (callback: (clients: Client[]) => void): (() => void) 
     return unsubscribe;
 }
 
-export const getClientById = async (id: string): Promise<Client | null> => {
-    if (!checkDb()) return null;
-    const companyId = getCurrentUserId();
-    const docRef = doc(db!, 'clients', id);
-    const docSnap = await getDoc(docRef);
-
-    if (docSnap.exists() && docSnap.data().companyId === companyId) {
-        return { id: docSnap.id, ...docSnap.data() } as Client;
+export const getClientById = (id: string, callback: (client: Client | null) => void): Unsubscribe => {
+    if (!checkDb()) {
+        callback(null);
+        return () => {};
     }
-    return null;
-};
+    const docRef = doc(db!, 'clients', id);
+    const companyId = getCurrentUserId();
 
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists() && docSnap.data().companyId === companyId) {
+            callback({ id: docSnap.id, ...docSnap.data() } as Client);
+        } else {
+            callback(null);
+        }
+    }, (error) => {
+        console.error(`Error listening to client ${id}:`, error);
+        callback(null);
+    });
+    
+    return unsubscribe;
+};
 
 export const saveClient = async (
     clientData: Partial<Client>,
@@ -131,13 +141,17 @@ export const saveClient = async (
 ): Promise<string> => {
     if (!checkDb()) return Promise.reject("Firestore not initialized");
     const companyId = getCurrentUserId();
-    const dataToSave: Omit<Client, 'id'> & { id?: string } = {
+    const dataToSave: Omit<Client, 'id' | 'history'> & { id?: string, history?: HistoryEntry[] } = {
         companyId,
         name: clientData.name || "Cliente sem nome",
         type: clientData.type || 'individual',
-        history: clientData.history || [],
         ...clientData,
     };
+    
+    // Ensure history is an array
+    if (!dataToSave.history) {
+        dataToSave.history = [];
+    }
 
     let clientId: string;
 
@@ -151,6 +165,7 @@ export const saveClient = async (
                 key !== 'tags' && 
                 key !== 'id' && 
                 key !== 'history' && 
+                key !== 'companyId' &&
                 options.originalData[key as keyof ClientFormData] !== dataToSave[key as keyof Client]
             );
             if(changedFields.length > 0) {
@@ -214,7 +229,7 @@ export const addHistoryEntry = async (params: {
 
 
 // Leads
-export const getLeads = (callback: (leads: Lead[]) => void): (() => void) => {
+export const getLeads = (callback: (leads: Lead[]) => void): Unsubscribe => {
     if (!checkDb()) {
         callback([]);
         return () => {};
@@ -275,7 +290,18 @@ export const getQuoteById = async (id: string): Promise<Quote | null> => {
     const docRef = doc(db!, 'quotes', id);
     const docSnap = await getDoc(docRef);
 
-    if (!docSnap.exists() || docSnap.data().companyId !== companyId) {
+    if (!docSnap.exists()) {
+        const leadWithQuoteId = query(collection(db!, "leads"), where("companyId", "==", companyId), where("id", "==", id));
+        const leadSnapshot = await getDocs(leadWithQuoteId);
+        if(!leadSnapshot.empty) {
+            const leadDoc = leadSnapshot.docs[0];
+            const quoteData = leadDoc.data() as Omit<Quote, 'billOfMaterials'>;
+            
+            const itemsSnapshot = await getDocs(collection(db!, 'leads', leadDoc.id, 'quoteItems'));
+            const billOfMaterials = itemsSnapshot.docs.map(doc => doc.data());
+
+            return { ...quoteData, id: leadDoc.id, billOfMaterials };
+        }
         return null;
     }
 
@@ -286,6 +312,7 @@ export const getQuoteById = async (id: string): Promise<Quote | null> => {
     
     return { ...quoteData, id: docSnap.id, billOfMaterials };
 }
+
 
 export const getQuotesByLeadId = async (leadId: string): Promise<Quote[]> => {
     if (!checkDb()) return [];
@@ -344,7 +371,7 @@ export const generateNewQuoteId = async (): Promise<string> => {
 
 
 // Inventory / Products
-export const getProducts = (callback: (products: Product[]) => void): (() => void) => {
+export const getProducts = (callback: (products: Product[]) => void): Unsubscribe => {
     if (!checkDb()) {
         callback([]);
         return () => {};
@@ -363,40 +390,18 @@ export const getProducts = (callback: (products: Product[]) => void): (() => voi
     return unsubscribe;
 };
 
-export const getProductById = async (id: string, callback?: (product: Product | null) => void): Promise<Product | null> => {
-    if (!checkDb()) {
-        if(callback) callback(null);
-        return null;
-    }
-
+export const getProductById = async (id: string): Promise<Product | null> => {
+    if (!checkDb()) return null;
     const docRef = doc(db!, 'inventory', id);
     const companyId = getCurrentUserId();
-
-    if (callback) {
-        const unsubscribe = onSnapshot(docRef, (docSnap) => {
-            if (docSnap.exists() && docSnap.data().companyId === companyId) {
-                callback({ id: docSnap.id, ...docSnap.data() } as Product);
-            } else {
-                callback(null);
-            }
-        }, (error) => {
-            console.error(`Error listening to product ${id}:`, error);
-            callback(null);
-        });
-        // This is a bit of a tricky case. The signature now supports both callback and promise.
-        // For the callback case, we should maybe not return a promise, but the prompt implies this function will be used in both ways.
-        // Let's assume for now that if a callback is provided, the return value is not used.
-        return null; 
+    
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists() && docSnap.data().companyId === companyId) {
+        return { id: docSnap.id, ...docSnap.data() } as Product;
     } else {
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists() && docSnap.data().companyId === companyId) {
-            return { id: docSnap.id, ...docSnap.data() } as Product;
-        } else {
-            return null;
-        }
+        return null;
     }
 };
-
 
 export const saveProduct = async (productData: Partial<Product>): Promise<string> => {
     if (!checkDb()) return Promise.reject("Firestore not initialized");
