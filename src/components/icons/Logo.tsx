@@ -1,12 +1,10 @@
 
-import { Sun } from 'lucide-react';
+import Image from 'next/image';
 
 export function Logo() {
   return (
     <div className="flex items-center gap-2" aria-label="Logotipo do Solaris">
-      <div className="rounded-full bg-primary/20 p-2">
-        <Sun className="h-6 w-6 text-primary" />
-      </div>
+      <Image src="/Solaris.png" alt="Solaris Logo" width={32} height={32} className="rounded-full" />
       <span className="text-xl font-bold font-headline text-white tracking-wide">
         Solaris
       </span>
