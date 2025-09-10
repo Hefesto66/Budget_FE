@@ -19,11 +19,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, Save, UploadCloud } from "lucide-react"
+import { Loader2, Save, UploadCloud, ShieldCheck } from "lucide-react"
 import Image from "next/image"
 import { saveCompanyData, getCompanyData, CompanyData } from "@/lib/storage"
 import { Header } from "@/components/layout/Header"
 import { AuthGuard } from "@/components/auth/AuthGuard"
+import { useAuth } from "@/context/AuthContext"
+import { setSuperUserRole } from "./actions"
 
 const companySchema = z.object({
   logo: z.string().optional(),
@@ -36,9 +38,64 @@ const companySchema = z.object({
 
 export type CompanyFormData = z.infer<typeof companySchema>
 
+function SuperUserAdmin() {
+  const [email, setEmail] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { toast } = useToast();
+
+  const handleSetRole = async () => {
+    if (!email) {
+      toast({ title: 'Erro', description: 'Por favor, insira um email.', variant: 'destructive' });
+      return;
+    }
+    setIsProcessing(true);
+    const result = await setSuperUserRole(email);
+    if (result.success) {
+      toast({ title: 'Sucesso!', description: result.message });
+    } else {
+      toast({ title: 'Erro', description: result.message, variant: 'destructive' });
+    }
+    setIsProcessing(false);
+    setEmail('');
+  };
+
+  return (
+    <Card className="mt-8 border-primary/50 shadow-lg">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 font-headline text-xl">
+          <ShieldCheck className="text-primary" /> Painel de Super Usuário
+        </CardTitle>
+        <CardDescription>
+          Atribua o papel de Super Usuário a um utilizador para conceder permissões de administrador.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-end gap-2">
+          <div className="flex-grow space-y-1">
+            <Label htmlFor="superuser-email">Email do Utilizador</Label>
+            <Input
+              id="superuser-email"
+              type="email"
+              placeholder="utilizador@exemplo.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={isProcessing}
+            />
+          </div>
+          <Button onClick={handleSetRole} disabled={isProcessing}>
+            {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Promover
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 function MinhaEmpresaPageContent() {
   const { toast } = useToast()
   const router = useRouter()
+  const { isSuperUser } = useAuth();
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true);
@@ -235,6 +292,9 @@ function MinhaEmpresaPageContent() {
               </CardFooter>
             </Card>
           </form>
+
+          {isSuperUser && <SuperUserAdmin />}
+
         </div>
       </main>
     </div>
