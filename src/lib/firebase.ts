@@ -1,11 +1,8 @@
 // Import the functions you need from the SDKs you need
-import { initializeApp, getApps } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getFirestore, enableIndexedDbPersistence, FirestoreError } from "firebase/firestore";
 
 // Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -17,13 +14,25 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-let app;
-if (!getApps().length) {
-    app = initializeApp(firebaseConfig);
-} else {
-    app = getApps()[0];
-}
-
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
+
+// Enable offline persistence
+try {
+    enableIndexedDbPersistence(db)
+        .catch((err: FirestoreError) => {
+            if (err.code === 'failed-precondition') {
+                console.warn(
+                    'Firestore persistence failed: Multiple tabs open, persistence can only be enabled in one tab at a a time.'
+                );
+            } else if (err.code === 'unimplemented') {
+                console.warn(
+                    'Firestore persistence failed: The current browser does not support all of the features required to enable persistence.'
+                );
+            }
+        });
+} catch (error) {
+    console.error("Error enabling Firestore persistence:", error);
+}
 
 export { db };
