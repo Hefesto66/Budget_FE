@@ -215,7 +215,7 @@ export default function PersonalizarPropostaPage() {
                     />
                     {/* Switch para colunas de preço, só faz sentido se a tabela estiver visível */}
                     {settings.content.showInvestmentTable && (
-                      <div className="ml-6 pl-4 border-l-2">
+                      <div className="ml-6 border-l-2">
                          <ContentSwitch
                               id="showPriceColumns"
                               label="Exibir Colunas de Preço na Tabela"
@@ -311,3 +311,5 @@ function ContentSwitch({ id, label, description, checked, onCheckedChange, class
         </div>
     )
 }
+
+    
