@@ -9,20 +9,34 @@ import { Loader2 } from 'lucide-react';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  isSuperUser: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
+  isSuperUser: false,
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSuperUser, setIsSuperUser] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
+      if (user) {
+        try {
+            const idTokenResult = await user.getIdTokenResult();
+            setIsSuperUser(!!idTokenResult.claims.superuser);
+        } catch (error) {
+            console.error("Erro ao obter as claims do utilizador:", error);
+            setIsSuperUser(false);
+        }
+      } else {
+        setIsSuperUser(false);
+      }
       setLoading(false);
     });
 
@@ -40,7 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, loading, isSuperUser }}>
       {children}
     </AuthContext.Provider>
   );

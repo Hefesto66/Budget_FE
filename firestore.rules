@@ -1,30 +1,46 @@
-rules_version = '2';
 
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Rule for the companies collection
-    match /companies/{userId} {
-      // Allow reading company data if the user is authenticated (e.g., to get settings)
-      // or for our development placeholder.
-      allow read: if request.auth != null || userId == 'dev_company_id_placeholder';
-      
-      // Allow writing only if the authenticated user's ID matches the document ID.
-      // This prevents one user from changing another user's company data.
-      allow write: if request.auth.uid == userId;
+    // Regra de Super Usuário:
+    // Um super usuário (com claim `superuser: true`) pode ler/escrever qualquer documento.
+    function isSuperUser() {
+      return request.auth.token.superuser == true;
     }
 
-    // Generic rule for collections owned by a company.
-    // This rule applies to clients, inventory, leads, and quotes.
-    match /{collection}/{docId} 
-        where collection in ['clients', 'inventory', 'leads', 'quotes'] {
-      
-      // Allow read and write access if:
-      // 1. The document's companyId field matches the authenticated user's UID.
-      // OR
-      // 2. The document's companyId is our special development placeholder.
-      allow read, write: if (request.auth != null && request.auth.uid == resource.data.companyId) || 
-                           resource.data.companyId == 'dev_company_id_placeholder';
+    // Regra de Dono:
+    // Um usuário pode ler/escrever um documento se o seu UID corresponder ao `companyId` do documento.
+    function isOwner(companyId) {
+      return request.auth.uid == companyId;
+    }
+    
+    // As regras de segurança não são filtros. A sua aplicação deve garantir que as queries
+    // que executa estão em conformidade com estas regras.
+    
+    match /companies/{companyId} {
+        // Um usuário só pode ler/escrever o seu próprio documento da empresa.
+        allow read, write: if isOwner(companyId) || isSuperUser();
+    }
+    
+    match /clients/{docId} {
+      // Um usuário pode ler/escrever clientes que pertencem à sua empresa.
+      allow read, write: if isOwner(resource.data.companyId) || isSuperUser();
+    }
+    
+     match /inventory/{docId} {
+      // Um usuário pode ler/escrever produtos que pertencem à sua empresa.
+      allow read, write: if isOwner(resource.data.companyId) || isSuperUser();
+    }
+    
+     match /leads/{docId} {
+      // Um usuário pode ler/escrever leads que pertencem à sua empresa.
+      allow read, write: if isOwner(resource.data.companyId) || isSuperUser();
+    }
+    
+     match /quotes/{docId} {
+      // Um usuário pode ler/escrever cotações que pertencem à sua empresa.
+      allow read, write: if isOwner(resource.data.companyId) || isSuperUser();
     }
   }
 }
