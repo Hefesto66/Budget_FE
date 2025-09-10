@@ -160,9 +160,9 @@ export default function InventarioPage() {
     <div className="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-950">
       <Header />
       <main className="flex-1 p-6">
-        <div className="mb-6 flex flex-col sm:flex-row items-start justify-between gap-4">
-            <div className="flex-1 w-full sm:w-auto">
-                <div className="relative w-full sm:w-auto">
+        <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex-1 flex items-center gap-4">
+                 <div className="relative w-full sm:w-auto">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     <Input
                     type="search"
@@ -172,7 +172,7 @@ export default function InventarioPage() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                 <div className="mt-4">
+                 <div>
                     <ToggleGroup 
                         type="single"
                         value={viewMode}
@@ -306,3 +306,5 @@ export default function InventarioPage() {
     </div>
   );
 }
+
+    
