@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/radio-group";
 import Image from 'next/image';
 import { getClientById, saveClient, type Client, getSalespersons, getPaymentTerms, getPriceLists, addHistoryEntry, type HistoryEntry } from '@/lib/storage';
-import type { Salesperson, PaymentTerm, PriceList } from "@/types";
+import type { Salesperson, PaymentTerm, PriceList, ClientFormData } from "@/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
@@ -55,7 +55,6 @@ const clientFormSchema = z.object({
   priceListId: z.string().optional(),
 });
 
-type ClientFormData = z.infer<typeof clientFormSchema>;
 
 // Predefined tags for suggestion
 const ALL_TAGS = [
@@ -162,18 +161,11 @@ export default function ClientForm() {
   };
 
   useEffect(() => {
-    let unsubscribe: () => void = () => {};
-
-    async function loadDropdowns() {
-        setSalespersons(await getSalespersons());
-        setPaymentTerms(await getPaymentTerms());
-        setPriceLists(await getPriceLists());
-    }
-
-    if (isEditing) {
-        unsubscribe = getClientById(clientId, (existingClient) => {
+    async function loadClientData() {
+        if (isEditing) {
+            const existingClient = await getClientById(clientId);
             if (existingClient) {
-                form.reset(existingClient);
+                form.reset(existingClient as ClientFormData); // Cast to ensure compatibility
                 if (existingClient.photo) {
                     setPhotoPreview(existingClient.photo);
                 }
@@ -182,17 +174,18 @@ export default function ClientForm() {
                 toast({ title: "Erro", description: "Cliente não encontrado.", variant: "destructive" });
                 router.push('/clientes');
             }
-            setIsClientLoaded(true);
-        });
-    } else {
+        }
         setIsClientLoaded(true);
     }
     
-    loadDropdowns();
+    async function loadDropdowns() {
+        setSalespersons(await getSalespersons());
+        setPaymentTerms(await getPaymentTerms());
+        setPriceLists(await getPriceLists());
+    }
 
-    return () => {
-        unsubscribe();
-    };
+    loadClientData();
+    loadDropdowns();
   }, [clientId, isEditing, form, router, toast]);
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -256,8 +249,19 @@ export default function ClientForm() {
     try {
         await addHistoryEntry({ clientId: clientId, text: newNote, type: 'note' });
         setNewNote("");
+        // Optimistic update:
+        const newEntry: HistoryEntry = {
+            id: `temp-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            text: newNote,
+            type: 'note',
+            author: 'Usuário'
+        };
+        setClientHistory(prev => [newEntry, ...prev]);
+
     } catch(error) {
          toast({ title: "Erro", description: "Não foi possível adicionar a nota.", variant: "destructive" });
+         // Revert optimistic update if necessary, or let the listener handle it
     }
   };
 

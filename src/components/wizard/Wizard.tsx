@@ -138,8 +138,9 @@ export function Wizard() {
     
     const initialize = async () => {
       
-      const products = await getProducts();
-      setInventory(products);
+      const unsubscribe = getProducts((products) => {
+        setInventory(products);
+      });
 
       let draftData: any = null;
       try {
@@ -162,7 +163,7 @@ export function Wizard() {
           if (draftData.proposalId) setProposalId(draftData.proposalId);
           if (draftData.currentStep) setCurrentStep(draftData.currentStep);
           setIsReady(true);
-          return;
+          return () => unsubscribe();
       }
 
       let initialData: Partial<SolarCalculationInput> = {};
@@ -187,8 +188,8 @@ export function Wizard() {
           if(foundClient) {
               clientToSet = {
                   name: foundClient.name,
-                  document: foundClient.cnpj || '',
-                  address: `${foundClient.street || ''}, ${foundClient.cityState || ''}`,
+                  cnpj: foundClient.cnpj || '',
+                  street: `${foundClient.street || ''}, ${foundClient.cityState || ''}`,
               };
               if (foundClient.salespersonId) initialData.salespersonId = foundClient.salespersonId;
               if (foundClient.paymentTermId) initialData.paymentTermId = foundClient.paymentTermId;
@@ -198,12 +199,12 @@ export function Wizard() {
       
       const normalizedBom = normalizeBillOfMaterials(bomToSet);
       if (normalizedBom.length === 0) {
-        handleAddNewItem();
+        // We'll add a new item inside the form component if the list is empty
       }
 
       methods.reset({ 
         calculationInput: {...defaultValues, ...initialData}, 
-        billOfMaterials: normalizedBom.length > 0 ? normalizedBom : methods.getValues('billOfMaterials')
+        billOfMaterials: normalizedBom
       });
 
       if(clientToSet) setClientData(clientToSet);
@@ -211,11 +212,15 @@ export function Wizard() {
       if(quoteId && loadedResults) setCurrentStep(1);
 
       setIsReady(true);
+      return () => unsubscribe();
     };
 
-    initialize();
+    const unsubscribePromise = initialize();
+    return () => {
+        unsubscribePromise.then(unsubscribe => unsubscribe && unsubscribe());
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leadId, quoteId, clienteId, methods, router]);
+  }, [quoteId, clienteId, leadId]);
 
   const processForm = async (data: WizardFormData) => {
     setIsLoading(true);
@@ -385,7 +390,7 @@ export function Wizard() {
   const totalCost = watchedBOM.reduce((acc, item) => acc + (item.cost * item.quantity), 0);
   
   if (!isReady) {
-    return <div className="flex items-center justify-center h-64"><Loader2 className="mr-2 h-8 w-8 animate-spin" />A carregar Orçamento...</div>;
+    return <div className="flex items-center justify-center h-screen"><Loader2 className="mr-2 h-8 w-8 animate-spin" />A carregar Orçamento...</div>;
   }
   
   return (
@@ -405,7 +410,7 @@ export function Wizard() {
                         <div className="mb-8 flex justify-between items-center">
                             <div className="flex items-center gap-4">
                                 <h2 className="text-lg font-semibold text-foreground">
-                                    Cotação para a Oportunidade: <span className="text-primary font-bold">{getLeadById(leadId)?.title}</span>
+                                    Cotação para a Oportunidade: <span className="text-primary font-bold">{getLeadById(leadId)?.title || leadId}</span>
                                 </h2>
                             </div>
                             <div className="flex gap-2">
@@ -505,7 +510,19 @@ export function Wizard() {
                                               {methods.watch(`billOfMaterials.${index}.manufacturer`)}
                                           </TableCell>
                                           <TableCell className="text-right">
-                                              {formatCurrency(methods.watch(`billOfMaterials.${index}.cost`))}
+                                                <FormField
+                                                    control={methods.control}
+                                                    name={`billOfMaterials.${index}.cost`}
+                                                    render={({ field: formField }) => (
+                                                        <Input
+                                                            type="number"
+                                                            className="text-right"
+                                                            {...formField}
+                                                            onChange={e => formField.onChange(Number(e.target.value))}
+                                                            disabled={!field.productId}
+                                                        />
+                                                    )}
+                                                />
                                           </TableCell>
                                           <TableCell className="text-center text-muted-foreground">
                                               {methods.watch(`billOfMaterials.${index}.unit`)}
@@ -536,7 +553,11 @@ export function Wizard() {
                                   ))}
                                   </TableBody>
                               </Table>
-                              <div className="flex justify-end mt-4">
+                              <div className="flex justify-between items-center mt-4">
+                                <Button type="button" variant="outline" size="sm" onClick={handleAddNewItem}>
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Adicionar Item
+                                </Button>
                                   <div className="w-full max-w-xs space-y-2">
                                       <div className="flex justify-between font-semibold text-lg">
                                           <span>Total Geral:</span>
@@ -588,5 +609,3 @@ export function Wizard() {
     </div>
   );
 }
-
-    

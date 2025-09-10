@@ -1,5 +1,4 @@
-
-import { db } from './firebase';
+import { db, app } from './firebase';
 import {
   collection,
   doc,
@@ -26,8 +25,10 @@ const getCurrentUserId = (): string => {
 }
 
 const checkDb = (): boolean => {
-    if (!db) {
-        console.warn("Firestore is not initialized. Cannot perform DB operations.");
+    if (!db || !app) {
+        if (typeof window !== 'undefined') {
+             console.warn("Firestore is not initialized. Operations will be skipped.");
+        }
         return false;
     }
     return true;
@@ -51,12 +52,16 @@ export const getCompanyData = async (): Promise<CompanyData | null> => {
     if (!checkDb()) return null;
     const userId = getCurrentUserId();
     const companyDocRef = doc(db!, 'companies', userId);
-    const docSnap = await getDoc(companyDocRef);
-
-    if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() } as CompanyData;
+    try {
+        const docSnap = await getDoc(companyDocRef);
+        if (docSnap.exists()) {
+            return { id: docSnap.id, ...docSnap.data() } as CompanyData;
+        }
+        return null;
+    } catch (error) {
+        console.error("Error fetching company data:", error);
+        return null;
     }
-    return null;
 }
 
 export const saveProposalSettings = async (settings: CustomizationSettings): Promise<void> => {
@@ -113,26 +118,21 @@ export const getClients = (callback: (clients: Client[]) => void): Unsubscribe =
     return unsubscribe;
 }
 
-export const getClientById = (id: string, callback: (client: Client | null) => void): Unsubscribe => {
-    if (!checkDb()) {
-        callback(null);
-        return () => {};
-    }
-    const docRef = doc(db!, 'clients', id);
+export const getClientById = async (id: string): Promise<Client | null> => {
+    if (!checkDb()) return null;
     const companyId = getCurrentUserId();
+    const docRef = doc(db!, 'clients', id);
 
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+    try {
+        const docSnap = await getDoc(docRef);
         if (docSnap.exists() && docSnap.data().companyId === companyId) {
-            callback({ id: docSnap.id, ...docSnap.data() } as Client);
-        } else {
-            callback(null);
+            return { id: docSnap.id, ...docSnap.data() } as Client;
         }
-    }, (error) => {
-        console.error(`Error listening to client ${id}:`, error);
-        callback(null);
-    });
-    
-    return unsubscribe;
+        return null;
+    } catch (error) {
+        console.error("Error fetching client by ID:", error);
+        return null;
+    }
 };
 
 export const saveClient = async (
@@ -288,29 +288,29 @@ export const getQuoteById = async (id: string): Promise<Quote | null> => {
     if (!checkDb()) return null;
     const companyId = getCurrentUserId();
     const docRef = doc(db!, 'quotes', id);
-    const docSnap = await getDoc(docRef);
+    
+    try {
+        const docSnap = await getDoc(docRef);
 
-    if (!docSnap.exists()) {
-        const leadWithQuoteId = query(collection(db!, "leads"), where("companyId", "==", companyId), where("id", "==", id));
-        const leadSnapshot = await getDocs(leadWithQuoteId);
-        if(!leadSnapshot.empty) {
-            const leadDoc = leadSnapshot.docs[0];
-            const quoteData = leadDoc.data() as Omit<Quote, 'billOfMaterials'>;
-            
-            const itemsSnapshot = await getDocs(collection(db!, 'leads', leadDoc.id, 'quoteItems'));
-            const billOfMaterials = itemsSnapshot.docs.map(doc => doc.data());
-
-            return { ...quoteData, id: leadDoc.id, billOfMaterials };
+        if (!docSnap.exists()) {
+            return null; // Quote not found
         }
+        
+        if (docSnap.data().companyId !== companyId) {
+            console.error("Permission denied: quote does not belong to the current user.");
+            return null;
+        }
+
+        const quoteData = docSnap.data() as Omit<Quote, 'billOfMaterials'>;
+        
+        const itemsSnapshot = await getDocs(collection(db!, 'quotes', id, 'quoteItems'));
+        const billOfMaterials = itemsSnapshot.docs.map(doc => doc.data());
+        
+        return { ...quoteData, id: docSnap.id, billOfMaterials };
+    } catch(error) {
+        console.error("Error fetching quote by ID:", error);
         return null;
     }
-
-    const quoteData = docSnap.data() as Omit<Quote, 'billOfMaterials'>;
-    
-    const itemsSnapshot = await getDocs(collection(db!, 'quotes', id, 'quoteItems'));
-    const billOfMaterials = itemsSnapshot.docs.map(doc => doc.data());
-    
-    return { ...quoteData, id: docSnap.id, billOfMaterials };
 }
 
 
@@ -336,10 +336,12 @@ export const saveQuote = async (quote: Quote): Promise<void> => {
     const existingItemsSnapshot = await getDocs(itemsCollectionRef);
     existingItemsSnapshot.forEach(doc => batch.delete(doc.ref));
 
-    billOfMaterials.forEach((item) => {
-        const itemRef = doc(itemsCollectionRef);
-        batch.set(itemRef, item);
-    });
+    if (billOfMaterials && billOfMaterials.length > 0) {
+        billOfMaterials.forEach((item) => {
+            const itemRef = doc(itemsCollectionRef); // Create a new doc ref for each item
+            batch.set(itemRef, item);
+        });
+    }
 
     await batch.commit();
 }
@@ -362,7 +364,7 @@ export const generateNewQuoteId = async (): Promise<string> => {
             }
         });
         const paddedNumber = String(newQuoteNumber).padStart(4, '0');
-        return `SOL-S${paddedNumber}`;
+        return `PRO-${paddedNumber}`;
     } catch (e) {
         console.error("Transaction failed: ", e);
         throw new Error("Failed to generate a new quote ID.");
@@ -395,10 +397,15 @@ export const getProductById = async (id: string): Promise<Product | null> => {
     const docRef = doc(db!, 'inventory', id);
     const companyId = getCurrentUserId();
     
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists() && docSnap.data().companyId === companyId) {
-        return { id: docSnap.id, ...docSnap.data() } as Product;
-    } else {
+    try {
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists() && docSnap.data().companyId === companyId) {
+            return { id: docSnap.id, ...docSnap.data() } as Product;
+        } else {
+            return null;
+        }
+    } catch (error) {
+        console.error("Error fetching product by ID:", error);
         return null;
     }
 };

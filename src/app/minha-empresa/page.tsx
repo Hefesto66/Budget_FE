@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, Save, UploadCloud } from "lucide-react"
 import Image from "next/image"
-import { saveCompanyData, getCompanyData } from "@/lib/storage"
+import { saveCompanyData, getCompanyData, CompanyData } from "@/lib/storage"
 import { Header } from "@/components/layout/Header"
 
 const companySchema = z.object({
@@ -40,6 +40,7 @@ export default function MinhaEmpresaPage() {
   const router = useRouter()
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isLoading, setIsLoading] = useState(true);
 
   const form = useForm<CompanyFormData>({
     resolver: zodResolver(companySchema),
@@ -55,6 +56,7 @@ export default function MinhaEmpresaPage() {
 
   useEffect(() => {
     async function loadData() {
+        setIsLoading(true);
         try {
             const savedData = await getCompanyData();
             if (savedData) {
@@ -70,6 +72,8 @@ export default function MinhaEmpresaPage() {
                 description: "Não foi possível carregar os dados da empresa.",
                 variant: "destructive",
             });
+        } finally {
+            setIsLoading(false);
         }
     }
     loadData();
@@ -116,6 +120,18 @@ export default function MinhaEmpresaPage() {
       }
     setIsSaving(false)
   }
+  
+    if (isLoading) {
+        return (
+            <div className="flex min-h-screen flex-col">
+                <Header />
+                <main className="flex-1 flex justify-center items-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </main>
+            </div>
+        );
+    }
+
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -223,5 +239,3 @@ export default function MinhaEmpresaPage() {
     </div>
   )
 }
-
-    

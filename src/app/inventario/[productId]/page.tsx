@@ -85,8 +85,15 @@ export default function ProductForm() {
           const existingProduct = await getProductById(productId);
           if (existingProduct) {
             const formData: ProductFormData = {
-                ...existingProduct,
+                name: existingProduct.name,
+                photo: existingProduct.photo || null,
                 fabricante: existingProduct.technicalSpecifications?.['Fabricante'] || '',
+                category: existingProduct.category,
+                salePrice: existingProduct.salePrice,
+                costPrice: existingProduct.costPrice,
+                unit: existingProduct.unit,
+                description: existingProduct.description,
+                internalNotes: existingProduct.internalNotes,
             };
             form.reset(formData);
             if (existingProduct.photo) {

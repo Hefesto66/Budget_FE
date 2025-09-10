@@ -46,6 +46,7 @@ const defaultSettings: CustomizationSettings = {
 export default function PersonalizarPropostaPage() {
   const { toast } = useToast();
   const [settings, setSettings] = useState<CustomizationSettings>(defaultSettings);
+  const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -104,7 +105,7 @@ export default function PersonalizarPropostaPage() {
   }
 
   const handleSave = async () => {
-    setIsLoading(true);
+    setIsSaving(true);
     try {
       await saveProposalSettings(settings);
       toast({
@@ -118,7 +119,7 @@ export default function PersonalizarPropostaPage() {
         variant: "destructive",
       });
     } finally {
-        setIsLoading(false);
+        setIsSaving(false);
     }
   };
   
@@ -290,8 +291,8 @@ export default function PersonalizarPropostaPage() {
           </Tabs>
 
           <div className="mt-8 flex justify-end">
-            <Button onClick={handleSave} disabled={isLoading}>
-              <Save className="mr-2 h-4 w-4" />
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               Salvar Personalização
             </Button>
           </div>
@@ -325,5 +326,3 @@ function ContentSwitch({ id, label, description, checked, onCheckedChange, class
         </div>
     )
 }
-
-    
