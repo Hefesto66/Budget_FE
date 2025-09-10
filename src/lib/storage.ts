@@ -1,3 +1,4 @@
+
 import { dbReady } from './firebase';
 import {
   collection,
@@ -17,7 +18,7 @@ import {
 
 import type { Quote, Client, Stage, Lead, Product, HistoryEntry, CustomizationSettings, Salesperson, PaymentTerm, PriceList } from "@/types";
 import type { CompanyFormData } from '@/app/minha-empresa/page';
-import { ClientFormData } from '@/app/clientes/[clientId]/page';
+import type { ClientFormData } from '@/app/clientes/[clientId]/page';
 
 const getCurrentUserId = (): string => {
     // Para desenvolvimento, usamos um ID estático e fixo.
@@ -156,18 +157,17 @@ export const saveClient = async (
     if (!db) return Promise.reject("Firestore not initialized");
 
     const companyId = getCurrentUserId();
+    const dataToSave = { ...clientData, companyId };
     
-    // Garante que o companyId está sempre presente nos dados a serem salvos.
-    // Esta é a correção principal para garantir a conformidade com as regras de segurança.
-    const dataToSave = {
-        ...clientData,
-        companyId, 
-    };
-
     let clientId: string;
 
-    if (!options.isNew && dataToSave.id) {
-        clientId = dataToSave.id;
+    if (options.isNew) {
+        if (!dataToSave.history) dataToSave.history = [];
+        const docRef = await addDoc(collection(db, 'clients'), dataToSave);
+        clientId = docRef.id;
+        await addHistoryEntry({ clientId, text: 'Cliente criado.', type: 'log' });
+    } else {
+        clientId = dataToSave.id!;
         const docRef = doc(db, 'clients', clientId);
         
         let changesLog = "";
@@ -179,25 +179,12 @@ export const saveClient = async (
                 key !== 'companyId' &&
                 options.originalData[key as keyof ClientFormData] !== dataToSave[key as keyof Client]
             );
-            if(changedFields.length > 0) {
-                changesLog = `Cliente atualizado: ${changedFields.join(', ')}.`;
-            }
+            if(changedFields.length > 0) changesLog = `Cliente atualizado: ${changedFields.join(', ')}.`;
         }
         
         delete dataToSave.id; 
         await setDoc(docRef, dataToSave, { merge: true });
-        if (changesLog) {
-            await addHistoryEntry({ clientId, text: changesLog, type: 'log' });
-        }
-        
-    } else {
-        // Assegura que o histórico é um array para novos clientes
-        if (!dataToSave.history) {
-            dataToSave.history = [];
-        }
-        const docRef = await addDoc(collection(db, 'clients'), dataToSave);
-        clientId = docRef.id;
-        await addHistoryEntry({ clientId, text: 'Cliente criado.', type: 'log' });
+        if (changesLog) await addHistoryEntry({ clientId, text: changesLog, type: 'log' });
     }
     
     return clientId;
@@ -432,13 +419,14 @@ export const getProductById = async (id: string): Promise<Product | null> => {
 export const saveProduct = async (productData: Partial<Product>): Promise<string> => {
     const db = await dbReady;
     if (!db) return Promise.reject("Firestore not initialized");
+    
     const companyId = getCurrentUserId();
     const dataToSave = { ...productData, companyId };
-    
+
     if (dataToSave.id) {
         const productId = dataToSave.id;
         const docRef = doc(db, 'inventory', productId);
-        delete dataToSave.id;
+        delete dataToSave.id; // Não salvar o ID dentro do próprio documento
         await setDoc(docRef, dataToSave, { merge: true });
         return productId;
     } else {
@@ -457,3 +445,5 @@ export const deleteProduct = async (productId: string): Promise<void> => {
 export const getSalespersons = async (): Promise<Salesperson[]> => [{ id: 'sp-1', name: 'Vendedor Padrão' }];
 export const getPaymentTerms = async (): Promise<PaymentTerm[]> => [{ id: 'pt-1', name: '30 Dias' }];
 export const getPriceLists = async (): Promise<PriceList[]> => [{ id: 'pl-1', name: 'Tabela de Preços Padrão' }];
+
+    
