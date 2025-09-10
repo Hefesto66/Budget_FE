@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { saveLead, getClients, saveClient, type Client, addHistoryEntry, getClientById } from '@/lib/storage';
+import { saveLead, getClients, saveClient, type Client, addHistoryEntry, getClientById, getStages, Stage } from '@/lib/storage';
 import {
   Popover,
   PopoverContent,
@@ -67,21 +67,22 @@ export default function NewLeadPage() {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
+  const [stages, setStages] = useState<Stage[]>([]);
   
-  // State for the combobox
   const [comboboxOpen, setComboboxOpen] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState("");
 
-  // State for the "New Client" dialog
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
   const [newClientName, setNewClientName] = useState("");
 
   useEffect(() => {
-    async function fetchClients() {
+    async function fetchData() {
       const allClients = await getClients();
+      const allStages = await getStages();
       setClients(allClients);
+      setStages(allStages.filter(s => !s.isWon)); // Don't allow creating a lead directly in 'Won'
     }
-    fetchClients();
+    fetchData();
   }, []);
   
   const form = useForm<NewLeadFormData>({
@@ -108,8 +109,8 @@ export default function NewLeadPage() {
       title: data.title,
       value: data.value,
       stage: data.stage,
-      clientId: selectedClient.id, // Save client id
-      clientName: selectedClient.name, // Save client name for display
+      clientId: selectedClient.id,
+      clientName: selectedClient.name,
     };
     
     const newLeadId = await saveLead(newLead);
@@ -138,30 +139,34 @@ export default function NewLeadPage() {
     
     const newClientData: Partial<Client> = {
       name: newClientName,
-      type: 'individual', // Default type
+      type: 'individual',
       history: [],
     };
     
-    const newClientId = await saveClient(newClientData);
-    const newClient = await getClientById(newClientId);
-    
-    if (!newClient) {
-        toast({ title: "Erro", description: "Falha ao recuperar o cliente recém-criado.", variant: "destructive" });
-        return;
+    try {
+        const newClientId = await saveClient(newClientData);
+        const newClient = await getClientById(newClientId);
+        
+        if (!newClient) {
+            toast({ title: "Erro", description: "Falha ao recuperar o cliente recém-criado.", variant: "destructive" });
+            return;
+        }
+
+        await addHistoryEntry({ clientId: newClient.id, text: 'Cliente criado através do formulário de nova oportunidade.', type: 'log' });
+        
+        setClients(prevClients => [...prevClients, newClient]);
+        form.setValue("clientId", newClient.id);
+        setSelectedClientId(newClient.id);
+
+        toast({ title: "Cliente Criado!", description: `${newClientName} foi adicionado à sua lista de clientes.` });
+        
+        setNewClientName("");
+        setIsClientDialogOpen(false);
+        setComboboxOpen(false);
+    } catch(error) {
+        console.error("Failed to create client:", error);
+        toast({ title: "Erro", description: "Não foi possível criar o novo cliente.", variant: "destructive" });
     }
-
-    await addHistoryEntry({ clientId: newClient.id, text: 'Cliente criado através do formulário de nova oportunidade.', type: 'log' });
-    
-    setClients(prevClients => [...prevClients, newClient]);
-    
-    form.setValue("clientId", newClient.id);
-    setSelectedClientId(newClient.id);
-
-    toast({ title: "Cliente Criado!", description: `${newClientName} foi adicionado à sua lista de clientes.` });
-    
-    setNewClientName("");
-    setIsClientDialogOpen(false);
-    setComboboxOpen(false); // Close combobox after selection
   };
 
   const selectedClientName = clients.find(c => c.id === selectedClientId)?.name || "Selecione um cliente...";
@@ -236,7 +241,11 @@ export default function NewLeadPage() {
                                   ))}
                                 </CommandGroup>
                                 <CommandItem
-                                    onSelect={() => setIsClientDialogOpen(true)}
+                                    onSelect={(e) => {
+                                        e.preventDefault();
+                                        setIsClientDialogOpen(true);
+                                        setComboboxOpen(false);
+                                    }}
                                     className="text-primary cursor-pointer font-medium"
                                 >
                                     <UserPlus className="mr-2 h-4 w-4" />
@@ -262,9 +271,9 @@ export default function NewLeadPage() {
                             <SelectValue placeholder="Selecione a etapa inicial" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="qualificacao">Qualificação</SelectItem>
-                            <SelectItem value="proposta">Proposta Enviada</SelectItem>
-                            <SelectItem value="negociacao">Negociação</SelectItem>
+                            {stages.map((stage) => (
+                                <SelectItem key={stage.id} value={stage.id}>{stage.title}</SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                      {form.formState.errors.stage && <p className="text-sm text-destructive mt-1">{form.formState.errors.stage.message}</p>}

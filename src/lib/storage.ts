@@ -11,36 +11,21 @@ import {
   query,
   where,
   runTransaction,
-  increment,
   addDoc
 } from 'firebase/firestore';
 
-import type { Quote, Client, Stage, Lead, Product, HistoryEntry, CustomizationSettings } from "@/types";
+import type { Quote, Client, Stage, Lead, Product, HistoryEntry, CustomizationSettings, Salesperson, PaymentTerm, PriceList } from "@/types";
 import type { CompanyFormData } from '@/app/minha-empresa/page';
 
-// =================================================================
-// SIMULATED AUTHENTICATION
-// =================================================================
-// In a real app, this would come from Firebase Auth.
-// For now, we use a hardcoded user ID to simulate a logged-in user.
-// This is the key to our multi-tenant architecture.
 const getCurrentUserId = (): string => {
     return 'user__test_id_12345';
 }
-
-// =================================================================
-// TYPES & SCHEMAS (Firestore-specific)
-// =================================================================
 
 export interface CompanyData extends CompanyFormData {
     id: string;
     proposalSettings?: CustomizationSettings;
     lastQuoteNumber?: number;
 }
-
-// =================================================================
-// COMPANY DATA FUNCTIONS
-// =================================================================
 
 export const saveCompanyData = async (data: CompanyFormData): Promise<void> => {
     const userId = getCurrentUserId();
@@ -66,7 +51,6 @@ export const saveProposalSettings = async (settings: CustomizationSettings): Pro
 }
 
 
-// ====== STAGE FUNCTIONS ====== //
 const DEFAULT_STAGES: Stage[] = [
   { id: 'qualificacao', title: 'Qualificação', description: 'Leads iniciais que precisam ser contactados e avaliados.', isWon: false },
   { id: 'proposta', title: 'Proposta Enviada', description: 'Leads que receberam uma proposta formal.', isWon: false },
@@ -76,17 +60,15 @@ const DEFAULT_STAGES: Stage[] = [
 ];
 
 export const getStages = (): Stage[] => {
-  // For now, stages are static and not per-company. This could be changed later.
   return DEFAULT_STAGES;
 }
 
-export const saveStages = (stages: Stage[]): void => {
-  // This would need to be implemented if stages become company-specific
-  console.warn("saveStages is not implemented for Firestore yet.");
+export const saveStages = async (stages: Stage[]): Promise<void> => {
+  const companyId = getCurrentUserId();
+  const stagesRef = doc(db, 'companies', companyId);
+  await setDoc(stagesRef, { stages: stages }, { merge: true });
 }
 
-
-// ====== CLIENT FUNCTIONS ====== //
 
 export const getClients = async (): Promise<Client[]> => {
     const companyId = getCurrentUserId();
@@ -108,12 +90,20 @@ export const getClientById = async (id: string): Promise<Client | null> => {
 
 export const saveClient = async (clientData: Partial<Client>): Promise<string> => {
     const companyId = getCurrentUserId();
-    const dataToSave = { ...clientData, companyId };
+    const dataToSave: Omit<Client, 'id'> & { id?: string } = {
+        ...clientData,
+        companyId,
+        name: clientData.name || "Cliente sem nome",
+        type: clientData.type || 'individual',
+        history: clientData.history || [],
+    };
     
     if (dataToSave.id) {
-        const docRef = doc(db, 'clients', dataToSave.id);
+        const clientId = dataToSave.id;
+        const docRef = doc(db, 'clients', clientId);
+        delete dataToSave.id; 
         await setDoc(docRef, dataToSave, { merge: true });
-        return dataToSave.id;
+        return clientId;
     } else {
         const docRef = await addDoc(collection(db, 'clients'), dataToSave);
         return docRef.id;
@@ -144,8 +134,6 @@ export const addHistoryEntry = async (params: {
     await saveClient({ ...client, history: updatedHistory });
 }
 
-// ====== LEAD FUNCTIONS ====== //
-
 export const getLeads = async (): Promise<Lead[]> => {
     const companyId = getCurrentUserId();
     const q = query(collection(db, 'leads'), where('companyId', '==', companyId));
@@ -169,9 +157,11 @@ export const saveLead = async (leadData: Partial<Lead>): Promise<string> => {
     const dataToSave = { ...leadData, companyId };
 
     if (dataToSave.id) {
-        const docRef = doc(db, 'leads', dataToSave.id);
+        const leadId = dataToSave.id;
+        const docRef = doc(db, 'leads', leadId);
+        delete dataToSave.id;
         await setDoc(docRef, dataToSave, { merge: true });
-        return dataToSave.id;
+        return leadId;
     } else {
         const docRef = await addDoc(collection(db, 'leads'), dataToSave);
         return docRef.id;
@@ -179,12 +169,9 @@ export const saveLead = async (leadData: Partial<Lead>): Promise<string> => {
 };
 
 export const deleteLead = async (leadId: string): Promise<void> => {
-    // We should also delete associated quotes, but for simplicity, we'll just delete the lead for now.
     await deleteDoc(doc(db, 'leads', leadId));
 };
 
-
-// ====== QUOTE FUNCTIONS ====== //
 
 export const getQuoteById = async (id: string): Promise<Quote | null> => {
     const companyId = getCurrentUserId();
@@ -195,13 +182,12 @@ export const getQuoteById = async (id: string): Promise<Quote | null> => {
         return null;
     }
 
-    const quoteData = docSnap.data() as Quote;
+    const quoteData = docSnap.data() as Omit<Quote, 'billOfMaterials'>;
     
-    // Fetch sub-collection
     const itemsSnapshot = await getDocs(collection(db, 'quotes', id, 'quoteItems'));
-    quoteData.billOfMaterials = itemsSnapshot.docs.map(doc => doc.data());
+    const billOfMaterials = itemsSnapshot.docs.map(doc => doc.data());
     
-    return { ...quoteData, id: docSnap.id };
+    return { ...quoteData, id: docSnap.id, billOfMaterials };
 }
 
 export const getQuotesByLeadId = async (leadId: string): Promise<Quote[]> => {
@@ -213,16 +199,19 @@ export const getQuotesByLeadId = async (leadId: string): Promise<Quote[]> => {
 
 export const saveQuote = async (quote: Quote): Promise<void> => {
     const companyId = getCurrentUserId();
-    const { billOfMaterials, ...quoteData } = quote;
-    const quoteRef = doc(db, 'quotes', quote.id);
+    const { billOfMaterials, id, ...quoteData } = quote;
+    const quoteRef = doc(db, 'quotes', id);
 
     const batch = writeBatch(db);
 
-    batch.set(quoteRef, { ...quoteData, companyId });
+    batch.set(quoteRef, { ...quoteData, companyId, id });
 
-    // Handle sub-collection for bill of materials
+    const itemsCollectionRef = collection(quoteRef, 'quoteItems');
+    const existingItemsSnapshot = await getDocs(itemsCollectionRef);
+    existingItemsSnapshot.forEach(doc => batch.delete(doc.ref));
+
     billOfMaterials.forEach((item) => {
-        const itemRef = doc(collection(quoteRef, 'quoteItems')); // Auto-generate ID for each item
+        const itemRef = doc(itemsCollectionRef);
         batch.set(itemRef, item);
     });
 
@@ -233,21 +222,18 @@ export const generateNewQuoteId = async (): Promise<string> => {
     const companyId = getCurrentUserId();
     const counterRef = doc(db, 'companies', companyId);
 
-    let newQuoteNumber: number;
+    let newQuoteNumber: number = 1;
     try {
         await runTransaction(db, async (transaction) => {
             const counterDoc = await transaction.get(counterRef);
-            if (!counterDoc.exists()) {
-                // Initialize the counter if it doesn't exist
-                newQuoteNumber = 1;
+            if (!counterDoc.exists() || !counterDoc.data()?.lastQuoteNumber) {
                 transaction.set(counterRef, { lastQuoteNumber: newQuoteNumber }, { merge: true });
             } else {
-                const currentNumber = counterDoc.data().lastQuoteNumber || 0;
-                newQuoteNumber = currentNumber + 1;
+                newQuoteNumber = (counterDoc.data().lastQuoteNumber || 0) + 1;
                 transaction.update(counterRef, { lastQuoteNumber: newQuoteNumber });
             }
         });
-        const paddedNumber = String(newQuoteNumber!).padStart(4, '0');
+        const paddedNumber = String(newQuoteNumber).padStart(4, '0');
         return `SOL-S${paddedNumber}`;
     } catch (e) {
         console.error("Transaction failed: ", e);
@@ -255,8 +241,6 @@ export const generateNewQuoteId = async (): Promise<string> => {
     }
 }
 
-
-// ====== PRODUCT (INVENTORY) FUNCTIONS ====== //
 
 export const getProducts = async (): Promise<Product[]> => {
     const companyId = getCurrentUserId();
@@ -281,9 +265,11 @@ export const saveProduct = async (productData: Partial<Product>): Promise<string
     const dataToSave = { ...productData, companyId };
     
     if (dataToSave.id) {
-        const docRef = doc(db, 'inventory', dataToSave.id);
+        const productId = dataToSave.id;
+        const docRef = doc(db, 'inventory', productId);
+        delete dataToSave.id;
         await setDoc(docRef, dataToSave, { merge: true });
-        return dataToSave.id;
+        return productId;
     } else {
         const docRef = await addDoc(collection(db, 'inventory'), dataToSave);
         return docRef.id;
@@ -291,14 +277,9 @@ export const saveProduct = async (productData: Partial<Product>): Promise<string
 };
 
 export const deleteProduct = async (productId: string): Promise<void> => {
-    // In a real app, you should check if the product is in use in any quotes before deleting.
     await deleteDoc(doc(db, 'inventory', productId));
 };
 
-// ====== SALES CONFIG FUNCTIONS ====== //
-// For now, these will remain static as they are not company-specific yet.
-export const getSalespersons = () => [{ id: 'sp-1', name: 'Vendedor Padrão' }];
-export const getPaymentTerms = () => [{ id: 'pt-1', name: '30 Dias' }];
-export const getPriceLists = () => [{ id: 'pl-1', name: 'Tabela de Preços Padrão' }];
-
-    
+export const getSalespersons = async (): Promise<Salesperson[]> => [{ id: 'sp-1', name: 'Vendedor Padrão' }];
+export const getPaymentTerms = async (): Promise<PaymentTerm[]> => [{ id: 'pt-1', name: '30 Dias' }];
+export const getPriceLists = async (): Promise<PriceList[]> => [{ id: 'pl-1', name: 'Tabela de Preços Padrão' }];
