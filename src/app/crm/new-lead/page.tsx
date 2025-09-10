@@ -143,7 +143,7 @@ export default function NewLeadPage() {
     };
     
     const newClientId = await saveClient(newClientData);
-    const newClient = await getClientById(newClientId); // Fetch the full client object
+    const newClient = await getClientById(newClientId);
     
     if (!newClient) {
         toast({ title: "Erro", description: "Falha ao recuperar o cliente recém-criado.", variant: "destructive" });
@@ -152,8 +152,7 @@ export default function NewLeadPage() {
 
     await addHistoryEntry({ clientId: newClient.id, text: 'Cliente criado através do formulário de nova oportunidade.', type: 'log' });
     
-    const updatedClients = [...clients, newClient];
-    setClients(updatedClients);
+    setClients(prevClients => [...prevClients, newClient]);
     
     form.setValue("clientId", newClient.id);
     setSelectedClientId(newClient.id);
