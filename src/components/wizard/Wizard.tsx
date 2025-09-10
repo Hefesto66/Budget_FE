@@ -50,7 +50,7 @@ const bomItemSchema = z.object({
 
 const wizardSchema = z.object({
   calculationInput: solarCalculationSchema,
-  billOfMaterials: z.array(bomItemSchema)
+  billOfMaterials: z.array(bomItemSchema).min(1, "A lista de materiais não pode estar vazia.")
 });
 
 
@@ -81,8 +81,8 @@ const normalizeBillOfMaterials = (bom: any[]): WizardFormData['billOfMaterials']
     productId: item?.productId || '',
     name: item?.name || '',
     category: item?.category || 'OUTRO',
-    manufacturer: item?.manufacturer || '',
-    cost: item?.cost || 0,
+    manufacturer: item?.technicalSpecifications?.Fabricante || '',
+    cost: item?.salePrice || 0,
     unit: item?.unit || 'UN',
     quantity: item?.quantity || 1,
     technicalSpecifications: item?.technicalSpecifications || {},
@@ -486,8 +486,19 @@ export function Wizard() {
                                           <TableCell className="text-muted-foreground">
                                               {methods.watch(`billOfMaterials.${index}.manufacturer`)}
                                           </TableCell>
-                                          <TableCell className="text-right text-muted-foreground">
-                                              {formatCurrency(methods.watch(`billOfMaterials.${index}.cost`))}
+                                          <TableCell className="text-right">
+                                               <FormField
+                                                  control={methods.control}
+                                                  name={`billOfMaterials.${index}.cost`}
+                                                  render={({ field }) => (
+                                                      <Input
+                                                          type="number"
+                                                          className="text-right"
+                                                          {...field}
+                                                          onChange={e => field.onChange(Number(e.target.value))}
+                                                      />
+                                                  )}
+                                              />
                                           </TableCell>
                                           <TableCell className="text-center text-muted-foreground">
                                               {methods.watch(`billOfMaterials.${index}.unit`)}

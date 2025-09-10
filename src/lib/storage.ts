@@ -347,7 +347,7 @@ const DEFAULT_PRODUCTS: Product[] = [
         category: 'INVERSOR', 
         salePrice: 4200, 
         unit: 'UN', 
-        technicalSpecifications: { 'Fabricante': 'Growatt', 'Eficiência (%)': '97.5' }
+        technicalSpecifications: { 'Fabricante': 'Growatt', 'Eficiência (%)': '97.5', 'Potência de Saída (kW)': '5' }
     },
     { 
         id: 'prod-3', 
