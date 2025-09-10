@@ -13,6 +13,11 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
+// Validate that the project ID is set
+if (!firebaseConfig.projectId) {
+    throw new Error("Missing NEXT_PUBLIC_FIREBASE_PROJECT_ID in .env.local file. This is required for Firebase to work correctly.");
+}
+
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
