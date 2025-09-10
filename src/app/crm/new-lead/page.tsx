@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { saveLead, getClients, saveClient, type Client, addHistoryEntry } from '@/lib/storage';
+import { saveLead, getClients, saveClient, type Client, addHistoryEntry, getClientById } from '@/lib/storage';
 import {
   Popover,
   PopoverContent,
@@ -143,7 +143,12 @@ export default function NewLeadPage() {
     };
     
     const newClientId = await saveClient(newClientData);
-    const newClient = { ...newClientData, id: newClientId } as Client;
+    const newClient = await getClientById(newClientId); // Fetch the full client object
+    
+    if (!newClient) {
+        toast({ title: "Erro", description: "Falha ao recuperar o cliente recém-criado.", variant: "destructive" });
+        return;
+    }
 
     await addHistoryEntry({ clientId: newClient.id, text: 'Cliente criado através do formulário de nova oportunidade.', type: 'log' });
     
@@ -319,5 +324,3 @@ export default function NewLeadPage() {
     </div>
   )
 }
-
-    
