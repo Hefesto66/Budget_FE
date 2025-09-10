@@ -19,7 +19,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save, ArrowLeft, Package, Trash2, Upload, GitBranch, Sun, Wrench } from "lucide-react";
 import { Header } from "@/components/layout/Header";
-import { getProductById, saveProduct, type Product, PRODUCT_CATEGORIES, ProductCategory } from '@/lib/storage';
+import { getProductById, saveProduct, type Product } from '@/lib/storage';
+import { PRODUCT_CATEGORIES, ProductCategory } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import Image from 'next/image';
@@ -338,3 +339,5 @@ export default function ProductForm() {
     </div>
   );
 }
+
+    

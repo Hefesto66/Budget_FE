@@ -8,7 +8,8 @@ import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PlusCircle, Search, Package, Sun, GitBranch, Wrench, Trash2, CheckSquare, X, LayoutGrid, List, Loader2 } from 'lucide-react';
-import { getProducts, type Product, PRODUCT_CATEGORIES, deleteProduct } from '@/lib/storage';
+import { getProducts, type Product, deleteProduct } from '@/lib/storage';
+import { PRODUCT_CATEGORIES } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import { Checkbox } from "@/components/ui/checkbox";
@@ -111,7 +112,7 @@ export default function InventarioPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [selectionMode, setSelectionMode] = useState(false);
-  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
+  const [viewMode, setViewMode<'card' | 'list'>>('card');
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -309,3 +310,5 @@ export default function InventarioPage() {
     </div>
   );
 }
+
+    
