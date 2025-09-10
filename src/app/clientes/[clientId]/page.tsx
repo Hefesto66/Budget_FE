@@ -215,30 +215,27 @@ export default function ClientForm() {
   const onSubmit = async (data: ClientFormData) => {
     setIsSaving(true);
     
-    const clientToSave: Partial<Client> = {
-      id: isEditing ? clientId : undefined,
+    // A UI apenas recolhe os dados. A lógica de negócio (adicionar companyId)
+    // é agora responsabilidade de `saveClient`.
+    const clientData: Partial<Client> = {
       ...data,
       tags: selectedTags,
     };
-    
+
     try {
-      const savedClientId = await saveClient(clientToSave, {
-        isNew: !isEditing,
-        originalData: isEditing ? form.getValues() : null,
-      });
+        const savedClientId = await saveClient(clientData, isEditing ? clientId : undefined);
+        toast({
+            title: "Sucesso!",
+            description: `Cliente ${isEditing ? 'atualizado' : 'criado'} com sucesso.`,
+        });
 
-      toast({
-        title: "Sucesso!",
-        description: `Cliente ${isEditing ? 'atualizado' : 'criado'} com sucesso.`,
-      });
-
-      if (!isEditing) {
-          router.push(`/clientes/${savedClientId}`);
-      }
+        if (!isEditing) {
+            router.push(`/clientes/${savedClientId}`);
+        }
     } catch (error) {
        toast({
         title: "Erro ao salvar",
-        description: "Não foi possível salvar o cliente.",
+        description: "Não foi possível salvar o cliente. Verifique a consola para mais detalhes.",
         variant: "destructive"
       });
     } finally {
@@ -320,11 +317,11 @@ export default function ClientForm() {
                                     accept="image/png, image/jpeg, image/webp"
                                     onChange={handlePhotoUpload}
                                     />
-                                    <Label htmlFor="photo-upload" className="cursor-pointer">
+                                <Label htmlFor="photo-upload" className="cursor-pointer">
                                         <div className="relative group w-full h-48 rounded-lg border-2 border-dashed border-border flex items-center justify-center text-center text-muted-foreground hover:bg-accent/50 transition-colors">
                                         {photoPreview ? (
                                             <>
-                                                <Image src={photoPreview} alt="Pré-visualização do cliente" layout="fill" objectFit="cover" className="rounded-md" />
+                                                <img src={photoPreview} alt="Pré-visualização do cliente" className="rounded-md w-full h-full object-cover" />
                                                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <p className="text-white text-sm">Alterar Foto</p>
                                                 </div>

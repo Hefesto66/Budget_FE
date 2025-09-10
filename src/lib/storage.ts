@@ -18,7 +18,6 @@ import {
 
 import type { Quote, Client, Stage, Lead, Product, HistoryEntry, CustomizationSettings, Salesperson, PaymentTerm, PriceList } from "@/types";
 import type { CompanyFormData } from '@/app/minha-empresa/page';
-import type { ClientFormData } from '@/app/clientes/[clientId]/page';
 
 const getCurrentUserId = (): string => {
     // Para desenvolvimento, usamos um ID estático e fixo.
@@ -151,48 +150,37 @@ export const getClientById = async (id: string): Promise<Client | null> => {
 
 export const saveClient = async (
     clientData: Partial<Client>,
-    options: { isNew: boolean, originalData?: ClientFormData | null }
+    clientId?: string
 ): Promise<string> => {
     const db = await dbReady;
     if (!db) return Promise.reject("Firestore not initialized");
 
     const companyId = getCurrentUserId();
-    
-    let clientId: string;
+    const dataToWrite = { ...clientData, companyId };
 
-    if (options.isNew) {
-        const dataToSave = { 
-            ...clientData, 
-            companyId,
-            history: [] // Garante que a propriedade history exista
-        };
-        const docRef = await addDoc(collection(db, 'clients'), dataToSave);
-        clientId = docRef.id;
-        await addHistoryEntry({ clientId, text: 'Cliente criado.', type: 'log' });
-    } else {
-        clientId = clientData.id!;
-        if (!clientId) return Promise.reject("Client ID is missing for update.");
-
+    if (clientId) {
+        // Update existing client
         const docRef = doc(db, 'clients', clientId);
-        const { id, ...dataToUpdate } = clientData;
-
-        let changesLog = "";
-        if (options.originalData) {
-            const changedFields = Object.keys(dataToUpdate).filter(key => 
-                key !== 'tags' && 
-                key !== 'history' && 
-                key !== 'companyId' &&
-                options.originalData![key as keyof ClientFormData] !== dataToUpdate[key as keyof Client]
-            );
-            if(changedFields.length > 0) changesLog = `Cliente atualizado: ${changedFields.join(', ')}.`;
-        }
-        
-        await setDoc(docRef, { ...dataToUpdate, companyId }, { merge: true });
-        if (changesLog) await addHistoryEntry({ clientId, text: changesLog, type: 'log' });
+        // Remove o ID do objeto de dados para não o escrever no documento
+        const { id, ...updateData } = dataToWrite; 
+        await setDoc(docRef, updateData, { merge: true });
+        return clientId;
+    } else {
+        // Create new client
+        const docWithInitialHistory = {
+            ...dataToWrite,
+            history: [{
+                id: `hist-${Date.now()}`,
+                timestamp: new Date().toISOString(),
+                text: 'Cliente criado.',
+                type: 'log',
+                author: 'Sistema'
+            }]
+        };
+        const docRef = await addDoc(collection(db, 'clients'), docWithInitialHistory);
+        return docRef.id;
     }
-    
-    return clientId;
-}
+};
 
 
 // History
@@ -420,21 +408,22 @@ export const getProductById = async (id: string): Promise<Product | null> => {
     }
 };
 
-export const saveProduct = async (productData: Partial<Product>): Promise<string> => {
+export const saveProduct = async (productData: Partial<Product>, productId?: string): Promise<string> => {
     const db = await dbReady;
     if (!db) return Promise.reject("Firestore not initialized");
     
     const companyId = getCurrentUserId();
-    const dataToSave = { ...productData, companyId };
+    const dataToWrite = { ...productData, companyId };
 
-    if (dataToSave.id) {
-        const productId = dataToSave.id;
+    if (productId) {
+        // Update existing product
         const docRef = doc(db, 'inventory', productId);
-        delete dataToSave.id; // Não salvar o ID dentro do próprio documento
-        await setDoc(docRef, dataToSave, { merge: true });
+        const { id, ...updateData } = dataToWrite;
+        await setDoc(docRef, updateData, { merge: true });
         return productId;
     } else {
-        const docRef = await addDoc(collection(db, 'inventory'), dataToSave);
+        // Create new product
+        const docRef = await addDoc(collection(db, 'inventory'), dataToWrite);
         return docRef.id;
     }
 };

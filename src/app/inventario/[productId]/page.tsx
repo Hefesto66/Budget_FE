@@ -151,8 +151,7 @@ export default function ProductForm() {
         delete finalSpecifications['Fabricante'];
     }
 
-    const productToSave: Partial<Product> = {
-      id: isEditing ? productId : undefined,
+    const productData: Partial<Product> = {
       name: data.name,
       photo: data.photo,
       category: data.category,
@@ -165,12 +164,16 @@ export default function ProductForm() {
     };
     
     try {
-        await saveProduct(productToSave);
+        const savedProductId = await saveProduct(productData, isEditing ? productId : undefined);
         toast({
           title: "Sucesso!",
           description: `Produto ${isEditing ? 'atualizado' : 'criado'} com sucesso.`,
         });
-        router.push('/inventario');
+        if (!isEditing) {
+            router.push(`/inventario`);
+        } else {
+           router.push('/inventario');
+        }
     } catch (error) {
         toast({
           title: "Erro ao Salvar",
@@ -339,5 +342,3 @@ export default function ProductForm() {
     </div>
   );
 }
-
-    
