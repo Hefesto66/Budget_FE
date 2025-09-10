@@ -81,6 +81,7 @@ export type ProductCategory = keyof typeof PRODUCT_CATEGORIES;
 export interface Product {
     id: string;
     name: string;
+    photo?: string | null;
     category: ProductCategory;
     salePrice: number;
     costPrice?: number;
@@ -337,6 +338,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     { 
         id: 'prod-1', 
         name: 'Painel Solar Tongwei 550W', 
+        photo: null,
         category: 'PAINEL_SOLAR', 
         salePrice: 750, 
         costPrice: 600,
@@ -346,6 +348,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     { 
         id: 'prod-2', 
         name: 'Inversor Growatt 5kW', 
+        photo: null,
         category: 'INVERSOR', 
         salePrice: 4200, 
         costPrice: 3800,
@@ -355,6 +358,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     { 
         id: 'prod-3', 
         name: 'Estrutura de Montagem para Telhado Cerâmico', 
+        photo: null,
         category: 'ESTRUTURA', 
         salePrice: 120, 
         costPrice: 95,
@@ -363,6 +367,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     { 
         id: 'prod-4', 
         name: 'Projeto e Homologação', 
+        photo: null,
         category: 'SERVICO', 
         salePrice: 1500, 
         costPrice: 1000,

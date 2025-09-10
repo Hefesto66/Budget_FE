@@ -17,14 +17,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save, ArrowLeft, Package, Trash2, PlusCircle } from "lucide-react";
+import { Loader2, Save, ArrowLeft, Package, Trash2, Upload, GitBranch, Sun, Wrench } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { getProductById, saveProduct, type Product, PRODUCT_CATEGORIES, ProductCategory } from '@/lib/storage';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import Image from 'next/image';
 
 const productFormSchema = z.object({
   name: z.string().min(1, "O nome do produto é obrigatório."),
+  photo: z.string().nullable().optional(),
   fabricante: z.string().optional(),
   category: z.enum(Object.keys(PRODUCT_CATEGORIES) as [ProductCategory, ...ProductCategory[]], {
       errorMap: () => ({ message: 'Selecione uma categoria de produto válida.'})
@@ -38,6 +40,15 @@ const productFormSchema = z.object({
 
 type ProductFormData = z.infer<typeof productFormSchema>;
 
+const ProductIcon = ({ category }: { category: Product['category'] }) => {
+    switch (category) {
+        case 'PAINEL_SOLAR': return <Sun className="h-10 w-10 mb-2" />;
+        case 'INVERSOR': return <GitBranch className="h-10 w-10 mb-2" />;
+        case 'ESTRUTURA': return <Wrench className="h-10 w-10 mb-2" />;
+        default: return <Package className="h-10 w-10 mb-2" />;
+    }
+}
+
 export default function ProductForm() {
   const { toast } = useToast();
   const router = useRouter();
@@ -47,6 +58,7 @@ export default function ProductForm() {
   
   const [isSaving, setIsSaving] = useState(false);
   const [isProductLoaded, setIsProductLoaded] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   const [specifications, setSpecifications] = useState<Record<string, string>>({});
   
@@ -54,6 +66,7 @@ export default function ProductForm() {
     resolver: zodResolver(productFormSchema),
     defaultValues: {
       name: "",
+      photo: null,
       fabricante: "",
       category: "OUTRO",
       salePrice: 0,
@@ -75,6 +88,9 @@ export default function ProductForm() {
             fabricante: existingProduct.technicalSpecifications?.['Fabricante'] || '',
         };
         form.reset(formData);
+        if (existingProduct.photo) {
+          setPhotoPreview(existingProduct.photo);
+        }
         if (existingProduct.technicalSpecifications) {
             setSpecifications(existingProduct.technicalSpecifications);
         }
@@ -87,6 +103,28 @@ export default function ProductForm() {
     setIsProductLoaded(true);
   }, [productId, isEditing, form, router, toast]);
 
+
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        toast({ title: "Arquivo muito grande", description: "A foto não pode exceder 2MB.", variant: "destructive" });
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setPhotoPreview(result);
+        form.setValue("photo", result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removePhoto = () => {
+    setPhotoPreview(null);
+    form.setValue("photo", null);
+  }
 
   const onSubmit = (data: ProductFormData) => {
     setIsSaving(true);
@@ -102,6 +140,7 @@ export default function ProductForm() {
     const productToSave: Product = {
       id: isEditing ? productId : `prod-${Date.now()}`,
       name: data.name,
+      photo: data.photo,
       category: data.category,
       salePrice: data.salePrice,
       costPrice: data.costPrice,
@@ -123,17 +162,13 @@ export default function ProductForm() {
     setIsSaving(false);
   };
 
-  const handleSpecChange = (key: string, value: string) => {
-    setSpecifications(prev => ({ ...prev, [key]: value }));
-  };
-
   if (!isProductLoaded) return null;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />
       <main className="flex-1 bg-gray-100 dark:bg-gray-950">
-        <form onSubmit={form.handleSubmit(onSubmit)} className="container mx-auto max-w-4xl px-4 py-8">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="container mx-auto max-w-5xl px-4 py-8">
             <div className="mb-6 flex items-center justify-between gap-4">
                 <Button type="button" variant="ghost" onClick={() => router.back()}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
@@ -149,19 +184,20 @@ export default function ProductForm() {
                 </Button>
             </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-3">
-                    <Card className="shadow-lg">
-                        <CardHeader>
-                            <CardTitle className="font-headline text-2xl flex items-center gap-2">
-                                <Package />
-                                {isEditing ? "Editar Produto" : "Novo Produto"}
-                            </CardTitle>
-                            <CardDescription>
-                                Preencha os detalhes do produto abaixo.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
+            <Card className="shadow-lg">
+                <CardHeader>
+                    <CardTitle className="font-headline text-2xl flex items-center gap-2">
+                        <Package />
+                        {isEditing ? "Editar Produto" : "Novo Produto"}
+                    </CardTitle>
+                    <CardDescription>
+                        Preencha os detalhes do produto abaixo.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {/* Main Info Column */}
+                        <div className="md:col-span-2 space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-1 md:col-span-2">
                                     <Label htmlFor="name">Nome do Produto *</Label>
@@ -230,10 +266,44 @@ export default function ProductForm() {
                                 <Label htmlFor="internalNotes">Notas Internas</Label>
                                 <Textarea id="internalNotes" placeholder="Notas visíveis apenas para a sua equipe." {...form.register("internalNotes")} />
                             </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
+                        </div>
+                        {/* Photo Column */}
+                        <div className="md:col-span-1">
+                            <Label htmlFor="photo-upload">Foto do Produto</Label>
+                            <input
+                                id="photo-upload"
+                                type="file"
+                                className="hidden"
+                                accept="image/png, image/jpeg, image/webp"
+                                onChange={handlePhotoUpload}
+                            />
+                            <Card className="mt-2 flex items-center justify-center h-64 border-2 border-dashed">
+                                <Label htmlFor="photo-upload" className="w-full h-full cursor-pointer flex items-center justify-center">
+                                    {photoPreview ? (
+                                        <div className="relative w-full h-full group">
+                                            <Image src={photoPreview} alt="Pré-visualização do produto" layout="fill" objectFit="contain" className="rounded-md" />
+                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <p className="text-white text-sm">Alterar Foto</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center text-muted-foreground">
+                                            <ProductIcon category={productCategory} />
+                                            <p>Adicionar Foto</p>
+                                        </div>
+                                    )}
+                                </Label>
+                            </Card>
+                            {photoPreview && (
+                                <Button type="button" variant="ghost" size="sm" className="w-full mt-2 text-destructive hover:text-destructive" onClick={removePhoto}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Remover Foto
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
         </form>
       </main>
     </div>

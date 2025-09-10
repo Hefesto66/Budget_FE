@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,23 +52,7 @@ const ProductCard = ({ product, onDelete, selectionMode, isSelected, onSelection
             className="h-5 w-5 bg-background border-primary"
         />
     </div>
-    <Link href={`/inventario/${product.id}`} className="block">
-        <div className="flex h-full flex-col items-start gap-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm transition-all hover:shadow-md hover:-translate-y-1">
-            <div className="flex w-full items-start justify-between">
-                <div className="flex-1">
-                    <h3 className="font-bold text-lg text-primary">{product.name}</h3>
-                    <p className="text-sm font-bold text-muted-foreground">{formatCurrency(product.salePrice)}</p>
-                </div>
-                <div className="relative flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
-                    <ProductIcon category={product.category} />
-                </div>
-            </div>
-            <div className="flex flex-wrap gap-1 mt-auto">
-                <Badge variant="secondary" className="text-xs">{PRODUCT_CATEGORIES[product.category]}</Badge>
-            </div>
-        </div>
-    </Link>
-    <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
         <AlertDialog>
             <AlertDialogTrigger asChild>
                 <Button variant="destructive" size="icon" className="h-8 w-8">
@@ -88,6 +73,26 @@ const ProductCard = ({ product, onDelete, selectionMode, isSelected, onSelection
             </AlertDialogContent>
         </AlertDialog>
     </div>
+    <Link href={`/inventario/${product.id}`} className="block h-full">
+        <div className="flex h-full flex-col items-start gap-4 rounded-lg border bg-card p-4 text-card-foreground shadow-sm transition-all hover:shadow-md hover:-translate-y-1">
+            <div className="flex w-full items-start justify-between">
+                <div className="flex-1">
+                    <h3 className="font-bold text-lg text-primary">{product.name}</h3>
+                    <p className="text-sm font-bold text-muted-foreground">{formatCurrency(product.salePrice)}</p>
+                </div>
+                <div className="relative flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
+                    {product.photo ? (
+                      <Image src={product.photo} alt={product.name} layout="fill" objectFit="cover" className="rounded-md" />
+                    ) : (
+                      <ProductIcon category={product.category} />
+                    )}
+                </div>
+            </div>
+            <div className="flex flex-wrap gap-1 mt-auto">
+                <Badge variant="secondary" className="text-xs">{PRODUCT_CATEGORIES[product.category]}</Badge>
+            </div>
+        </div>
+    </Link>
   </div>
 );
 
