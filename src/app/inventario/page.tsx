@@ -112,7 +112,7 @@ export default function InventarioPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [selectionMode, setSelectionMode] = useState(false);
-  const [viewMode, setViewMode<'card' | 'list'>>('card');
+  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -310,5 +310,3 @@ export default function InventarioPage() {
     </div>
   );
 }
-
-    
