@@ -17,6 +17,7 @@ import {
 
 import type { Quote, Client, Stage, Lead, Product, HistoryEntry, CustomizationSettings, Salesperson, PaymentTerm, PriceList } from "@/types";
 import type { CompanyFormData } from '@/app/minha-empresa/page';
+import { ClientFormData } from '@/app/clientes/[clientId]/page';
 
 const getCurrentUserId = (): string => {
     // In a real app, this would come from Firebase Auth.
@@ -296,23 +297,18 @@ export const getQuoteById = async (id: string): Promise<Quote | null> => {
             return null; // Quote not found
         }
         
+        // This check is now redundant if security rules are correct, but good for defense-in-depth
         if (docSnap.data().companyId !== companyId) {
             console.error("Permission denied: quote does not belong to the current user.");
             return null;
         }
-
-        const quoteData = docSnap.data() as Omit<Quote, 'billOfMaterials'>;
         
-        const itemsSnapshot = await getDocs(collection(db!, 'quotes', id, 'quoteItems'));
-        const billOfMaterials = itemsSnapshot.docs.map(doc => doc.data());
-        
-        return { ...quoteData, id: docSnap.id, billOfMaterials };
+        return { id: docSnap.id, ...docSnap.data() } as Quote;
     } catch(error) {
         console.error("Error fetching quote by ID:", error);
         return null;
     }
 }
-
 
 export const getQuotesByLeadId = async (leadId: string): Promise<Quote[]> => {
     if (!checkDb()) return [];
@@ -325,25 +321,10 @@ export const getQuotesByLeadId = async (leadId: string): Promise<Quote[]> => {
 export const saveQuote = async (quote: Quote): Promise<void> => {
     if (!checkDb()) return;
     const companyId = getCurrentUserId();
-    const { billOfMaterials, id, ...quoteData } = quote;
+    const { id, ...quoteData } = quote;
     const quoteRef = doc(db!, 'quotes', id);
-
-    const batch = writeBatch(db!);
-
-    batch.set(quoteRef, { ...quoteData, companyId, id });
-
-    const itemsCollectionRef = collection(quoteRef, 'quoteItems');
-    const existingItemsSnapshot = await getDocs(itemsCollectionRef);
-    existingItemsSnapshot.forEach(doc => batch.delete(doc.ref));
-
-    if (billOfMaterials && billOfMaterials.length > 0) {
-        billOfMaterials.forEach((item) => {
-            const itemRef = doc(itemsCollectionRef); // Create a new doc ref for each item
-            batch.set(itemRef, item);
-        });
-    }
-
-    await batch.commit();
+    // The billOfMaterials is now part of quoteData, so we save it directly.
+    await setDoc(quoteRef, { ...quoteData, companyId, id });
 }
 
 export const generateNewQuoteId = async (): Promise<string> => {
@@ -355,11 +336,12 @@ export const generateNewQuoteId = async (): Promise<string> => {
     try {
         await runTransaction(db!, async (transaction) => {
             const counterDoc = await transaction.get(counterRef);
-            if (!counterDoc.exists()) {
-                transaction.set(counterRef, { lastQuoteNumber: 1 });
+            if (!counterDoc.exists() || !counterDoc.data()?.lastQuoteNumber) {
+                // If it doesn't exist or the field is missing, initialize it.
+                transaction.set(counterRef, { lastQuoteNumber: 1 }, { merge: true });
                 newQuoteNumber = 1;
             } else {
-                newQuoteNumber = (counterDoc.data().lastQuoteNumber || 0) + 1;
+                newQuoteNumber = (counterDoc.data().lastQuoteNumber) + 1;
                 transaction.update(counterRef, { lastQuoteNumber: newQuoteNumber });
             }
         });
