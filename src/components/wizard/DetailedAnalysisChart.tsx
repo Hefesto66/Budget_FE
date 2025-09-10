@@ -47,10 +47,10 @@ export function DetailedAnalysisChart({ results, billOfMaterials }: DetailedAnal
         { name: "Instalação", value: serviceCost, fill: "var(--color-service)" },
       ];
       config = {
-        value: { label: "Custo", },
-        modules: { label: "Módulos", color: "hsl(var(--chart-1))" },
-        inverter: { label: "Inversor", color: "hsl(var(--chart-2))" },
-        service: { label: "Instalação", color: "hsl(var(--chart-3))" },
+        value: { label: "Custo" },
+        Módulos: { label: "Módulos", color: "hsl(var(--chart-1))" },
+        Inversor: { label: "Inversor", color: "hsl(var(--chart-2))" },
+        Instalação: { label: "Instalação", color: "hsl(var(--chart-3))" },
       };
     } else { // dataType === 'projection'
       data = [
@@ -59,10 +59,10 @@ export function DetailedAnalysisChart({ results, billOfMaterials }: DetailedAnal
         { name: "Economia 1º Ano", value: results.financeiro.economia_primeiro_ano, fill: "var(--color-savings)" },
       ];
       config = {
-        value: { label: "Valor", },
-        oldBill: { label: "Fatura SEM Sistema", color: "hsl(var(--chart-5))" },
-        newBill: { label: "Fatura COM Sistema", color: "hsl(var(--chart-4))" },
-        savings: { label: "Economia 1º Ano", color: "hsl(var(--chart-1))" },
+        value: { label: "Valor" },
+        "Fatura SEM Sistema": { label: "Fatura SEM Sistema", color: "hsl(var(--chart-5))" },
+        "Fatura COM Sistema": { label: "Fatura COM Sistema", color: "hsl(var(--chart-4))" },
+        "Economia 1º Ano": { label: "Economia 1º Ano", color: "hsl(var(--chart-1))" },
       };
     }
 
@@ -139,4 +139,3 @@ export function DetailedAnalysisChart({ results, billOfMaterials }: DetailedAnal
     </Card>
   );
 }
-
