@@ -14,6 +14,18 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
+// Client-side check for Firebase configuration
+if (typeof window !== 'undefined' && !firebaseConfig.projectId) {
+    const errorMessage = "Firebase configuration is missing. Please create a .env.local file with your Firebase project credentials. You can use .env.example as a template.";
+    console.error(errorMessage);
+    // You might want to display this error in the UI as well
+    if (document.body) {
+        document.body.innerHTML = `<div style="padding: 20px; text-align: center; font-family: sans-serif; background-color: #ffebee; color: #b71c1c;"><h2>Configuration Error</h2><p>${errorMessage}</p></div>`;
+    }
+    throw new Error(errorMessage);
+}
+
+
 let app: FirebaseApp;
 let db: Firestore;
 let auth: Auth;
@@ -56,3 +68,4 @@ const dbReady: Promise<Firestore | null> = new Promise((resolve) => {
 
 // Export the app instance, auth, and the promise for the db instance.
 export { app, db, auth, dbReady };
+
