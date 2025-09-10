@@ -157,33 +157,37 @@ export const saveClient = async (
     if (!db) return Promise.reject("Firestore not initialized");
 
     const companyId = getCurrentUserId();
-    const dataToSave = { ...clientData, companyId };
     
     let clientId: string;
 
     if (options.isNew) {
-        if (!dataToSave.history) dataToSave.history = [];
+        const dataToSave = { 
+            ...clientData, 
+            companyId,
+            history: [] // Garante que a propriedade history exista
+        };
         const docRef = await addDoc(collection(db, 'clients'), dataToSave);
         clientId = docRef.id;
         await addHistoryEntry({ clientId, text: 'Cliente criado.', type: 'log' });
     } else {
-        clientId = dataToSave.id!;
+        clientId = clientData.id!;
+        if (!clientId) return Promise.reject("Client ID is missing for update.");
+
         const docRef = doc(db, 'clients', clientId);
-        
+        const { id, ...dataToUpdate } = clientData;
+
         let changesLog = "";
         if (options.originalData) {
-            const changedFields = Object.keys(dataToSave).filter(key => 
+            const changedFields = Object.keys(dataToUpdate).filter(key => 
                 key !== 'tags' && 
-                key !== 'id' && 
                 key !== 'history' && 
                 key !== 'companyId' &&
-                options.originalData[key as keyof ClientFormData] !== dataToSave[key as keyof Client]
+                options.originalData![key as keyof ClientFormData] !== dataToUpdate[key as keyof Client]
             );
             if(changedFields.length > 0) changesLog = `Cliente atualizado: ${changedFields.join(', ')}.`;
         }
         
-        delete dataToSave.id; 
-        await setDoc(docRef, dataToSave, { merge: true });
+        await setDoc(docRef, { ...dataToUpdate, companyId }, { merge: true });
         if (changesLog) await addHistoryEntry({ clientId, text: changesLog, type: 'log' });
     }
     
@@ -445,5 +449,3 @@ export const deleteProduct = async (productId: string): Promise<void> => {
 export const getSalespersons = async (): Promise<Salesperson[]> => [{ id: 'sp-1', name: 'Vendedor Padrão' }];
 export const getPaymentTerms = async (): Promise<PaymentTerm[]> => [{ id: 'pt-1', name: '30 Dias' }];
 export const getPriceLists = async (): Promise<PriceList[]> => [{ id: 'pl-1', name: 'Tabela de Preços Padrão' }];
-
-    
