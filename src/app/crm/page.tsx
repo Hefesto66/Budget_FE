@@ -5,7 +5,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { PlusCircle, Trash2, Plus, Pencil } from 'lucide-react';
+import { PlusCircle, Trash2, Plus, Pencil, Loader2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { Header } from '@/components/layout/Header';
 import { useEffect, useState, useRef } from 'react';
@@ -55,7 +55,7 @@ const Draggable = dynamic(
 );
 
 
-const LeadCard = ({ lead, index, onDelete }: { lead: Lead, index: number, onDelete: (leadId: string) => void }) => (
+const LeadCard = ({ lead, index, onDelete }: { lead: Lead, index: number, onDelete: (leadId: string, leadTitle: string) => void }) => (
   <Draggable draggableId={lead.id} index={index}>
     {(provided, snapshot) => (
       <div
@@ -89,7 +89,7 @@ const LeadCard = ({ lead, index, onDelete }: { lead: Lead, index: number, onDele
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => onDelete(lead.id)}>Confirmar Exclusão</AlertDialogAction>
+                    <AlertDialogAction onClick={() => onDelete(lead.id, lead.title)}>Confirmar Exclusão</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -103,7 +103,7 @@ const LeadCard = ({ lead, index, onDelete }: { lead: Lead, index: number, onDele
 export default function CrmPage() {
   const [leadsByStage, setLeadsByStage] = useState<Record<string, Lead[]>>({});
   const [stages, setStages] = useState<Stage[]>([]);
-  const [isClient, setIsClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [newStageName, setNewStageName] = useState("");
   
   // State for editing a stage
@@ -112,31 +112,26 @@ export default function CrmPage() {
   
   const { toast } = useToast();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setIsClient(true);
-    const allStages = getStages();
-    const allLeads = getLeads();
+  
+  const fetchData = async () => {
+    setIsLoading(true);
+    const allStages = await getStages();
+    const allLeads = await getLeads();
     setStages(allStages);
-    
-    // Efficiently group leads by stage
+
     const stageIds = new Set(allStages.map(s => s.id));
     const leadsGrouped = allLeads.reduce((acc, lead) => {
         let stageId = lead.stage;
-        // If lead's stage is invalid or doesn't exist, assign it to the first available stage
         if (!stageIds.has(stageId) && allStages.length > 0) {
             stageId = allStages[0].id;
-            saveLead({ ...lead, stage: stageId }); // Correct the lead in storage
+            saveLead({ ...lead, stage: stageId });
         }
         
-        if (!acc[stageId]) {
-            acc[stageId] = [];
-        }
+        if (!acc[stageId]) acc[stageId] = [];
         acc[stageId].push(lead);
         return acc;
     }, {} as Record<string, Lead[]>);
 
-    // Ensure all stages exist in the state, even if they have no leads
     allStages.forEach(stage => {
         if (!leadsGrouped[stage.id]) {
             leadsGrouped[stage.id] = [];
@@ -144,6 +139,11 @@ export default function CrmPage() {
     });
 
     setLeadsByStage(leadsGrouped);
+    setIsLoading(false);
+  }
+
+  useEffect(() => {
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -163,7 +163,7 @@ export default function CrmPage() {
     };
   }, []);
 
-  const handleAddStage = () => {
+  const handleAddStage = async () => {
     if (!newStageName.trim()) {
       toast({ title: "Erro", description: "O nome da etapa não pode ser vazio.", variant: "destructive" });
       return;
@@ -178,14 +178,14 @@ export default function CrmPage() {
     const newStage: Stage = { id: newStageId, title: newStageName, description: '', isWon: false };
     const newStages = [...stages, newStage];
     setStages(newStages);
-    saveStages(newStages);
+    await saveStages(newStages);
     
     setLeadsByStage(prev => ({...prev, [newStage.id]: []}));
     setNewStageName("");
     toast({ title: "Sucesso!", description: `Etapa "${newStageName}" criada.` });
   };
   
-  const handleDeleteStage = (stageId: string) => {
+  const handleDeleteStage = async (stageId: string) => {
     const leadsInStage = leadsByStage[stageId] || [];
     if (leadsInStage.length > 0) {
         toast({ title: "Ação Bloqueada", description: "Não é possível excluir uma etapa que contém oportunidades.", variant: "destructive" });
@@ -194,7 +194,7 @@ export default function CrmPage() {
 
     const newStages = stages.filter(s => s.id !== stageId);
     setStages(newStages);
-    saveStages(newStages);
+    await saveStages(newStages);
     
     setLeadsByStage(prev => {
         const newState = {...prev};
@@ -205,20 +205,10 @@ export default function CrmPage() {
     toast({ title: "Sucesso!", description: `A etapa foi excluída.` });
   };
 
-  const handleDeleteLead = (leadId: string) => {
-    const leadToDelete = getLeads().find(l => l.id === leadId);
-    if (!leadToDelete) return;
-
-    deleteLead(leadId); // Deleta do storage
-    
-    // Atualiza o estado para remover o lead da UI
-    const newLeadsByStage = { ...leadsByStage };
-    for (const stageId in newLeadsByStage) {
-        newLeadsByStage[stageId] = newLeadsByStage[stageId].filter(lead => lead.id !== leadId);
-    }
-    setLeadsByStage(newLeadsByStage);
-
-    toast({ title: "Oportunidade Excluída", description: `A oportunidade "${leadToDelete.title}" foi removida.` });
+  const handleDeleteLead = async (leadId: string, leadTitle: string) => {
+    await deleteLead(leadId);
+    await fetchData(); // Re-fetch all data to ensure consistency
+    toast({ title: "Oportunidade Excluída", description: `A oportunidade "${leadTitle}" foi removida.` });
   };
   
   const handleEditStage = (stage: Stage) => {
@@ -226,78 +216,79 @@ export default function CrmPage() {
     setIsEditDialogOpen(true);
   };
   
-  const handleSaveStageChanges = () => {
+  const handleSaveStageChanges = async () => {
     if (!editingStage) return;
 
-    const newStages = stages.map(s => (s.id === editingStage.id ? editingStage : s));
+    let newStages = stages.map(s => (s.id === editingStage.id ? editingStage : s));
     
-    // Se marcou um novo estágio como "Ganho", desmarcar todos os outros
     if (editingStage.isWon) {
-      newStages.forEach(s => {
-        if (s.id !== editingStage.id) {
-          s.isWon = false;
-        }
-      });
+      newStages = newStages.map(s => s.id === editingStage.id ? s : { ...s, isWon: false });
     }
 
     setStages(newStages);
-    saveStages(newStages);
+    await saveStages(newStages);
     setEditingStage(null);
     setIsEditDialogOpen(false);
     toast({ title: "Sucesso!", description: "A etapa foi atualizada." });
   };
 
-  const onDragEnd = (result: DropResult) => {
+  const onDragEnd = async (result: DropResult) => {
     const { source, destination, draggableId } = result;
-
     if (!destination) return;
 
     const sourceStageId = source.droppableId;
     const destStageId = destination.droppableId;
+    
+    setLeadsByStage(prev => {
+        const newLeadsByStage = { ...prev };
+        const sourceLeads = Array.from(newLeadsByStage[sourceStageId] || []);
+        const [movedLead] = sourceLeads.splice(source.index, 1);
+        
+        if (sourceStageId === destStageId) {
+            sourceLeads.splice(destination.index, 0, movedLead);
+            newLeadsByStage[sourceStageId] = sourceLeads;
+        } else {
+            const destLeads = Array.from(newLeadsByStage[destStageId] || []);
+            destLeads.splice(destination.index, 0, movedLead);
+            newLeadsByStage[sourceStageId] = sourceLeads;
+            newLeadsByStage[destStageId] = destLeads;
+        }
+        return newLeadsByStage;
+    });
 
-    const startStageLeads = Array.from(leadsByStage[sourceStageId]);
-    const [movedLead] = startStageLeads.splice(source.index, 1);
-
-    if (sourceStageId === destStageId) {
-      startStageLeads.splice(destination.index, 0, movedLead);
-      setLeadsByStage(prev => ({ ...prev, [sourceStageId]: startStageLeads }));
-    } else {
-      const finishStageLeads = Array.from(leadsByStage[destStageId]);
-      finishStageLeads.splice(destination.index, 0, movedLead);
-
-      const destStage = stages.find(s => s.id === destStageId);
-      if(destStage) {
-        addHistoryEntry({ 
-            clientId: movedLead.clientId, 
-            text: `Oportunidade "${movedLead.title}" movida para a etapa "${destStage.title}".`, 
+    const leadToUpdate = getLeads().find(l => l.id === draggableId);
+    if (!leadToUpdate) return;
+    
+    const destStage = stages.find(s => s.id === destStageId);
+    if (destStage) {
+        await saveLead({ ...leadToUpdate, stage: destStageId });
+        await addHistoryEntry({
+            clientId: leadToUpdate.clientId,
+            text: `Oportunidade "${leadToUpdate.title}" movida para a etapa "${destStage.title}".`,
             type: 'log-stage',
-            refId: movedLead.id
+            refId: leadToUpdate.id
         });
 
-        // Check for "Won" stage celebration
         if (destStage.isWon) {
             dispararFogos();
             toast({
                 title: "🎉 Parabéns!",
-                description: `Você ganhou a oportunidade "${movedLead.title}"!`,
+                description: `Você ganhou a oportunidade "${leadToUpdate.title}"!`,
                 duration: 5000,
             });
         }
-      }
-
-      setLeadsByStage(prev => ({
-        ...prev,
-        [sourceStageId]: startStageLeads,
-        [destStageId]: finishStageLeads,
-      }));
-      
-      const updatedLead = { ...movedLead, stage: destStageId };
-      saveLead(updatedLead);
     }
   };
 
-  if (!isClient) {
-    return null;
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-950">
+        <Header />
+        <main className="flex-1 flex justify-center items-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </main>
+      </div>
+    );
   }
 
   return (
@@ -445,3 +436,5 @@ export default function CrmPage() {
     </DragDropContext>
   );
 }
+
+    

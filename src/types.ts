@@ -1,5 +1,6 @@
 
 import { z } from "zod";
+import type { CompanyFormData } from './app/minha-empresa/page';
 
 // =================================================================
 // Esquema Principal de Cálculo Solar
@@ -147,5 +148,52 @@ export interface Quote {
     results: SolarCalculationResult;
     billOfMaterials: any[];
 }
+
+
+export const PRODUCT_CATEGORIES = {
+    "PAINEL_SOLAR": "Painel Solar",
+    "INVERSOR": "Inversor",
+    "ESTRUTURA": "Estrutura de Montagem",
+    "SERVICO": "Serviço",
+    "OUTRO": "Outro",
+};
+export type ProductCategory = keyof typeof PRODUCT_CATEGORIES;
+
+export interface Product {
+  id: string;
+  companyId: string;
+  name: string;
+  photo?: string | null;
+  category: ProductCategory;
+  salePrice: number;
+  costPrice?: number;
+  unit: string;
+  description?: string;
+  internalNotes?: string;
+  technicalSpecifications?: Record<string, string>;
+}
+
+export interface Stage {
+  id: string;
+  title: string;
+  description: string;
+  isWon: boolean;
+}
+
+export interface Lead {
+  id: string;
+  companyId: string;
+  title: string;
+  value: number;
+  stage: string; // Corresponds to Stage['id']
+  clientId: string;
+  clientName: string; // Denormalized for easy display
+}
+
+
+// Mock types for CRM relations not stored in Firestore yet
+export interface Salesperson { id: string; name: string; }
+export interface PaymentTerm { id: string; name: string; }
+export interface PriceList { id: string; name: string; }
 
     

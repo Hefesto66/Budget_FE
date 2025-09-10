@@ -77,8 +77,11 @@ export default function NewLeadPage() {
   const [newClientName, setNewClientName] = useState("");
 
   useEffect(() => {
-    // Load clients from storage when component mounts
-    setClients(getClients());
+    async function fetchClients() {
+      const allClients = await getClients();
+      setClients(allClients);
+    }
+    fetchClients();
   }, []);
   
   const form = useForm<NewLeadFormData>({
@@ -101,9 +104,7 @@ export default function NewLeadPage() {
       return;
     }
 
-    const newLeadId = `lead-${Date.now()}`;
-    const newLead = { 
-      id: newLeadId, 
+    const newLead: Partial<Lead> = { 
       title: data.title,
       value: data.value,
       stage: data.stage,
@@ -111,15 +112,14 @@ export default function NewLeadPage() {
       clientName: selectedClient.name, // Save client name for display
     };
     
-    saveLead(newLead);
-    addHistoryEntry({ 
+    const newLeadId = await saveLead(newLead);
+
+    await addHistoryEntry({ 
       clientId: selectedClient.id, 
       text: `Nova oportunidade criada: "${data.title}"`, 
       type: 'log-lead',
       refId: newLeadId,
     });
-
-    await new Promise(resolve => setTimeout(resolve, 500)); 
 
     toast({
       title: "Sucesso!",
@@ -130,21 +130,22 @@ export default function NewLeadPage() {
     setIsSaving(false);
   };
   
-  const handleCreateNewClient = () => {
+  const handleCreateNewClient = async () => {
     if (!newClientName.trim()) {
       toast({ title: "Erro", description: "O nome do cliente não pode ser vazio.", variant: "destructive" });
       return;
     }
     
-    const newClient: Client = {
-      id: `client-${Date.now()}`,
+    const newClientData: Partial<Client> = {
       name: newClientName,
       type: 'individual', // Default type
       history: [],
     };
     
-    saveClient(newClient);
-    addHistoryEntry({ clientId: newClient.id, text: 'Cliente criado através do formulário de nova oportunidade.', type: 'log' });
+    const newClientId = await saveClient(newClientData);
+    const newClient = { ...newClientData, id: newClientId } as Client;
+
+    await addHistoryEntry({ clientId: newClient.id, text: 'Cliente criado através do formulário de nova oportunidade.', type: 'log' });
     
     const updatedClients = [...clients, newClient];
     setClients(updatedClients);
@@ -318,3 +319,5 @@ export default function NewLeadPage() {
     </div>
   )
 }
+
+    

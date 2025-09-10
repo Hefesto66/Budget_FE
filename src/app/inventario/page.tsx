@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Search, Package, Sun, GitBranch, Wrench, Trash2, CheckSquare, X, LayoutGrid, List } from 'lucide-react';
+import { PlusCircle, Search, Package, Sun, GitBranch, Wrench, Trash2, CheckSquare, X, LayoutGrid, List, Loader2 } from 'lucide-react';
 import { getProducts, type Product, PRODUCT_CATEGORIES, deleteProduct } from '@/lib/storage';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
@@ -112,15 +112,17 @@ export default function InventarioPage() {
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [selectionMode, setSelectionMode] = useState(false);
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
-  const [isClient, setIsClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchProducts = () => {
-    setProducts(getProducts());
+  const fetchProducts = async () => {
+    setIsLoading(true);
+    const allProducts = await getProducts();
+    setProducts(allProducts);
+    setIsLoading(false);
   };
 
   useEffect(() => {
-    setIsClient(true);
     fetchProducts();
   }, []);
 
@@ -130,9 +132,9 @@ export default function InventarioPage() {
     );
   };
   
-  const handleDelete = (productIds: string[]) => {
+  const handleDelete = async (productIds: string[]) => {
     const plural = productIds.length > 1;
-    productIds.forEach(id => deleteProduct(id));
+    await Promise.all(productIds.map(id => deleteProduct(id)));
     fetchProducts();
     toast({
         title: `Produto${plural ? 's' : ''} Excluído${plural ? 's' : ''}`,
@@ -153,8 +155,6 @@ export default function InventarioPage() {
       setSelectedProducts(filteredProducts.map(p => p.id));
     }
   };
-
-  if (!isClient) return null;
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-950">
@@ -231,7 +231,11 @@ export default function InventarioPage() {
             </div>
         </div>
         
-        {filteredProducts.length > 0 ? (
+        {isLoading ? (
+            <div className="flex justify-center items-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        ) : filteredProducts.length > 0 ? (
           <>
             {viewMode === 'card' ? (
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
@@ -306,7 +310,5 @@ export default function InventarioPage() {
     </div>
   );
 }
-
-    
 
     

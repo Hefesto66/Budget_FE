@@ -10,6 +10,7 @@ import { PlusCircle, Search, User, Building } from 'lucide-react';
 import { getClients, type Client } from '@/lib/storage';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
+import { Loader2 } from 'lucide-react';
 
 const ClientCard = ({ client }: { client: Client }) => (
   <Link href={`/clientes/${client.id}`}>
@@ -41,18 +42,21 @@ const ClientCard = ({ client }: { client: Client }) => (
 export default function ClientesPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isClient, setIsClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setIsClient(true);
-    setClients(getClients());
+    async function fetchData() {
+      setIsLoading(true);
+      const allClients = await getClients();
+      setClients(allClients);
+      setIsLoading(false);
+    }
+    fetchData();
   }, []);
 
   const filteredClients = clients.filter(client =>
     client.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  if (!isClient) return null; // Render nothing on the server
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-950">
@@ -77,7 +81,11 @@ export default function ClientesPage() {
           </Button>
         </div>
         
-        {filteredClients.length > 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : filteredClients.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {filteredClients.map(client => (
               <ClientCard key={client.id} client={client} />
@@ -100,3 +108,5 @@ export default function ClientesPage() {
     </div>
   );
 }
+
+    

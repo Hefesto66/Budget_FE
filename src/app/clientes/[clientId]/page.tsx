@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from 'next/link';
 import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -25,7 +25,8 @@ import {
   RadioGroupItem,
 } from "@/components/ui/radio-group";
 import Image from 'next/image';
-import { getClientById, saveClient, type Client, getSalespersons, getPaymentTerms, getPriceLists, Salesperson, PaymentTerm, PriceList, addHistoryEntry, HistoryEntry } from '@/lib/storage';
+import { getClientById, saveClient, type Client, getSalespersons, getPaymentTerms, getPriceLists, addHistoryEntry, type HistoryEntry } from '@/lib/storage';
+import type { Salesperson, PaymentTerm, PriceList } from "@/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
@@ -160,9 +161,9 @@ export default function ClientForm() {
     form.setValue("tags", newTags);
   };
 
-  const fetchClientData = () => {
+  const fetchClientData = useCallback(async () => {
     if (isEditing) {
-      const existingClient = getClientById(clientId);
+      const existingClient = await getClientById(clientId);
       if (existingClient) {
         form.reset(existingClient);
         if (existingClient.photo) {
@@ -176,15 +177,19 @@ export default function ClientForm() {
       }
     }
     setIsClientLoaded(true);
-  }
+  }, [clientId, isEditing, form, router, toast]);
 
   useEffect(() => {
-    // Load data for sales dropdowns
-    setSalespersons(getSalespersons());
-    setPaymentTerms(getPaymentTerms());
-    setPriceLists(getPriceLists());
+    async function loadDropdowns() {
+      // These can be fetched in parallel if they become async
+      setSalespersons(await getSalespersons());
+      setPaymentTerms(await getPaymentTerms());
+      setPriceLists(await getPriceLists());
+    }
+
+    loadDropdowns();
     fetchClientData();
-  }, [clientId, isEditing, form, router, toast]);
+  }, [fetchClientData]);
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -208,11 +213,14 @@ export default function ClientForm() {
     form.setValue("photo", null);
   }
 
-  const onSubmit = (data: ClientFormData) => {
+  const onSubmit = async (data: ClientFormData) => {
     setIsSaving(true);
     
-    // Check for changes to log in history
-    const originalClient = isEditing ? getClientById(clientId) : null;
+    let originalClient: Client | null = null;
+    if (isEditing) {
+      originalClient = await getClientById(clientId);
+    }
+    
     let changesLog = "Cliente criado.";
     if(originalClient) {
         const changedFields = Object.keys(data).filter(key => key !== 'tags' && originalClient[key as keyof Client] !== data[key as keyof ClientFormData]);
@@ -223,17 +231,16 @@ export default function ClientForm() {
         }
     }
 
-    const clientToSave: Client = {
-      id: isEditing ? clientId : `client-${Date.now()}`,
+    const clientToSave: Partial<Client> = {
+      id: isEditing ? clientId : undefined,
       ...data,
       tags: selectedTags,
-      history: clientHistory,
     };
     
-    saveClient(clientToSave);
+    const savedClientId = await saveClient(clientToSave);
     
     if(changesLog) {
-        addHistoryEntry({ clientId: clientToSave.id, text: changesLog, type: 'log' });
+        await addHistoryEntry({ clientId: savedClientId, text: changesLog, type: 'log' });
     }
     
     toast({
@@ -242,7 +249,7 @@ export default function ClientForm() {
     });
     
     if (!isEditing) {
-        router.push(`/clientes/${clientToSave.id}`);
+        router.push(`/clientes/${savedClientId}`);
     } else {
         fetchClientData(); // Re-fetch to update history
     }
@@ -250,9 +257,9 @@ export default function ClientForm() {
     setIsSaving(false);
   };
   
-  const handleAddNote = () => {
+  const handleAddNote = async () => {
     if (!newNote.trim() || !isEditing) return;
-    addHistoryEntry({ clientId: clientId, text: newNote, type: 'note' });
+    await addHistoryEntry({ clientId: clientId, text: newNote, type: 'note' });
     setNewNote("");
     fetchClientData(); // Refresh history
   };
@@ -563,3 +570,5 @@ export default function ClientForm() {
     </div>
   );
 }
+
+    
