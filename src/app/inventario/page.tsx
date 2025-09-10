@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Search, Package, Sun, GitBranch, Wrench, Trash2, CheckSquare, X } from 'lucide-react';
+import { PlusCircle, Search, Package, Sun, GitBranch, Wrench, Trash2, CheckSquare, X, LayoutGrid, List } from 'lucide-react';
 import { getProducts, type Product, PRODUCT_CATEGORIES, deleteProduct } from '@/lib/storage';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
@@ -24,6 +24,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 const ProductIcon = ({ category }: { category: Product['category'] }) => {
     switch (category) {
@@ -102,6 +103,7 @@ export default function InventarioPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [selectionMode, setSelectionMode] = useState(false);
+  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
   const [isClient, setIsClient] = useState(false);
   const { toast } = useToast();
 
@@ -150,73 +152,99 @@ export default function InventarioPage() {
     <div className="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-950">
       <Header />
       <main className="flex-1 p-6">
-        <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="relative flex-1 sm:flex-initial w-full sm:w-auto">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Pesquisar produtos..."
-              className="w-full sm:w-64 pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            {selectionMode ? (
-              <>
-                 <Button variant="outline" onClick={toggleSelectAll}>
-                    Selecionar Todos ({selectedProducts.length})
-                 </Button>
-                 <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" disabled={selectedProducts.length === 0}>
-                        <Trash2 className="mr-2 h-5 w-5" /> Excluir Selecionados
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                       <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir {selectedProducts.length} Produtos?</AlertDialogTitle>
-                          <AlertDialogDescription>Esta ação é irreversível.</AlertDialogDescription>
-                       </AlertDialogHeader>
-                       <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(selectedProducts)}>Confirmar</AlertDialogAction>
-                       </AlertDialogFooter>
-                    </AlertDialogContent>
-                 </AlertDialog>
-                 <Button variant="ghost" onClick={() => { setSelectionMode(false); setSelectedProducts([]); }}>
-                    <X className="mr-2 h-5 w-5"/> Cancelar
-                 </Button>
-              </>
-            ) : (
-              <>
-                <Button variant="outline" onClick={() => setSelectionMode(true)}>
-                    <CheckSquare className="mr-2 h-5 w-5"/> Selecionar
-                </Button>
-                <Button size="lg" asChild>
-                  <Link href="/inventario/novo">
-                    <PlusCircle className="mr-2 h-5 w-5" />
-                    Novo Produto
-                  </Link>
-                </Button>
-              </>
-            )}
-          </div>
+        <div className="mb-6 flex flex-col sm:flex-row items-start justify-between gap-4">
+            <div className="flex-1 w-full sm:w-auto">
+                <div className="relative w-full sm:w-auto">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Input
+                    type="search"
+                    placeholder="Pesquisar produtos..."
+                    className="w-full sm:w-64 pl-10"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+                 <div className="mt-4">
+                    <ToggleGroup 
+                        type="single"
+                        value={viewMode}
+                        onValueChange={(value) => { if(value) setViewMode(value as 'card' | 'list')}}
+                        aria-label="Modo de visualização"
+                    >
+                        <ToggleGroupItem value="card" aria-label="Visualização em Grade">
+                            <LayoutGrid className="h-5 w-5" />
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="list" aria-label="Visualização em Lista">
+                            <List className="h-5 w-5" />
+                        </ToggleGroupItem>
+                    </ToggleGroup>
+                </div>
+            </div>
+            <div className="flex items-center gap-2 self-start sm:self-center">
+                {selectionMode ? (
+                <>
+                    <Button variant="outline" onClick={toggleSelectAll}>
+                        Selecionar Todos ({selectedProducts.length})
+                    </Button>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                        <Button variant="destructive" disabled={selectedProducts.length === 0}>
+                            <Trash2 className="mr-2 h-5 w-5" /> Excluir Selecionados
+                        </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir {selectedProducts.length} Produtos?</AlertDialogTitle>
+                            <AlertDialogDescription>Esta ação é irreversível.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(selectedProducts)}>Confirmar</AlertDialogAction>
+                        </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                    <Button variant="ghost" onClick={() => { setSelectionMode(false); setSelectedProducts([]); }}>
+                        <X className="mr-2 h-5 w-5"/> Cancelar
+                    </Button>
+                </>
+                ) : (
+                <>
+                    <Button variant="outline" onClick={() => setSelectionMode(true)}>
+                        <CheckSquare className="mr-2 h-5 w-5"/> Selecionar
+                    </Button>
+                    <Button size="lg" asChild>
+                    <Link href="/inventario/novo">
+                        <PlusCircle className="mr-2 h-5 w-5" />
+                        Novo Produto
+                    </Link>
+                    </Button>
+                </>
+                )}
+            </div>
         </div>
         
         {filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {filteredProducts.map(product => (
-              <ProductCard 
-                key={product.id} 
-                product={product} 
-                onDelete={(id) => handleDelete([id])}
-                selectionMode={selectionMode}
-                isSelected={selectedProducts.includes(product.id)}
-                onSelectionChange={handleSelectionChange}
-              />
-            ))}
-          </div>
+          <>
+            {viewMode === 'card' ? (
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                    {filteredProducts.map(product => (
+                    <ProductCard 
+                        key={product.id} 
+                        product={product} 
+                        onDelete={(id) => handleDelete([id])}
+                        selectionMode={selectionMode}
+                        isSelected={selectedProducts.includes(product.id)}
+                        onSelectionChange={handleSelectionChange}
+                    />
+                    ))}
+                </div>
+            ) : (
+                <div className="rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 py-24 text-center">
+                    <h2 className="text-xl font-semibold text-foreground">Visualização em Lista</h2>
+                    <p className="mt-2 text-muted-foreground">A funcionalidade de tabela será implementada aqui em breve.</p>
+                </div>
+            )}
+          </>
         ) : (
           <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 py-24 text-center">
             <h2 className="text-xl font-semibold text-foreground">Nenhum produto encontrado</h2>
