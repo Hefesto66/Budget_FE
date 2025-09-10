@@ -241,8 +241,7 @@ export default function NewLeadPage() {
                                   ))}
                                 </CommandGroup>
                                 <CommandItem
-                                    onSelect={(e) => {
-                                        e.preventDefault();
+                                    onSelect={() => {
                                         setIsClientDialogOpen(true);
                                         setComboboxOpen(false);
                                     }}
