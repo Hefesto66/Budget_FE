@@ -162,16 +162,6 @@ export default function InventarioPage() {
       <main className="flex-1 p-6">
         <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex-1 flex items-center gap-4">
-                 <div className="relative w-full sm:w-auto">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input
-                    type="search"
-                    placeholder="Pesquisar produtos..."
-                    className="w-full sm:w-64 pl-10"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
                  <div>
                     <ToggleGroup 
                         type="single"
@@ -186,6 +176,16 @@ export default function InventarioPage() {
                             <List className="h-5 w-5" />
                         </ToggleGroupItem>
                     </ToggleGroup>
+                </div>
+                <div className="relative w-full sm:w-auto">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Input
+                    type="search"
+                    placeholder="Pesquisar produtos..."
+                    className="w-full sm:w-64 pl-10"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                 </div>
             </div>
             <div className="flex items-center gap-2 self-start sm:self-center">
@@ -306,5 +306,7 @@ export default function InventarioPage() {
     </div>
   );
 }
+
+    
 
     
