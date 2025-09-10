@@ -3,28 +3,38 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check ownership
-    function isOwner(companyId) {
-      return request.auth.uid == companyId;
+  
+    // =============================================================
+    // Regras Multi-Inquilino: Protege os dados de cada empresa
+    // =============================================================
+    // Estas regras garantem que um utilizador só pode aceder
+    // aos documentos que pertencem à sua empresa.
+    // O `request.auth.uid` é o ID do utilizador autenticado.
+    // O `resource.data.companyId` é o campo que guardamos em cada documento.
+    
+    match /clients/{clientId} {
+      allow read, write: if request.auth.uid == resource.data.companyId;
     }
 
-    // Companies: Users can only read/write their own company document
-    match /companies/{userId} {
-      allow read, write: if isOwner(userId);
+    match /inventory/{productId} {
+      allow read, write: if request.auth.uid == resource.data.companyId;
     }
     
-    // Data collections (inventory, clients, etc.)
-    // A user can only access documents that belong to their companyId.
-    match /{collection}/{docId} {
-      allow read, write: if request.auth.uid != null && isOwner(resource.data.companyId);
-      allow create: if request.auth.uid != null && isOwner(request.resource.data.companyId);
+    match /leads/{leadId} {
+      allow read, write: if request.auth.uid == resource.data.companyId;
+    }
+    
+    match /quotes/{quoteId} {
+      allow read, write: if request.auth.uid == resource.data.companyId;
     }
 
-    // Special case for quotes subcollection (if it were still in use)
-    // To allow reads, we would need to check the parent document's companyId
-    // match /quotes/{quoteId}/{subcollection}/{itemDocId} {
-    //   allow read, write: if request.auth.uid != null && isOwner(get(/databases/$(database)/documents/quotes/$(quoteId)).data.companyId);
-    // }
+    // =============================================================
+    // Regra para a Empresa: Permite que um utilizador gira os seus
+    // próprios dados de empresa.
+    // =============================================================
+    // O `companyId` aqui é o próprio ID do utilizador.
+    match /companies/{companyId} {
+      allow read, write: if request.auth.uid == companyId;
+    }
   }
 }
