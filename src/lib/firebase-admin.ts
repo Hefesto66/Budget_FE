@@ -1,9 +1,9 @@
 // src/lib/firebase-admin.ts
 import admin from 'firebase-admin';
-import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 
 // Service account credentials from environment variables
-const serviceAccount = {
+const serviceAccount: admin.ServiceAccount = {
   projectId: process.env.FIREBASE_PROJECT_ID,
   clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
   // The replace is crucial for parsing the private key from an environment variable
@@ -17,7 +17,7 @@ if (!admin.apps.length) {
     // Check if all required service account properties are available
     if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
         admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+            credential: admin.credential.cert(serviceAccount),
         });
         db = getFirestore();
         console.log("Firebase Admin SDK initialized successfully.");
@@ -33,7 +33,7 @@ if (!admin.apps.length) {
 }
 
 // Export a promise that resolves with the db instance
-const adminDbReady = new Promise<Firestore | null>((resolve) => {
+const adminDbReady: Promise<Firestore | null> = new Promise((resolve) => {
     if (db) {
         resolve(db);
     } else {
