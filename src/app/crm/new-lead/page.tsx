@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { saveLead, getClients, saveClient, type Client, addHistoryEntry, getClientById, getStages, Stage } from '@/lib/storage';
+import { saveLead, getClients, saveClient, type Client, addHistoryEntry, getClientById, getStages, type Stage } from '@/lib/storage';
 import {
   Popover,
   PopoverContent,
@@ -80,7 +80,7 @@ export default function NewLeadPage() {
       const allClients = await getClients();
       const allStages = await getStages();
       setClients(allClients);
-      setStages(allStages.filter(s => !s.isWon)); // Don't allow creating a lead directly in 'Won'
+      setStages(allStages.filter(s => !s.isWon && s.id !== 'perdido')); // Don't allow creating a lead directly in 'Won' or 'Lost'
     }
     fetchData();
   }, []);
@@ -105,7 +105,7 @@ export default function NewLeadPage() {
       return;
     }
 
-    const newLead: Partial<Lead> = { 
+    const newLead = { 
       title: data.title,
       value: data.value,
       stage: data.stage,
@@ -128,7 +128,6 @@ export default function NewLeadPage() {
     });
 
     router.push(`/crm/${newLeadId}`); 
-    setIsSaving(false);
   };
   
   const handleCreateNewClient = async () => {
@@ -157,12 +156,13 @@ export default function NewLeadPage() {
         setClients(prevClients => [...prevClients, newClient]);
         form.setValue("clientId", newClient.id);
         setSelectedClientId(newClient.id);
-
-        toast({ title: "Cliente Criado!", description: `${newClientName} foi adicionado à sua lista de clientes.` });
         
         setNewClientName("");
         setIsClientDialogOpen(false);
         setComboboxOpen(false);
+
+        toast({ title: "Cliente Criado!", description: `${newClientName} foi adicionado à sua lista de clientes.` });
+
     } catch(error) {
         console.error("Failed to create client:", error);
         toast({ title: "Erro", description: "Não foi possível criar o novo cliente.", variant: "destructive" });
@@ -242,8 +242,8 @@ export default function NewLeadPage() {
                                 </CommandGroup>
                                 <CommandItem
                                     onSelect={() => {
-                                        setIsClientDialogOpen(true);
                                         setComboboxOpen(false);
+                                        setIsClientDialogOpen(true);
                                     }}
                                     className="text-primary cursor-pointer font-medium"
                                 >
