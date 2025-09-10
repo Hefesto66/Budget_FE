@@ -3,7 +3,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Logo } from '@/components/icons/Logo';
+import { Logo } from '@/components/layout/Logo';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { useMemo } from 'react';
