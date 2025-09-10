@@ -216,14 +216,15 @@ export default function PersonalizarPropostaPage() {
                     />
                     {/* Switch para colunas de preço, só faz sentido se a tabela estiver visível */}
                     {settings.content.showInvestmentTable && (
-                       <ContentSwitch
-                            id="showPriceColumns"
-                            label="Exibir Colunas de Preço na Tabela"
-                            description="Ative para mostrar as colunas 'Preço Unit.' e 'Preço Total' na tabela de investimento."
-                            checked={settings.content.showPriceColumns}
-                            onCheckedChange={(val) => handleContentToggle('showPriceColumns', val)}
-                            className="ml-6 border-l-2 pl-4 rounded-l-none"
-                       />
+                      <div className="ml-6 pl-4 border-l-2">
+                         <ContentSwitch
+                              id="showPriceColumns"
+                              label="Exibir Colunas de Preço na Tabela"
+                              description="Ative para mostrar as colunas 'Preço Unit.' e 'Preço Total' na tabela de investimento."
+                              checked={settings.content.showPriceColumns}
+                              onCheckedChange={(val) => handleContentToggle('showPriceColumns', val)}
+                         />
+                      </div>
                     )}
                     <ContentSwitch
                         id="showFinancialSummary"
