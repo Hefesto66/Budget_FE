@@ -1,46 +1,23 @@
 
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Regra de Super Usuário:
-    // Um super usuário (com claim `superuser: true`) pode ler/escrever qualquer documento.
-    function isSuperUser() {
-      return request.auth.token.superuser == true;
+  
+    // Regra para a coleção 'companies'
+    // Permite que um utilizador leia e escreva no seu PRÓPRIO registo de empresa,
+    // o que é essencial para ele atualizar os seus dados e para a função de Super Usuário funcionar.
+    match /companies/{userId} {
+      allow read, write: if request.auth.uid == userId;
     }
 
-    // Regra de Dono:
-    // Um usuário pode ler/escrever um documento se o seu UID corresponder ao `companyId` do documento.
-    function isOwner(companyId) {
-      return request.auth.uid == companyId;
-    }
-    
-    // As regras de segurança não são filtros. A sua aplicação deve garantir que as queries
-    // que executa estão em conformidade com estas regras.
-    
-    match /companies/{companyId} {
-        // Um usuário só pode ler/escrever o seu próprio documento da empresa.
-        allow read, write: if isOwner(companyId) || isSuperUser();
-    }
-    
-    match /clients/{docId} {
-      // Um usuário pode ler/escrever clientes que pertencem à sua empresa.
-      allow read, write: if isOwner(resource.data.companyId) || isSuperUser();
-    }
-    
-     match /inventory/{docId} {
-      // Um usuário pode ler/escrever produtos que pertencem à sua empresa.
-      allow read, write: if isOwner(resource.data.companyId) || isSuperUser();
-    }
-    
-     match /leads/{docId} {
-      // Um usuário pode ler/escrever leads que pertencem à sua empresa.
-      allow read, write: if isOwner(resource.data.companyId) || isSuperUser();
-    }
-    
-     match /quotes/{docId} {
-      // Um usuário pode ler/escrever cotações que pertencem à sua empresa.
-      allow read, write: if isOwner(resource.data.companyId) || isSuperUser();
+    // Regra genérica para as outras coleções
+    // Permite a leitura ou escrita se:
+    // 1. O 'uid' do utilizador autenticado for igual ao campo 'companyId' do documento (é o dono).
+    // 2. OU o utilizador tiver a custom claim 'superuser' definida como true.
+    match /{collection}/{docId} {
+      allow read, write: if request.auth.uid == resource.data.companyId 
+                         || request.auth.token.superuser == true;
     }
   }
 }

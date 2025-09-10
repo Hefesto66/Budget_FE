@@ -51,7 +51,7 @@ function SuperUserAdmin() {
     setIsProcessing(true);
     const result = await setSuperUserRole(email);
     if (result.success) {
-      toast({ title: 'Sucesso!', description: result.message });
+      toast({ title: 'Sucesso!', description: `${result.message} Por favor, atualize a página para ver as alterações de permissão.` });
     } else {
       toast({ title: 'Erro', description: result.message, variant: 'destructive' });
     }
@@ -66,7 +66,7 @@ function SuperUserAdmin() {
           <ShieldCheck className="text-primary" /> Painel de Super Usuário
         </CardTitle>
         <CardDescription>
-          Atribua o papel de Super Usuário a um utilizador para conceder permissões de administrador.
+          Atribua o papel de Super Usuário a um utilizador para conceder permissões de administrador. Após promover o primeiro utilizador, esta secção pode ser escondida novamente por segurança.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -293,7 +293,8 @@ function MinhaEmpresaPageContent() {
             </Card>
           </form>
 
-          {isSuperUser && <SuperUserAdmin />}
+          {/* O painel de Super Usuário agora está sempre visível para o utilizador logado, para permitir a promoção inicial */}
+          <SuperUserAdmin />
 
         </div>
       </main>
@@ -308,5 +309,3 @@ export default function MinhaEmpresaPage() {
         </AuthGuard>
     )
 }
-
-    
