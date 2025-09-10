@@ -35,7 +35,6 @@ const defaultSettings: CustomizationSettings = {
     showFinancialSummary: true,
     showSystemPerformance: true,
     showSavingsChart: true,
-    showCashflowTable: false,
     showAdvancedAnalysis: false,
     showNextSteps: false,
   },
@@ -246,13 +245,6 @@ export default function PersonalizarPropostaPage() {
                         description="Mostra o bloco com os valores de VPL (Valor Presente Líquido) e TIR (Taxa Interna de Retorno)."
                         checked={settings.content.showAdvancedAnalysis}
                         onCheckedChange={(val) => handleContentToggle('showAdvancedAnalysis', val)}
-                    />
-                    <ContentSwitch
-                        id="showCashflowTable"
-                        label="Exibir Tabela de Fluxo de Caixa"
-                        description="Mostra a projeção detalhada do fluxo de caixa e economia acumulada ao longo de 25 anos."
-                        checked={settings.content.showCashflowTable}
-                        onCheckedChange={(val) => handleContentToggle('showCashflowTable', val)}
                     />
                     <ContentSwitch
                         id="showSavingsChart"

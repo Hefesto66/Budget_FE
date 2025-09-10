@@ -175,34 +175,6 @@ const SavingsChartBlock = ({ results, customization }: Pick<ProposalDocumentProp
     </Block>
 );
 
-
-const CashflowTableBlock = ({ results, customization }: Pick<ProposalDocumentProps, 'results' | 'customization'>) => (
-    <Block className='my-8' pageBreakBefore>
-        <h3 style={{ fontWeight: 'bold', fontSize: '14pt', marginBottom: '16px', borderBottom: '1px solid #EEE', paddingBottom: '4px', color: customization.colors.primary, fontFamily: '"Poppins", sans-serif' }}>Projeção de Fluxo de Caixa (25 Anos)</h3>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt' }}>
-            <thead>
-                <tr style={{ borderBottom: '1px solid #CCC', backgroundColor: '#F9F9F9' }}>
-                    <th style={{ padding: '8px', textAlign: 'left' }}>Ano</th>
-                    <th style={{ padding: '8px', textAlign: 'right' }}>Economia Anual (R$)</th>
-                    <th style={{ padding: '8px', textAlign: 'right' }}>Fluxo de Caixa (R$)</th>
-                    <th style={{ padding: '8px', textAlign: 'right' }}>Fluxo de Caixa Acumulado (R$)</th>
-                </tr>
-            </thead>
-            <tbody>
-                {results.financeiro.cash_flow_reais.map((flow, index) => (
-                    <tr key={index} style={{ borderBottom: '1px solid #EEE' }}>
-                        <td style={{ padding: '6px 8px', textAlign: 'left' }}>{index === 0 ? 'Investimento' : `Ano ${index}`}</td>
-                        <td style={{ padding: '6px 8px', textAlign: 'right' }}>{index > 0 ? formatCurrency(flow) : '-'}</td>
-                        <td style={{ padding: '6px 8px', textAlign: 'right', color: flow < 0 ? '#D9534F' : '#5CB85C' }}>{formatCurrency(flow)}</td>
-                        <td style={{ padding: '6px 8px', textAlign: 'right' }}>{formatCurrency(results.financeiro.cash_flow_reais.slice(0, index + 1).reduce((a, b) => a + b, 0))}</td>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
-    </Block>
-);
-
-
 const FooterBlock = ({ customization }: Pick<ProposalDocumentProps, 'customization'>) => (
   <Block>
     <footer style={{ borderTop: '2px solid #EEE', paddingTop: '24px', marginTop: '48px', fontSize: '9pt', color: '#555', textAlign: 'center' }}>
@@ -243,8 +215,6 @@ export function ProposalDocument({
         {customization.content.showAdvancedAnalysis && <AdvancedAnalysisBlock results={results} customization={customization} />}
         
         {customization.content.showSavingsChart && <SavingsChartBlock results={results} customization={customization} />}
-
-        {customization.content.showCashflowTable && <CashflowTableBlock results={results} customization={customization} />}
         
       </main>
 

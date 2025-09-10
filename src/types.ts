@@ -97,7 +97,6 @@ export interface CustomizationSettings {
     showFinancialSummary: boolean;
     showSystemPerformance: boolean;
     showSavingsChart: boolean;
-    showCashflowTable: boolean;
     showAdvancedAnalysis: boolean;
     showNextSteps: boolean;
   };
