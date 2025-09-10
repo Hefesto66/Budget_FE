@@ -153,15 +153,18 @@ export const saveClient = async (
 ): Promise<string> => {
     const db = await dbReady;
     if (!db) return Promise.reject("Firestore not initialized");
+
     const companyId = getCurrentUserId();
-    const dataToSave: Omit<Client, 'id' | 'history'> & { id?: string, history?: HistoryEntry[] } = {
-        companyId,
+    
+    // Garante que o companyId está sempre presente nos dados a serem salvos
+    const dataToSave = {
+        ...clientData,
+        companyId, 
         name: clientData.name || "Cliente sem nome",
         type: clientData.type || 'individual',
-        ...clientData,
     };
-    
-    // Ensure history is an array
+
+    // Assegura que o histórico é um array
     if (!dataToSave.history) {
         dataToSave.history = [];
     }
