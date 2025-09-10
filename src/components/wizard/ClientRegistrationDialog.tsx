@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { clientSchema, type ClientFormData } from "@/types";
+import { clientFormSchema, type ClientFormData } from "@/types";
 import { UserPlus, SkipForward } from "lucide-react";
 
 interface ClientRegistrationDialogProps {
@@ -25,11 +25,11 @@ interface ClientRegistrationDialogProps {
 
 export function ClientRegistrationDialog({ isOpen, onSave, onSkip }: ClientRegistrationDialogProps) {
   const form = useForm<ClientFormData>({
-    resolver: zodResolver(clientSchema),
+    resolver: zodResolver(clientFormSchema),
     defaultValues: {
       name: "",
-      document: "",
-      address: "",
+      cnpj: "",
+      street: "",
     },
   });
 
@@ -70,7 +70,7 @@ export function ClientRegistrationDialog({ isOpen, onSave, onSkip }: ClientRegis
               />
               <FormField
                 control={form.control}
-                name="document"
+                name="cnpj"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>CPF ou CNPJ</FormLabel>
@@ -83,7 +83,7 @@ export function ClientRegistrationDialog({ isOpen, onSave, onSkip }: ClientRegis
               />
               <FormField
                 control={form.control}
-                name="address"
+                name="street"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Endereço da Instalação</FormLabel>
@@ -108,3 +108,5 @@ export function ClientRegistrationDialog({ isOpen, onSave, onSkip }: ClientRegis
     </Dialog>
   );
 }
+
+    

@@ -8,7 +8,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { z } from "zod";
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import type { SolarCalculationResult, SolarCalculationInput, ClientFormData, Quote } from "@/types";
+import type { SolarCalculationResult, SolarCalculationInput, Client, Quote } from "@/types";
 import { getCalculation } from "@/app/orcamento/actions";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -95,7 +95,7 @@ export function Wizard() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
-  const [clientData, setClientData] = useState<ClientFormData | null>(null);
+  const [clientData, setClientData] = useState<Partial<Client> | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [proposalId, setProposalId] = useState<string>("");
 
@@ -135,9 +135,12 @@ export function Wizard() {
   }
 
   useEffect(() => {
-    setInventory(getProducts());
     
     const initialize = async () => {
+      
+      const products = await getProducts();
+      setInventory(products);
+
       let draftData: any = null;
       try {
         const draftDataStr = sessionStorage.getItem(DRAFT_QUOTE_SESSION_KEY);
@@ -169,7 +172,7 @@ export function Wizard() {
 
       if (quoteId) {
         setProposalId(quoteId);
-        const existingQuote = getQuoteById(quoteId);
+        const existingQuote = await getQuoteById(quoteId);
         if (existingQuote) {
           initialData = existingQuote.formData;
           loadedResults = existingQuote.results;
@@ -180,7 +183,7 @@ export function Wizard() {
       }
       
       if (clienteId) {
-          const foundClient = getClientById(clienteId);
+          const foundClient = await getClientById(clienteId);
           if(foundClient) {
               clientToSet = {
                   name: foundClient.name,
@@ -292,13 +295,13 @@ export function Wizard() {
     processForm(currentFormValues);
   };
   
-  const handleSaveQuote = () => {
+  const handleSaveQuote = async () => {
     if (!leadId || !clienteId) {
         toast({ title: "Erro", description: "Contexto do lead ou cliente não encontrados para salvar.", variant: "destructive" });
         return;
     }
     
-    const finalProposalId = quoteId || generateNewQuoteId();
+    const finalProposalId = quoteId || await generateNewQuoteId();
     if (!proposalId) setProposalId(finalProposalId);
 
     const formData = methods.getValues('calculationInput') as SolarCalculationInput;
@@ -309,21 +312,24 @@ export function Wizard() {
          return;
     }
 
+    const existingQuote = quoteId ? await getQuoteById(quoteId) : null;
+
     const quoteToSave: Quote = {
         id: finalProposalId,
         leadId: leadId,
-        createdAt: quoteId ? getQuoteById(quoteId)!.createdAt : new Date().toISOString(), 
+        clientId: clienteId,
+        createdAt: existingQuote ? existingQuote.createdAt : new Date().toISOString(), 
         formData: formData,
         results: results,
         billOfMaterials: billOfMaterials
     };
 
-    saveQuote(quoteToSave);
+    await saveQuote(quoteToSave);
     sessionStorage.removeItem(DRAFT_QUOTE_SESSION_KEY); // Clear draft on successful save
 
     const historyMessage = quoteId ? `Cotação ${finalProposalId} foi atualizada.` : `Nova cotação ${finalProposalId} foi criada.`;
 
-    addHistoryEntry({ 
+    await addHistoryEntry({ 
         clientId: clienteId, 
         text: historyMessage, 
         type: 'log-quote',
@@ -582,6 +588,5 @@ export function Wizard() {
     </div>
   );
 }
-
 
     

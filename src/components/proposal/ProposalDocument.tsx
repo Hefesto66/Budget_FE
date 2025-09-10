@@ -1,5 +1,5 @@
 
-import type { SolarCalculationResult, ClientFormData, CustomizationSettings } from '@/types';
+import type { SolarCalculationResult, Client, CustomizationSettings } from '@/types';
 import type { CompanyFormData } from '@/app/minha-empresa/page';
 import { formatCurrency, formatNumber, formatDate } from '@/lib/utils';
 import { cn } from '@/lib/utils';
@@ -12,7 +12,7 @@ interface ProposalDocumentProps {
   formData: WizardFormData['calculationInput'];
   billOfMaterials: WizardFormData['billOfMaterials'];
   companyData: CompanyFormData;
-  clientData: ClientFormData;
+  clientData: Partial<Client>;
   customization: CustomizationSettings;
   proposalId: string;
   proposalDate: Date;
@@ -61,8 +61,8 @@ const HeaderBlock = ({ companyData, proposalId, proposalDate, proposalValidity, 
     <div style={{ border: '1px solid #EEE', padding: '16px', borderRadius: '8px' }}>
       <h3 style={{ fontWeight: 'bold', marginBottom: '8px', color: customization.colors.primary, fontFamily: '"Poppins", sans-serif' }}>Preparado para:</h3>
       <p style={{ fontWeight: '600', margin: 0 }}>{clientData.name}</p>
-      {clientData.address && <p style={{ margin: 0 }}>{clientData.address}</p>}
-      {clientData.document && <p style={{ margin: 0 }}>CPF/CNPJ: {clientData.document}</p>}
+      {clientData.street && <p style={{ margin: 0 }}>{clientData.street}</p>}
+      {clientData.cnpj && <p style={{ margin: 0 }}>CPF/CNPJ: {clientData.cnpj}</p>}
     </div>
   </Block>
 );
@@ -222,3 +222,5 @@ export function ProposalDocument({
     </div>
   );
 }
+
+    

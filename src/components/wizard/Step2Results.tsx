@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useState, useCallback, useRef } from "react";
-import type { SolarCalculationResult, ClientFormData, CustomizationSettings } from "@/types";
+import { useState, useCallback, useRef, useEffect } from "react";
+import type { SolarCalculationResult, Client, CustomizationSettings } from "@/types";
 import { ResultCard } from "@/components/ResultCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,9 +25,10 @@ import { useFormContext } from "react-hook-form";
 import type { WizardFormData } from "./Wizard";
 import { AnimatePresence, motion } from "framer-motion";
 import { DetailedAnalysisChart } from "./DetailedAnalysisChart";
+import { getCompanyData } from "@/lib/storage";
+import type { CompanyData } from "@/app/minha-empresa/page";
 
 
-const COMPANY_DATA_KEY = "companyData";
 const CUSTOMIZATION_KEY = "proposalCustomization";
 
 const defaultCustomization: CustomizationSettings = {
@@ -37,10 +38,10 @@ const defaultCustomization: CustomizationSettings = {
   },
   content: {
     showInvestmentTable: true,
+    showPriceColumns: true,
     showFinancialSummary: true,
     showSystemPerformance: true,
     showSavingsChart: true,
-    showCashflowTable: false,
     showAdvancedAnalysis: false,
     showNextSteps: false,
   },
@@ -53,7 +54,7 @@ const defaultCustomization: CustomizationSettings = {
 interface Step2ResultsProps {
   results: SolarCalculationResult;
   proposalId: string;
-  clientData: ClientFormData | null;
+  clientData: Partial<Client> | null;
   onBack: () => void;
   onSave: () => void;
   onGoToDataInput: () => void;
@@ -77,10 +78,23 @@ export function Step2Results({
   const [refinedSuggestion, setRefinedSuggestion] = useState<SuggestRefinedPanelConfigOutput | null>(null);
 
   const [showAdvancedAnalysis, setShowAdvancedAnalysis] = useState(false);
+  const [companyData, setCompanyData] = useState<CompanyData | null>(null);
+  const [customization, setCustomization] = useState<CustomizationSettings>(defaultCustomization);
   
   const billOfMaterials = formMethods.watch('billOfMaterials');
 
   const intervalRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    async function loadData() {
+        const company = await getCompanyData();
+        setCompanyData(company);
+        if (company?.proposalSettings) {
+            setCustomization(company.proposalSettings);
+        }
+    }
+    loadData();
+  }, []);
 
   const handleAiRefinement = async () => {
     setIsRefining(true);
@@ -161,14 +175,10 @@ export function Step2Results({
     // 3. Preparar a carga de dados.
     let payload;
     try {
-        const companyDataStr = localStorage.getItem(COMPANY_DATA_KEY);
-        const customizationStr = localStorage.getItem(CUSTOMIZATION_KEY);
-        if (!companyDataStr) throw new Error("Dados da empresa não configurados. Aceda a Definições > Minha Empresa.");
+        if (!companyData) throw new Error("Dados da empresa não configurados. Aceda a Definições > Minha Empresa.");
         
-        const companyData = JSON.parse(companyDataStr);
-        const customization = customizationStr ? JSON.parse(customizationStr) : defaultCustomization;
         const formData = formMethods.getValues();
-        const finalClientData = clientData || { name: "Cliente Final", document: "-", address: "-" };
+        const finalClientData: Partial<Client> = clientData || { name: "Cliente Final", cnpj: "-", street: "-" };
 
         payload = {
             type: 'PROPOSAL_DATA',
@@ -215,7 +225,7 @@ export function Step2Results({
 
     }, INTERVAL_MS);
 
-  }, [results, proposalId, clientData, formMethods, toast]);
+  }, [results, proposalId, clientData, formMethods, toast, companyData, customization]);
 
 
   const handleApplySuggestion = () => {
@@ -441,3 +451,5 @@ const ComparisonItem = ({ label, value, highlight = false }: { label: string, va
         <p className={`font-semibold text-base ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
     </div>
 );
+
+    

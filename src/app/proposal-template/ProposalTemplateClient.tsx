@@ -2,7 +2,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { ProposalDocument } from '@/components/proposal/ProposalDocument';
-import type { SolarCalculationResult, ClientFormData, CustomizationSettings } from '@/types';
+import type { SolarCalculationResult, Client, CustomizationSettings } from '@/types';
 import type { CompanyFormData } from '@/app/minha-empresa/page';
 import type { WizardFormData } from '@/components/wizard/Wizard';
 import { Loader2 } from 'lucide-react';
@@ -14,7 +14,7 @@ interface ReceivedData {
   formData: WizardFormData['calculationInput'];
   billOfMaterials: WizardFormData['billOfMaterials'];
   companyData: CompanyFormData;
-  clientData: ClientFormData;
+  clientData: Partial<Client>;
   customization: CustomizationSettings;
   proposalId: string;
   proposalDate: string; // ISO string
@@ -120,3 +120,5 @@ export default function ProposalTemplateClient() {
     />
   );
 }
+
+    

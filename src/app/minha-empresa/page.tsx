@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, Save, UploadCloud } from "lucide-react"
 import Image from "next/image"
-import { saveCompanyData } from "./actions"
+import { saveCompanyData, getCompanyData } from "@/lib/storage"
 import { Header } from "@/components/layout/Header"
 
 const companySchema = z.object({
@@ -34,8 +34,6 @@ const companySchema = z.object({
 })
 
 export type CompanyFormData = z.infer<typeof companySchema>
-
-const COMPANY_DATA_KEY = "companyData";
 
 export default function MinhaEmpresaPage() {
   const { toast } = useToast()
@@ -56,23 +54,25 @@ export default function MinhaEmpresaPage() {
   })
 
   useEffect(() => {
-    try {
-      const savedData = localStorage.getItem(COMPANY_DATA_KEY);
-      if (savedData) {
-        const parsedData = JSON.parse(savedData);
-        form.reset(parsedData);
-        if (parsedData.logo) {
-          setLogoPreview(parsedData.logo);
+    async function loadData() {
+        try {
+            const savedData = await getCompanyData();
+            if (savedData) {
+                form.reset(savedData);
+                if (savedData.logo) {
+                setLogoPreview(savedData.logo);
+                }
+            }
+        } catch (error) {
+            console.error("Failed to load company data from Firestore", error);
+            toast({
+                title: "Aviso",
+                description: "Não foi possível carregar os dados da empresa.",
+                variant: "destructive",
+            });
         }
-      }
-    } catch (error) {
-      console.error("Failed to load company data from localStorage", error);
-      toast({
-        title: "Aviso",
-        description: "Não foi possível carregar os dados da empresa salvos anteriormente.",
-        variant: "destructive",
-      });
     }
+    loadData();
   }, [form, toast]);
   
 
@@ -100,31 +100,20 @@ export default function MinhaEmpresaPage() {
   const onSubmit = async (data: CompanyFormData) => {
     setIsSaving(true)
     
-    // Simulate saving
-    const result = await saveCompanyData(data)
-
-    if (result.success) {
-      try {
-        localStorage.setItem(COMPANY_DATA_KEY, JSON.stringify(data));
+    try {
+        await saveCompanyData(data);
         toast({
           title: "Sucesso!",
           description: "Os dados da sua empresa foram salvos.",
         })
         router.push("/")
-      } catch (error) {
+      } catch (error: any) {
          toast({
-          title: "Erro ao Salvar Localmente",
-          description: "Não foi possível salvar os dados no seu navegador.",
+          title: "Erro ao Salvar",
+          description: error.message || "Não foi possível salvar os dados no servidor.",
           variant: "destructive",
         })
       }
-    } else {
-      toast({
-        title: "Erro ao Salvar",
-        description: result.error,
-        variant: "destructive",
-      })
-    }
     setIsSaving(false)
   }
 
@@ -234,3 +223,5 @@ export default function MinhaEmpresaPage() {
     </div>
   )
 }
+
+    

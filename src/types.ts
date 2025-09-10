@@ -78,13 +78,45 @@ export interface SavingsDataPoint {
   "Economia Acumulada": number;
 }
 
-export const clientSchema = z.object({
+export const clientFormSchema = z.object({
   name: z.string().min(1, "O nome do cliente é obrigatório."),
-  document: z.string().optional(),
-  address: z.string().optional(),
+  type: z.enum(['individual', 'company']).default('individual'),
+  photo: z.string().nullable().optional(),
+  cnpj: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().email({ message: "Por favor, insira um e-mail válido." }).optional().or(z.literal('')),
+  website: z.string().url({ message: "Por favor, insira uma URL válida." }).optional().or(z.literal('')),
+  street: z.string().optional(),
+  cityState: z.string().optional(),
+  zip: z.string().optional(),
+  country: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  salespersonId: z.string().optional(),
+  paymentTermId: z.string().optional(),
+  priceListId: z.string().optional(),
 });
 
-export type ClientFormData = z.infer<typeof clientSchema>;
+export type ClientFormData = z.infer<typeof clientFormSchema>;
+
+export interface HistoryEntry {
+  id: string;
+  timestamp: string; 
+  type: 'note' | 'log' | 'log-lead' | 'log-quote' | 'log-stage';
+  text: string;
+  author?: string; 
+  refId?: string; 
+  quoteInfo?: { 
+      leadId: string;
+      clientId: string;
+  }
+}
+
+export interface Client extends ClientFormData {
+  id: string;
+  companyId: string;
+  history: HistoryEntry[];
+}
+
 
 export interface CustomizationSettings {
   colors: {
@@ -93,7 +125,7 @@ export interface CustomizationSettings {
   };
   content: {
     showInvestmentTable: boolean;
-    showPriceColumns: boolean; // <-- Nova propriedade
+    showPriceColumns: boolean;
     showFinancialSummary: boolean;
     showSystemPerformance: boolean;
     showSavingsChart: boolean;
@@ -107,9 +139,13 @@ export interface CustomizationSettings {
 
 export interface Quote {
     id: string;
+    companyId: string;
     leadId: string;
+    clientId: string;
     createdAt: string; // ISO string
     formData: SolarCalculationInput;
     results: SolarCalculationResult;
     billOfMaterials: any[];
 }
+
+    

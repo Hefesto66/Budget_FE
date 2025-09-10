@@ -17,12 +17,12 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Header } from "@/components/layout/Header";
-import { Save } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 import type { CustomizationSettings } from "@/types";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { getCompanyData, saveProposalSettings } from "@/lib/storage";
 
-const CUSTOMIZATION_KEY = "proposalCustomization";
 
 const defaultSettings: CustomizationSettings = {
   colors: {
@@ -46,27 +46,32 @@ const defaultSettings: CustomizationSettings = {
 export default function PersonalizarPropostaPage() {
   const { toast } = useToast();
   const [settings, setSettings] = useState<CustomizationSettings>(defaultSettings);
-  const [isClient, setIsClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setIsClient(true);
-    try {
-      const savedSettings = localStorage.getItem(CUSTOMIZATION_KEY);
-      if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
-        // Garante que todas as chaves (inclusive as novas) existam, usando os defaults como base.
-        setSettings(prev => ({
-          ...defaultSettings,
-          ...parsed,
-          colors: { ...defaultSettings.colors, ...parsed.colors },
-          content: { ...defaultSettings.content, ...parsed.content },
-          footer: { ...defaultSettings.footer, ...parsed.footer },
-        }));
-      }
-    } catch (error) {
-      console.error("Failed to load settings from localStorage", error);
+    async function loadSettings() {
+        setIsLoading(true);
+        try {
+            const companyData = await getCompanyData();
+            if (companyData && companyData.proposalSettings) {
+                // Merge saved settings with defaults to ensure all keys exist
+                setSettings(prev => ({
+                    ...defaultSettings,
+                    ...companyData.proposalSettings,
+                    colors: { ...defaultSettings.colors, ...companyData.proposalSettings.colors },
+                    content: { ...defaultSettings.content, ...companyData.proposalSettings.content },
+                    footer: { ...defaultSettings.footer, ...companyData.proposalSettings.footer },
+                }));
+            }
+        } catch (error) {
+            console.error("Failed to load settings from Firestore", error);
+            toast({ title: "Erro", description: "Não foi possível carregar as suas configurações.", variant: "destructive" });
+        } finally {
+            setIsLoading(false);
+        }
     }
-  }, []);
+    loadSettings();
+  }, [toast]);
   
   const handleColorChange = (key: 'primary' | 'textOnPrimary', value: string) => {
     setSettings(prev => ({
@@ -98,9 +103,10 @@ export default function PersonalizarPropostaPage() {
     }));
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setIsLoading(true);
     try {
-      localStorage.setItem(CUSTOMIZATION_KEY, JSON.stringify(settings));
+      await saveProposalSettings(settings);
       toast({
         title: "Sucesso!",
         description: "Suas preferências de personalização foram salvas.",
@@ -108,14 +114,23 @@ export default function PersonalizarPropostaPage() {
     } catch (error) {
       toast({
         title: "Erro ao Salvar",
-        description: "Não foi possível salvar as configurações no seu navegador.",
+        description: "Não foi possível salvar as configurações.",
         variant: "destructive",
       });
+    } finally {
+        setIsLoading(false);
     }
   };
   
-  if (!isClient) {
-    return null; // ou um componente de loading
+  if (isLoading) {
+    return (
+        <div className="flex min-h-screen flex-col">
+          <Header />
+          <main className="flex-1 flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </main>
+        </div>
+    );
   }
 
   return (
@@ -221,6 +236,7 @@ export default function PersonalizarPropostaPage() {
                             description="Ative para mostrar as colunas 'Preço Unit.' e 'Preço Total' na tabela de investimento."
                             checked={settings.content.showPriceColumns}
                             onCheckedChange={(val) => handleContentToggle('showPriceColumns', val)}
+                            className="ml-10"
                         />
                     )}
                     <ContentSwitch
@@ -274,7 +290,7 @@ export default function PersonalizarPropostaPage() {
           </Tabs>
 
           <div className="mt-8 flex justify-end">
-            <Button onClick={handleSave}>
+            <Button onClick={handleSave} disabled={isLoading}>
               <Save className="mr-2 h-4 w-4" />
               Salvar Personalização
             </Button>
@@ -309,9 +325,5 @@ function ContentSwitch({ id, label, description, checked, onCheckedChange, class
         </div>
     )
 }
-
-    
-
-    
 
     
