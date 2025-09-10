@@ -20,6 +20,7 @@ import { Header } from "@/components/layout/Header";
 import { Save } from "lucide-react";
 import type { CustomizationSettings } from "@/types";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 const CUSTOMIZATION_KEY = "proposalCustomization";
 
@@ -30,7 +31,7 @@ const defaultSettings: CustomizationSettings = {
   },
   content: {
     showInvestmentTable: true,
-    showPriceColumns: true, // <-- Valor Padrão
+    showPriceColumns: true,
     showFinancialSummary: true,
     showSystemPerformance: true,
     showSavingsChart: true,
@@ -215,15 +216,14 @@ export default function PersonalizarPropostaPage() {
                     />
                     {/* Switch para colunas de preço, só faz sentido se a tabela estiver visível */}
                     {settings.content.showInvestmentTable && (
-                        <div className="pl-6 border-l-2 ml-3">
-                           <ContentSwitch
-                                id="showPriceColumns"
-                                label="Exibir Colunas de Preço na Tabela"
-                                description="Ative para mostrar as colunas 'Preço Unit.' e 'Preço Total' na tabela de investimento."
-                                checked={settings.content.showPriceColumns}
-                                onCheckedChange={(val) => handleContentToggle('showPriceColumns', val)}
-                           />
-                        </div>
+                       <ContentSwitch
+                            id="showPriceColumns"
+                            label="Exibir Colunas de Preço na Tabela"
+                            description="Ative para mostrar as colunas 'Preço Unit.' e 'Preço Total' na tabela de investimento."
+                            checked={settings.content.showPriceColumns}
+                            onCheckedChange={(val) => handleContentToggle('showPriceColumns', val)}
+                            className="ml-6 border-l-2 pl-4 rounded-l-none"
+                       />
                     )}
                     <ContentSwitch
                         id="showFinancialSummary"
@@ -300,11 +300,12 @@ interface ContentSwitchProps {
     description: string;
     checked: boolean;
     onCheckedChange: (checked: boolean) => void;
+    className?: string;
 }
 
-function ContentSwitch({ id, label, description, checked, onCheckedChange }: ContentSwitchProps) {
+function ContentSwitch({ id, label, description, checked, onCheckedChange, className }: ContentSwitchProps) {
     return (
-        <div className="flex items-center justify-between rounded-lg border p-4">
+        <div className={cn("flex items-center justify-between rounded-lg border p-4", className)}>
             <div className="space-y-0.5">
                 <Label htmlFor={id} className="text-base">{label}</Label>
                 <p className="text-sm text-muted-foreground">{description}</p>
