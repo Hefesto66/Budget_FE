@@ -42,10 +42,11 @@ export function DetailedAnalysisChart({ results, billOfMaterials }: DetailedAnal
       const serviceCost = (billOfMaterials.find(i => i.category === 'SERVICO')?.cost || 0) * (billOfMaterials.find(i => i.category === 'SERVICO')?.quantity || 0);
       
       data = [
-        { name: "Módulos", value: panelCost, fill: "var(--color-modules)" },
-        { name: "Inversor", value: inverterCost, fill: "var(--color-inverter)" },
-        { name: "Instalação", value: serviceCost, fill: "var(--color-service)" },
-      ];
+        { name: "Módulos", value: panelCost },
+        { name: "Inversor", value: inverterCost },
+        { name: "Instalação", value: serviceCost },
+      ].filter(item => item.value > 0); // Remove items with zero cost
+      
       config = {
         value: { label: "Custo" },
         Módulos: { label: "Módulos", color: "hsl(var(--chart-1))" },
@@ -54,9 +55,9 @@ export function DetailedAnalysisChart({ results, billOfMaterials }: DetailedAnal
       };
     } else { // dataType === 'projection'
       data = [
-        { name: "Fatura SEM Sistema", value: results.conta_media_mensal_reais.antes, fill: "var(--color-oldBill)" },
-        { name: "Fatura COM Sistema", value: results.conta_media_mensal_reais.depois, fill: "var(--color-newBill)" },
-        { name: "Economia 1º Ano", value: results.financeiro.economia_primeiro_ano, fill: "var(--color-savings)" },
+        { name: "Fatura SEM Sistema", value: results.conta_media_mensal_reais.antes },
+        { name: "Fatura COM Sistema", value: results.conta_media_mensal_reais.depois },
+        { name: "Economia 1º Ano", value: results.financeiro.economia_primeiro_ano },
       ];
       config = {
         value: { label: "Valor" },
@@ -83,7 +84,11 @@ export function DetailedAnalysisChart({ results, billOfMaterials }: DetailedAnal
             <XAxis type="number" hide />
             <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={10} width={120} />
             <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel formatter={(value) => formatCurrency(Number(value))}/>} />
-            <Bar dataKey="value" radius={4} />
+            <Bar dataKey="value" radius={4}>
+                 {data.map((entry, index) => (
+                    <cell key={`cell-${index}`} fill={config[entry.name]?.color} />
+                ))}
+            </Bar>
        </BarChart>
     );
 
@@ -131,9 +136,15 @@ export function DetailedAnalysisChart({ results, billOfMaterials }: DetailedAnal
                 </ToggleGroup>
             </div>
           </div>
-          <ChartContainer config={config} className="mx-auto aspect-square h-[250px] w-full">
-             {chartComponent}
-          </ChartContainer>
+           {data.length > 0 ? (
+                <ChartContainer config={config} className="mx-auto aspect-square h-[250px] w-full">
+                    {chartComponent}
+                </ChartContainer>
+            ) : (
+                <div className="flex items-center justify-center h-[250px] text-muted-foreground bg-secondary/30 rounded-lg">
+                    <p>Sem dados de custo para exibir.</p>
+                </div>
+            )}
         </div>
       </CardContent>
     </Card>
