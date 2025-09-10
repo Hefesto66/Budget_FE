@@ -13,6 +13,14 @@ import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table"
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
