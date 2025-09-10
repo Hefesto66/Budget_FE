@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PieChartIcon, BarChart3, Donut } from 'lucide-react';
-import { Pie, PieChart, Bar, BarChart, XAxis, YAxis, ResponsiveContainer } from "recharts";
+import { Pie, PieChart, Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
 import {
   ChartConfig,
   ChartContainer,
@@ -74,7 +74,11 @@ export function DetailedAnalysisChart({ results, billOfMaterials }: DetailedAnal
     const pieChartComponent = (
         <PieChart>
           <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel formatter={(value) => formatCurrency(Number(value))}/>} />
-          <Pie data={data} dataKey="value" nameKey="name" innerRadius={chartType === 'donut' ? 60 : 0} strokeWidth={2} />
+          <Pie data={data} dataKey="value" nameKey="name" innerRadius={chartType === 'donut' ? 60 : 0} strokeWidth={2}>
+             {data.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={config[entry.name]?.color} />
+            ))}
+          </Pie>
           <ChartLegend content={<ChartLegendContent nameKey="name" />} />
         </PieChart>
     );
@@ -86,7 +90,7 @@ export function DetailedAnalysisChart({ results, billOfMaterials }: DetailedAnal
             <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel formatter={(value) => formatCurrency(Number(value))}/>} />
             <Bar dataKey="value" radius={4}>
                  {data.map((entry, index) => (
-                    <cell key={`cell-${index}`} fill={config[entry.name]?.color} />
+                    <Cell key={`cell-${index}`} fill={config[entry.name]?.color} />
                 ))}
             </Bar>
        </BarChart>
