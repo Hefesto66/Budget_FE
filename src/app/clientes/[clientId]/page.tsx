@@ -234,7 +234,7 @@ export default function ClientForm() {
        console.error("Firebase save error:", error);
        toast({
         title: "Erro ao salvar",
-        description: "Não foi possível salvar o cliente. Verifique o console do navegador (F12) para mais detalhes.",
+        description: "Não foi possível salvar o cliente. Verifique o console do navegador para mais detalhes.",
         variant: "destructive"
       });
     } finally {
@@ -579,3 +579,5 @@ export default function ClientForm() {
     </div>
   );
 }
+
+    

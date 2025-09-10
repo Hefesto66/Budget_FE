@@ -149,7 +149,7 @@ export default function NewLeadPage() {
     };
     
     try {
-        const newClientId = await saveClient(newClientData, { isNew: true });
+        const newClientId = await saveClient(newClientData);
         // O onSnapshot listener irá automaticamente atualizar a lista de clientes.
         // Apenas precisamos de selecionar o novo cliente.
         

@@ -24,6 +24,7 @@ const getCurrentUserId = (): string => {
     // Numa aplicação de produção com autenticação real,
     // isto seria substituído por `firebase.auth().currentUser.uid`.
     // Este valor DEVE corresponder ao valor nas regras de segurança do Firestore para desenvolvimento.
+    // Este valor DEVE corresponder ao valor nas regras de segurança do Firestore para desenvolvimento.
     return 'dev_company_id_placeholder';
 }
 
@@ -156,19 +157,19 @@ export const saveClient = async (
     if (!db) return Promise.reject("Firestore not initialized");
 
     const companyId = getCurrentUserId();
-    const dataToWrite = { ...clientData, companyId };
-
+    
     if (clientId) {
         // Update existing client
         const docRef = doc(db, 'clients', clientId);
-        // Remove o ID do objeto de dados para não o escrever no documento
-        const { id, ...updateData } = dataToWrite; 
-        await setDoc(docRef, updateData, { merge: true });
+        // Ensure companyId is included for security rules, but remove id from the data payload
+        const { id, ...updateData } = clientData; 
+        await setDoc(docRef, { ...updateData, companyId }, { merge: true });
         return clientId;
     } else {
         // Create new client
-        const docWithInitialHistory = {
-            ...dataToWrite,
+        const docData = {
+            ...clientData,
+            companyId,
             history: [{
                 id: `hist-${Date.now()}`,
                 timestamp: new Date().toISOString(),
@@ -177,7 +178,7 @@ export const saveClient = async (
                 author: 'Sistema'
             }]
         };
-        const docRef = await addDoc(collection(db, 'clients'), docWithInitialHistory);
+        const docRef = await addDoc(collection(db, 'clients'), docData);
         return docRef.id;
     }
 };
@@ -438,3 +439,5 @@ export const deleteProduct = async (productId: string): Promise<void> => {
 export const getSalespersons = async (): Promise<Salesperson[]> => [{ id: 'sp-1', name: 'Vendedor Padrão' }];
 export const getPaymentTerms = async (): Promise<PaymentTerm[]> => [{ id: 'pt-1', name: '30 Dias' }];
 export const getPriceLists = async (): Promise<PriceList[]> => [{ id: 'pl-1', name: 'Tabela de Preços Padrão' }];
+
+    
