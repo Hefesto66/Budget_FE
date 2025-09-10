@@ -30,6 +30,7 @@ const productFormSchema = z.object({
       errorMap: () => ({ message: 'Selecione uma categoria de produto válida.'})
   }),
   salePrice: z.coerce.number().min(0, "O preço de venda não pode ser negativo."),
+  costPrice: z.coerce.number().min(0, "O preço de custo não pode ser negativo.").optional(),
   unit: z.string().min(1, "A unidade de medida é obrigatória."),
   description: z.string().optional(),
   internalNotes: z.string().optional(),
@@ -56,6 +57,7 @@ export default function ProductForm() {
       fabricante: "",
       category: "OUTRO",
       salePrice: 0,
+      costPrice: 0,
       unit: "UN",
       description: "",
       internalNotes: ""
@@ -102,6 +104,7 @@ export default function ProductForm() {
       name: data.name,
       category: data.category,
       salePrice: data.salePrice,
+      costPrice: data.costPrice,
       unit: data.unit,
       description: data.description,
       internalNotes: data.internalNotes,
@@ -160,16 +163,12 @@ export default function ProductForm() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-1">
+                                <div className="space-y-1 md:col-span-2">
                                     <Label htmlFor="name">Nome do Produto *</Label>
                                     <Input id="name" placeholder="Ex: Painel Solar 550W" {...form.register("name")} />
                                     {form.formState.errors.name && <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>}
                                 </div>
-                                 <div className="space-y-1">
-                                    <Label htmlFor="fabricante">Fabricante</Label>
-                                    <Input id="fabricante" placeholder="Ex: Tongwei, Growatt" {...form.register("fabricante")} />
-                                </div>
-                                 <div className="space-y-1">
+                                <div className="space-y-1">
                                     <Label>Categoria *</Label>
                                     <Select onValueChange={(value: ProductCategory) => form.setValue('category', value)} defaultValue={form.getValues('category')}>
                                         <SelectTrigger>
@@ -182,12 +181,21 @@ export default function ProductForm() {
                                         </SelectContent>
                                     </Select>
                                 </div>
+                                 <div className="space-y-1">
+                                    <Label htmlFor="fabricante">Fabricante</Label>
+                                    <Input id="fabricante" placeholder="Ex: Tongwei, Growatt" {...form.register("fabricante")} />
+                                </div>
                                 <div className="space-y-1">
                                     <Label htmlFor="salePrice">Preço de Venda (R$) *</Label>
-                                    <Input id="salePrice" type="number" placeholder="Ex: 750.00" {...form.register("salePrice")} />
+                                    <Input id="salePrice" type="number" step="0.01" placeholder="Ex: 750.00" {...form.register("salePrice")} />
                                     {form.formState.errors.salePrice && <p className="text-sm text-destructive">{form.formState.errors.salePrice.message}</p>}
                                 </div>
                                 <div className="space-y-1">
+                                    <Label htmlFor="costPrice">Preço de Custo (R$)</Label>
+                                    <Input id="costPrice" type="number" step="0.01" placeholder="Ex: 600.00" {...form.register("costPrice")} />
+                                    {form.formState.errors.costPrice && <p className="text-sm text-destructive">{form.formState.errors.costPrice.message}</p>}
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
                                     <Label htmlFor="unit">Unidade de Medida *</Label>
                                     <Input id="unit" placeholder="Ex: UN, m², h" {...form.register("unit")} />
                                     {form.formState.errors.unit && <p className="text-sm text-destructive">{form.formState.errors.unit.message}</p>}

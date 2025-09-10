@@ -83,6 +83,7 @@ export interface Product {
     name: string;
     category: ProductCategory;
     salePrice: number;
+    costPrice?: number;
     unit: string; // UN, m², etc.
     description?: string;
     technicalSpecifications?: Record<string, string>;
@@ -338,6 +339,7 @@ const DEFAULT_PRODUCTS: Product[] = [
         name: 'Painel Solar Tongwei 550W', 
         category: 'PAINEL_SOLAR', 
         salePrice: 750, 
+        costPrice: 600,
         unit: 'UN', 
         technicalSpecifications: { 'Fabricante': 'Tongwei', 'Potência (Wp)': '550' }
     },
@@ -346,6 +348,7 @@ const DEFAULT_PRODUCTS: Product[] = [
         name: 'Inversor Growatt 5kW', 
         category: 'INVERSOR', 
         salePrice: 4200, 
+        costPrice: 3800,
         unit: 'UN', 
         technicalSpecifications: { 'Fabricante': 'Growatt', 'Eficiência (%)': '97.5', 'Potência de Saída (kW)': '5' }
     },
@@ -354,6 +357,7 @@ const DEFAULT_PRODUCTS: Product[] = [
         name: 'Estrutura de Montagem para Telhado Cerâmico', 
         category: 'ESTRUTURA', 
         salePrice: 120, 
+        costPrice: 95,
         unit: 'UN' 
     },
     { 
@@ -361,6 +365,7 @@ const DEFAULT_PRODUCTS: Product[] = [
         name: 'Projeto e Homologação', 
         category: 'SERVICO', 
         salePrice: 1500, 
+        costPrice: 1000,
         unit: 'UN' 
     },
 ];
