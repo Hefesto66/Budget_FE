@@ -143,13 +143,9 @@ export default function NewLeadPage() {
       return;
     }
     
-    // Este é o objeto enviado para a base de dados.
-    // O `companyId` é essencial para passar nas regras de segurança do Firestore.
     const newClientData: Partial<Client> = {
       name: newClientName.trim(),
-      type: 'individual', // Tipo padrão
-      companyId: 'dev_company_id_placeholder', // Adiciona a ID da empresa de desenvolvimento
-      history: [],
+      type: 'individual',
     };
     
     try {

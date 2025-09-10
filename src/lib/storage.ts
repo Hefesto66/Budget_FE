@@ -23,6 +23,7 @@ const getCurrentUserId = (): string => {
     // Para desenvolvimento, usamos um ID estático e fixo.
     // Numa aplicação de produção com autenticação real,
     // isto seria substituído por `firebase.auth().currentUser.uid`.
+    // Este valor DEVE corresponder ao valor nas regras de segurança do Firestore para desenvolvimento.
     return 'dev_company_id_placeholder';
 }
 
@@ -156,18 +157,12 @@ export const saveClient = async (
 
     const companyId = getCurrentUserId();
     
-    // Garante que o companyId está sempre presente nos dados a serem salvos
+    // Garante que o companyId está sempre presente nos dados a serem salvos.
+    // Esta é a correção principal para garantir a conformidade com as regras de segurança.
     const dataToSave = {
         ...clientData,
         companyId, 
-        name: clientData.name || "Cliente sem nome",
-        type: clientData.type || 'individual',
     };
-
-    // Assegura que o histórico é um array
-    if (!dataToSave.history) {
-        dataToSave.history = [];
-    }
 
     let clientId: string;
 
@@ -196,6 +191,10 @@ export const saveClient = async (
         }
         
     } else {
+        // Assegura que o histórico é um array para novos clientes
+        if (!dataToSave.history) {
+            dataToSave.history = [];
+        }
         const docRef = await addDoc(collection(db, 'clients'), dataToSave);
         clientId = docRef.id;
         await addHistoryEntry({ clientId, text: 'Cliente criado.', type: 'log' });
@@ -309,29 +308,37 @@ export const deleteLead = async (leadId: string): Promise<void> => {
 // Quotes
 export const getQuoteById = async (id: string): Promise<Quote | null> => {
     const db = await dbReady;
-    if (!db) return null;
+    if (!db) return null; // Retorna nulo se o banco de dados não estiver pronto
     const companyId = getCurrentUserId();
     const docRef = doc(db, 'quotes', id);
-    
+
     try {
         const docSnap = await getDoc(docRef);
 
         if (!docSnap.exists()) {
-            return null; // Quote not found
-        }
-        
-        const quoteData = docSnap.data();
-        if (quoteData.companyId !== companyId) {
-            console.error("Permission denied: quote does not belong to the current user.");
+            console.warn(`[storage] Cotação com ID ${id} não encontrada.`);
             return null;
         }
-        
-        return { id: docSnap.id, ...quoteData } as Quote;
-    } catch(error) {
-        console.error("Error fetching quote by ID:", error);
+
+        const quoteData = docSnap.data();
+
+        // Verifica se a cotação pertence à empresa correta
+        if (quoteData.companyId !== companyId) {
+            console.error(`[storage] Tentativa de acesso negada: Cotação ${id} não pertence à empresa ${companyId}.`);
+            return null;
+        }
+
+        return {
+            id: docSnap.id,
+            ...quoteData
+        } as Quote;
+
+    } catch (error) {
+        console.error(`[storage] Erro ao buscar cotação com ID ${id}:`, error);
         return null;
     }
-}
+};
+
 
 export const getQuotesByLeadId = async (leadId: string): Promise<Quote[]> => {
     const db = await dbReady;
@@ -344,12 +351,14 @@ export const getQuotesByLeadId = async (leadId: string): Promise<Quote[]> => {
 
 export const saveQuote = async (quote: Quote): Promise<void> => {
     const db = await dbReady;
-    if (!db) return;
+    if (!db) return; // Não faz nada se o DB não estiver pronto
     const companyId = getCurrentUserId();
     const { id, ...quoteData } = quote;
     const quoteRef = doc(db, 'quotes', id);
-    await setDoc(quoteRef, { ...quoteData, companyId, id });
-}
+    // Garante que o companyId está sempre correto ao salvar
+    await setDoc(quoteRef, { ...quoteData, companyId: companyId, id: id }, { merge: true });
+};
+
 
 export const generateNewQuoteId = async (): Promise<string> => {
     const db = await dbReady;

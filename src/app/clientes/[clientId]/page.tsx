@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/radio-group";
 import Image from 'next/image';
 import { getClientById, saveClient, type Client, getSalespersons, getPaymentTerms, getPriceLists, addHistoryEntry, type HistoryEntry } from '@/lib/storage';
-import type { Salesperson, PaymentTerm, PriceList, ClientFormData } from "@/types";
+import type { Salesperson, PaymentTerm, PriceList } from "@/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +55,8 @@ const clientFormSchema = z.object({
   priceListId: z.string().optional(),
 });
 
+
+export type ClientFormData = z.infer<typeof clientFormSchema>;
 
 // Predefined tags for suggestion
 const ALL_TAGS = [
