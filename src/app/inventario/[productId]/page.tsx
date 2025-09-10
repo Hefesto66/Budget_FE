@@ -80,27 +80,30 @@ export default function ProductForm() {
   const productCategory = form.watch("category");
 
   useEffect(() => {
-    if (isEditing) {
-      const existingProduct = getProductById(productId);
-      if (existingProduct) {
-        const formData: ProductFormData = {
-            ...existingProduct,
-            fabricante: existingProduct.technicalSpecifications?.['Fabricante'] || '',
-        };
-        form.reset(formData);
-        if (existingProduct.photo) {
-          setPhotoPreview(existingProduct.photo);
+    async function loadProduct() {
+        if (isEditing) {
+          const existingProduct = await getProductById(productId);
+          if (existingProduct) {
+            const formData: ProductFormData = {
+                ...existingProduct,
+                fabricante: existingProduct.technicalSpecifications?.['Fabricante'] || '',
+            };
+            form.reset(formData);
+            if (existingProduct.photo) {
+              setPhotoPreview(existingProduct.photo);
+            }
+            if (existingProduct.technicalSpecifications) {
+                setSpecifications(existingProduct.technicalSpecifications);
+            }
+          } else {
+            toast({ title: "Erro", description: "Produto não encontrado.", variant: "destructive" });
+            router.push('/inventario');
+            return;
+          }
         }
-        if (existingProduct.technicalSpecifications) {
-            setSpecifications(existingProduct.technicalSpecifications);
-        }
-      } else {
-        toast({ title: "Erro", description: "Produto não encontrado.", variant: "destructive" });
-        router.push('/inventario');
-        return;
-      }
+        setIsProductLoaded(true);
     }
-    setIsProductLoaded(true);
+    loadProduct();
   }, [productId, isEditing, form, router, toast]);
 
   const handleSpecChange = (key: string, value: string) => {
@@ -129,7 +132,7 @@ export default function ProductForm() {
     form.setValue("photo", null);
   }
 
-  const onSubmit = (data: ProductFormData) => {
+  const onSubmit = async (data: ProductFormData) => {
     setIsSaving(true);
     
     // Combine base specs with dynamic ones
@@ -140,8 +143,8 @@ export default function ProductForm() {
         delete finalSpecifications['Fabricante'];
     }
 
-    const productToSave: Product = {
-      id: isEditing ? productId : `prod-${Date.now()}`,
+    const productToSave: Partial<Product> = {
+      id: isEditing ? productId : undefined,
       name: data.name,
       photo: data.photo,
       category: data.category,
@@ -153,19 +156,35 @@ export default function ProductForm() {
       technicalSpecifications: finalSpecifications,
     };
     
-    saveProduct(productToSave);
-    
-    toast({
-      title: "Sucesso!",
-      description: `Produto ${isEditing ? 'atualizado' : 'criado'} com sucesso.`,
-    });
-    
-    router.push('/inventario');
-    
-    setIsSaving(false);
+    try {
+        await saveProduct(productToSave);
+        toast({
+          title: "Sucesso!",
+          description: `Produto ${isEditing ? 'atualizado' : 'criado'} com sucesso.`,
+        });
+        router.push('/inventario');
+    } catch (error) {
+        toast({
+          title: "Erro ao Salvar",
+          description: "Não foi possível salvar o produto.",
+          variant: "destructive"
+        });
+    } finally {
+        setIsSaving(false);
+    }
   };
 
-  if (!isProductLoaded) return null;
+  if (!isProductLoaded) {
+    return (
+        <div className="flex min-h-screen flex-col bg-background">
+            <Header />
+            <main className="flex-1 flex justify-center items-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </main>
+        </div>
+    );
+  }
+
 
   return (
     <div className="flex min-h-screen flex-col bg-background">

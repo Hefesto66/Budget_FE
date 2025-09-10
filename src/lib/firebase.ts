@@ -1,6 +1,7 @@
+
 // Import the functions you need from the SDKs you need
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore, enableIndexedDbPersistence, type FirestoreError } from "firebase/firestore";
+import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
+import { getFirestore, enableIndexedDbPersistence, type Firestore, type FirestoreError } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -13,31 +14,37 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
-// Validate that the project ID is set
-if (!firebaseConfig.projectId) {
-    throw new Error("Missing NEXT_PUBLIC_FIREBASE_PROJECT_ID in .env.local file. This is required for Firebase to work correctly.");
+let app: FirebaseApp | null = null;
+let db: Firestore | null = null;
+
+// Conditionally initialize Firebase only if the project ID is available
+if (firebaseConfig.projectId && typeof window !== 'undefined') {
+    try {
+        app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+        db = getFirestore(app);
+
+        // Enable offline persistence
+        enableIndexedDbPersistence(db)
+            .catch((err: FirestoreError) => {
+                if (err.code === 'failed-precondition') {
+                    console.warn(
+                        'Firestore persistence failed: Multiple tabs open, persistence can only be enabled in one tab at a time.'
+                    );
+                } else if (err.code === 'unimplemented') {
+                    console.warn(
+                        'Firestore persistence failed: The current browser does not support all of the features required to enable persistence.'
+                    );
+                }
+            });
+    } catch(e) {
+        console.error("Firebase initialization error:", e);
+        // Reset to null if initialization fails
+        app = null;
+        db = null;
+    }
+} else if (typeof window !== 'undefined') {
+    console.warn("Firebase config is missing or incomplete (projectId is required). App will run in a data-less mode. Please check your .env.local file.");
 }
 
-// Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const db = getFirestore(app);
-
-// Enable offline persistence
-try {
-    enableIndexedDbPersistence(db)
-        .catch((err: FirestoreError) => {
-            if (err.code === 'failed-precondition') {
-                console.warn(
-                    'Firestore persistence failed: Multiple tabs open, persistence can only be enabled in one tab at a a time.'
-                );
-            } else if (err.code === 'unimplemented') {
-                console.warn(
-                    'Firestore persistence failed: The current browser does not support all of the features required to enable persistence.'
-                );
-            }
-        });
-} catch (error) {
-    console.error("Error enabling Firestore persistence:", error);
-}
 
 export { db };

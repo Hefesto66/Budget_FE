@@ -24,6 +24,14 @@ const getCurrentUserId = (): string => {
     return 'user__test_id_12345';
 }
 
+const checkDb = (): boolean => {
+    if (!db) {
+        console.warn("Firestore is not initialized. Cannot perform DB operations.");
+        return false;
+    }
+    return true;
+}
+
 export interface CompanyData extends CompanyFormData {
     id: string;
     proposalSettings?: CustomizationSettings;
@@ -32,14 +40,16 @@ export interface CompanyData extends CompanyFormData {
 
 // Settings and Company Data
 export const saveCompanyData = async (data: CompanyFormData): Promise<void> => {
+    if (!checkDb()) return;
     const userId = getCurrentUserId();
-    const companyDocRef = doc(db, 'companies', userId);
+    const companyDocRef = doc(db!, 'companies', userId);
     await setDoc(companyDocRef, data, { merge: true });
 }
 
 export const getCompanyData = async (): Promise<CompanyData | null> => {
+    if (!checkDb()) return null;
     const userId = getCurrentUserId();
-    const companyDocRef = doc(db, 'companies', userId);
+    const companyDocRef = doc(db!, 'companies', userId);
     const docSnap = await getDoc(companyDocRef);
 
     if (docSnap.exists()) {
@@ -49,8 +59,9 @@ export const getCompanyData = async (): Promise<CompanyData | null> => {
 }
 
 export const saveProposalSettings = async (settings: CustomizationSettings): Promise<void> => {
+    if (!checkDb()) return;
     const userId = getCurrentUserId();
-    const companyDocRef = doc(db, 'companies', userId);
+    const companyDocRef = doc(db!, 'companies', userId);
     await setDoc(companyDocRef, { proposalSettings: settings }, { merge: true });
 }
 
@@ -65,24 +76,30 @@ const DEFAULT_STAGES: Stage[] = [
 ];
 
 export const getStages = async (): Promise<Stage[]> => {
+  if (!checkDb()) return DEFAULT_STAGES;
   const companyId = getCurrentUserId();
-  const companyRef = doc(db, 'companies', companyId);
+  const companyRef = doc(db!, 'companies', companyId);
   const companySnap = await getDoc(companyRef);
   const companyData = companySnap.data();
   return companyData?.stages || DEFAULT_STAGES;
 }
 
 export const saveStages = async (stages: Stage[]): Promise<void> => {
+  if (!checkDb()) return;
   const companyId = getCurrentUserId();
-  const stagesRef = doc(db, 'companies', companyId);
+  const stagesRef = doc(db!, 'companies', companyId);
   await setDoc(stagesRef, { stages: stages }, { merge: true });
 }
 
 
 // Clients
 export const getClients = (callback: (clients: Client[]) => void): (() => void) => {
+    if (!checkDb()) {
+      callback([]);
+      return () => {}; // Return a no-op unsubscribe function
+    }
     const companyId = getCurrentUserId();
-    const q = query(collection(db, 'clients'), where('companyId', '==', companyId));
+    const q = query(collection(db!, 'clients'), where('companyId', '==', companyId));
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const clients = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
@@ -95,22 +112,16 @@ export const getClients = (callback: (clients: Client[]) => void): (() => void) 
     return unsubscribe;
 }
 
-export const getClientById = async (id: string, callback: (client: Client | null) => void): Promise<() => void> => {
-    const docRef = doc(db, 'clients', id);
-    
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-        const companyId = getCurrentUserId();
-        if (docSnap.exists() && docSnap.data().companyId === companyId) {
-            callback({ id: docSnap.id, ...docSnap.data() } as Client);
-        } else {
-            callback(null);
-        }
-    }, (error) => {
-        console.error(`Error listening to client ${id}:`, error);
-        callback(null);
-    });
+export const getClientById = async (id: string): Promise<Client | null> => {
+    if (!checkDb()) return null;
+    const companyId = getCurrentUserId();
+    const docRef = doc(db!, 'clients', id);
+    const docSnap = await getDoc(docRef);
 
-    return unsubscribe;
+    if (docSnap.exists() && docSnap.data().companyId === companyId) {
+        return { id: docSnap.id, ...docSnap.data() } as Client;
+    }
+    return null;
 };
 
 
@@ -118,6 +129,7 @@ export const saveClient = async (
     clientData: Partial<Client>,
     options: { isNew: boolean, originalData?: ClientFormData | null }
 ): Promise<string> => {
+    if (!checkDb()) return Promise.reject("Firestore not initialized");
     const companyId = getCurrentUserId();
     const dataToSave: Omit<Client, 'id'> & { id?: string } = {
         companyId,
@@ -131,7 +143,7 @@ export const saveClient = async (
 
     if (!options.isNew && dataToSave.id) {
         clientId = dataToSave.id;
-        const docRef = doc(db, 'clients', clientId);
+        const docRef = doc(db!, 'clients', clientId);
         
         let changesLog = "";
         if (options.originalData) {
@@ -153,7 +165,7 @@ export const saveClient = async (
         }
         
     } else {
-        const docRef = await addDoc(collection(db, 'clients'), dataToSave);
+        const docRef = await addDoc(collection(db!, 'clients'), dataToSave);
         clientId = docRef.id;
         await addHistoryEntry({ clientId, text: 'Cliente criado.', type: 'log' });
     }
@@ -170,10 +182,11 @@ export const addHistoryEntry = async (params: {
     refId?: string;
     quoteInfo?: { leadId: string; clientId: string; };
 }) => {
-    const clientRef = doc(db, 'clients', params.clientId);
+    if (!checkDb()) return;
+    const clientRef = doc(db!, 'clients', params.clientId);
     
     try {
-        await runTransaction(db, async (transaction) => {
+        await runTransaction(db!, async (transaction) => {
             const clientDoc = await transaction.get(clientRef);
             if (!clientDoc.exists()) {
                 throw "Document does not exist!";
@@ -202,8 +215,12 @@ export const addHistoryEntry = async (params: {
 
 // Leads
 export const getLeads = (callback: (leads: Lead[]) => void): (() => void) => {
+    if (!checkDb()) {
+        callback([]);
+        return () => {};
+    }
     const companyId = getCurrentUserId();
-    const q = query(collection(db, 'leads'), where('companyId', '==', companyId));
+    const q = query(collection(db!, 'leads'), where('companyId', '==', companyId));
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const leads = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lead));
@@ -216,49 +233,46 @@ export const getLeads = (callback: (leads: Lead[]) => void): (() => void) => {
     return unsubscribe;
 };
 
-export const getLeadById = async (id: string, callback: (lead: Lead | null) => void): Promise<() => void> => {
-    const docRef = doc(db, 'leads', id);
+export const getLeadById = async (id: string): Promise<Lead | null> => {
+    if (!checkDb()) return null;
+    const companyId = getCurrentUserId();
+    const docRef = doc(db!, 'leads', id);
+    const docSnap = await getDoc(docRef);
 
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-        const companyId = getCurrentUserId();
-        if (docSnap.exists() && docSnap.data().companyId === companyId) {
-            callback({ id: docSnap.id, ...docSnap.data() } as Lead);
-        } else {
-            callback(null);
-        }
-    }, (error) => {
-        console.error(`Error listening to lead ${id}:`, error);
-        callback(null);
-    });
-    
-    return unsubscribe;
+     if (docSnap.exists() && docSnap.data().companyId === companyId) {
+        return { id: docSnap.id, ...docSnap.data() } as Lead;
+    }
+    return null;
 };
 
 export const saveLead = async (leadData: Partial<Lead>): Promise<string> => {
+    if (!checkDb()) return Promise.reject("Firestore not initialized");
     const companyId = getCurrentUserId();
     const dataToSave = { ...leadData, companyId };
 
     if (dataToSave.id) {
         const leadId = dataToSave.id;
-        const docRef = doc(db, 'leads', leadId);
+        const docRef = doc(db!, 'leads', leadId);
         delete dataToSave.id;
         await setDoc(docRef, dataToSave, { merge: true });
         return leadId;
     } else {
-        const docRef = await addDoc(collection(db, 'leads'), dataToSave);
+        const docRef = await addDoc(collection(db!, 'leads'), dataToSave);
         return docRef.id;
     }
 };
 
 export const deleteLead = async (leadId: string): Promise<void> => {
-    await deleteDoc(doc(db, 'leads', leadId));
+    if (!checkDb()) return;
+    await deleteDoc(doc(db!, 'leads', leadId));
 };
 
 
 // Quotes
 export const getQuoteById = async (id: string): Promise<Quote | null> => {
+    if (!checkDb()) return null;
     const companyId = getCurrentUserId();
-    const docRef = doc(db, 'quotes', id);
+    const docRef = doc(db!, 'quotes', id);
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists() || docSnap.data().companyId !== companyId) {
@@ -267,25 +281,27 @@ export const getQuoteById = async (id: string): Promise<Quote | null> => {
 
     const quoteData = docSnap.data() as Omit<Quote, 'billOfMaterials'>;
     
-    const itemsSnapshot = await getDocs(collection(db, 'quotes', id, 'quoteItems'));
+    const itemsSnapshot = await getDocs(collection(db!, 'quotes', id, 'quoteItems'));
     const billOfMaterials = itemsSnapshot.docs.map(doc => doc.data());
     
     return { ...quoteData, id: docSnap.id, billOfMaterials };
 }
 
 export const getQuotesByLeadId = async (leadId: string): Promise<Quote[]> => {
+    if (!checkDb()) return [];
     const companyId = getCurrentUserId();
-    const q = query(collection(db, "quotes"), where("companyId", "==", companyId), where("leadId", "==", leadId));
+    const q = query(collection(db!, "quotes"), where("companyId", "==", companyId), where("leadId", "==", leadId));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Quote));
 }
 
 export const saveQuote = async (quote: Quote): Promise<void> => {
+    if (!checkDb()) return;
     const companyId = getCurrentUserId();
     const { billOfMaterials, id, ...quoteData } = quote;
-    const quoteRef = doc(db, 'quotes', id);
+    const quoteRef = doc(db!, 'quotes', id);
 
-    const batch = writeBatch(db);
+    const batch = writeBatch(db!);
 
     batch.set(quoteRef, { ...quoteData, companyId, id });
 
@@ -302,12 +318,13 @@ export const saveQuote = async (quote: Quote): Promise<void> => {
 }
 
 export const generateNewQuoteId = async (): Promise<string> => {
+    if (!checkDb()) return Promise.reject("Firestore not initialized");
     const companyId = getCurrentUserId();
-    const counterRef = doc(db, 'companies', companyId);
+    const counterRef = doc(db!, 'companies', companyId);
 
     let newQuoteNumber: number = 1;
     try {
-        await runTransaction(db, async (transaction) => {
+        await runTransaction(db!, async (transaction) => {
             const counterDoc = await transaction.get(counterRef);
             if (!counterDoc.exists()) {
                 transaction.set(counterRef, { lastQuoteNumber: 1 });
@@ -328,8 +345,12 @@ export const generateNewQuoteId = async (): Promise<string> => {
 
 // Inventory / Products
 export const getProducts = (callback: (products: Product[]) => void): (() => void) => {
+    if (!checkDb()) {
+        callback([]);
+        return () => {};
+    }
     const companyId = getCurrentUserId();
-    const q = query(collection(db, 'inventory'), where('companyId', '==', companyId));
+    const q = query(collection(db!, 'inventory'), where('companyId', '==', companyId));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const products = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
@@ -342,43 +363,61 @@ export const getProducts = (callback: (products: Product[]) => void): (() => voi
     return unsubscribe;
 };
 
-export const getProductById = async (id: string, callback: (product: Product | null) => void): Promise<() => void> => {
-    const docRef = doc(db, 'inventory', id);
+export const getProductById = async (id: string, callback?: (product: Product | null) => void): Promise<Product | null> => {
+    if (!checkDb()) {
+        if(callback) callback(null);
+        return null;
+    }
 
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-        const companyId = getCurrentUserId();
-        if (docSnap.exists() && docSnap.data().companyId === companyId) {
-            callback({ id: docSnap.id, ...docSnap.data() } as Product);
-        } else {
+    const docRef = doc(db!, 'inventory', id);
+    const companyId = getCurrentUserId();
+
+    if (callback) {
+        const unsubscribe = onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists() && docSnap.data().companyId === companyId) {
+                callback({ id: docSnap.id, ...docSnap.data() } as Product);
+            } else {
+                callback(null);
+            }
+        }, (error) => {
+            console.error(`Error listening to product ${id}:`, error);
             callback(null);
+        });
+        // This is a bit of a tricky case. The signature now supports both callback and promise.
+        // For the callback case, we should maybe not return a promise, but the prompt implies this function will be used in both ways.
+        // Let's assume for now that if a callback is provided, the return value is not used.
+        return null; 
+    } else {
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists() && docSnap.data().companyId === companyId) {
+            return { id: docSnap.id, ...docSnap.data() } as Product;
+        } else {
+            return null;
         }
-    }, (error) => {
-        console.error(`Error listening to product ${id}:`, error);
-        callback(null);
-    });
-
-    return unsubscribe;
+    }
 };
 
 
 export const saveProduct = async (productData: Partial<Product>): Promise<string> => {
+    if (!checkDb()) return Promise.reject("Firestore not initialized");
     const companyId = getCurrentUserId();
     const dataToSave = { ...productData, companyId };
     
     if (dataToSave.id) {
         const productId = dataToSave.id;
-        const docRef = doc(db, 'inventory', productId);
+        const docRef = doc(db!, 'inventory', productId);
         delete dataToSave.id;
         await setDoc(docRef, dataToSave, { merge: true });
         return productId;
     } else {
-        const docRef = await addDoc(collection(db, 'inventory'), dataToSave);
+        const docRef = await addDoc(collection(db!, 'inventory'), dataToSave);
         return docRef.id;
     }
 };
 
 export const deleteProduct = async (productId: string): Promise<void> => {
-    await deleteDoc(doc(db, 'inventory', productId));
+    if (!checkDb()) return;
+    await deleteDoc(doc(db!, 'inventory', productId));
 };
 
 // Mock data for un-migrated features

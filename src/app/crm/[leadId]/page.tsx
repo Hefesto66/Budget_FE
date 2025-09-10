@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { PlusCircle, ArrowLeft, Building, Mail, Phone, Tag, DollarSign, User, Calendar, FileText } from 'lucide-react';
+import { PlusCircle, ArrowLeft, Building, Mail, Phone, Tag, DollarSign, User, Calendar, FileText, Loader2 } from 'lucide-react';
 import { Header } from "@/components/layout/Header";
 import {
   Table,
@@ -32,20 +32,28 @@ export default function LeadDetailPage() {
   const [lead, setLead] = useState<Lead | null>(null);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
-  const [isClient, setIsClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    setIsClient(true);
-    if (leadId) {
-      const foundLead = getLeadById(leadId);
-      setLead(foundLead || null);
-      setStages(getStages());
-      if (foundLead) {
-        const foundQuotes = getQuotesByLeadId(leadId);
-        setQuotes(foundQuotes);
-      }
+    if (!leadId) return;
+
+    async function fetchData() {
+        setIsLoading(true);
+        const foundLead = await getLeadById(leadId);
+        setLead(foundLead || null);
+        
+        const allStages = await getStages();
+        setStages(allStages);
+
+        if (foundLead) {
+            const foundQuotes = await getQuotesByLeadId(leadId);
+            setQuotes(foundQuotes);
+        }
+        setIsLoading(false);
     }
+    
+    fetchData();
   }, [leadId]);
 
   const handleNewQuote = () => {
@@ -57,42 +65,55 @@ export default function LeadDetailPage() {
     router.push(`/orcamento?leadId=${leadId}&quoteId=${quoteId}&clienteId=${lead?.clientId}`);
   };
 
-  const handleStageChange = (newStageId: string) => {
+  const handleStageChange = async (newStageId: string) => {
     if (!lead) return;
 
     const newStage = stages.find(s => s.id === newStageId);
     if (!newStage) return;
 
     const updatedLead = { ...lead, stage: newStageId };
-    saveLead(updatedLead);
-    setLead(updatedLead);
+    
+    setLead(updatedLead); // Optimistic update
 
-    addHistoryEntry({ 
-        clientId: lead.clientId, 
-        text: `Oportunidade "${lead.title}" teve a etapa alterada para "${newStage.title}".`, 
-        type: 'log-stage',
-        refId: lead.id
-    });
+    try {
+        await saveLead(updatedLead);
+        await addHistoryEntry({ 
+            clientId: lead.clientId, 
+            text: `Oportunidade "${lead.title}" teve a etapa alterada para "${newStage.title}".`, 
+            type: 'log-stage',
+            refId: lead.id
+        });
 
-    if (newStage.isWon) {
-        dispararFogos();
-        toast({
-            title: "🎉 Parabéns!",
-            description: `Você ganhou a oportunidade "${lead.title}"!`,
-            duration: 5000,
-        });
-    } else {
-        toast({
-            title: "Etapa Atualizada",
-            description: `A oportunidade foi movida para "${newStage.title}".`,
-        });
+        if (newStage.isWon) {
+            dispararFogos();
+            toast({
+                title: "🎉 Parabéns!",
+                description: `Você ganhou a oportunidade "${lead.title}"!`,
+                duration: 5000,
+            });
+        } else {
+            toast({
+                title: "Etapa Atualizada",
+                description: `A oportunidade foi movida para "${newStage.title}".`,
+            });
+        }
+    } catch(error) {
+        // Revert optimistic update on error
+        setLead(lead);
+        toast({ title: "Erro", description: "Não foi possível atualizar a etapa.", variant: "destructive" });
     }
   };
 
 
-  if (!isClient) {
-    // Render a skeleton or loading state while waiting for client-side hydration
-    return <div>Carregando...</div>;
+  if (isLoading) {
+    return (
+       <div className="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-950">
+        <Header />
+        <main className="flex-1 flex justify-center items-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </main>
+      </div>
+    )
   }
   
   if (!lead) {
