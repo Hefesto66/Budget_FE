@@ -121,6 +121,19 @@ export function Wizard() {
   const [inventory, setInventory] = useState<Product[]>([]);
   const [openCombobox, setOpenCombobox] = useState<number | null>(null);
   
+  const handleAddNewItem = () => {
+    append({ 
+        productId: '', 
+        name: 'Selecione um produto', 
+        category: 'OUTRO', 
+        manufacturer: '', 
+        cost: 0, 
+        unit: 'UN', 
+        quantity: 1, 
+        technicalSpecifications: {} 
+    });
+  }
+
   useEffect(() => {
     setInventory(getProducts());
     
@@ -180,9 +193,14 @@ export function Wizard() {
           }
       }
       
+      const normalizedBom = normalizeBillOfMaterials(bomToSet);
+      if (normalizedBom.length === 0) {
+        handleAddNewItem();
+      }
+
       methods.reset({ 
         calculationInput: {...defaultValues, ...initialData}, 
-        billOfMaterials: normalizeBillOfMaterials(bomToSet)
+        billOfMaterials: normalizedBom.length > 0 ? normalizedBom : methods.getValues('billOfMaterials')
       });
 
       if(clientToSet) setClientData(clientToSet);
@@ -193,12 +211,13 @@ export function Wizard() {
     };
 
     initialize();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leadId, quoteId, clienteId, methods, router]);
 
   const processForm = async (data: WizardFormData) => {
     setIsLoading(true);
     try {
-      const billOfMaterials = data.billOfMaterials;
+      const billOfMaterials = data.billOfMaterials.filter(item => item.productId); // Ignorar linhas em branco
   
       const panelItem = billOfMaterials.find(item => item.category === 'PAINEL_SOLAR');
       const inverterItem = billOfMaterials.find(item => item.category === 'INVERSOR');
@@ -283,7 +302,7 @@ export function Wizard() {
     if (!proposalId) setProposalId(finalProposalId);
 
     const formData = methods.getValues('calculationInput') as SolarCalculationInput;
-    const billOfMaterials = methods.getValues('billOfMaterials');
+    const billOfMaterials = methods.getValues('billOfMaterials').filter(item => item.productId); // Salvar apenas linhas preenchidas
     
     if(!results) {
          toast({ title: "Erro ao Salvar", description: "Os resultados do cálculo não foram encontrados.", variant: "destructive" });
@@ -330,25 +349,18 @@ export function Wizard() {
         manufacturer: product.technicalSpecifications?.['Fabricante'] || 'N/A',
         cost: product.salePrice,
         unit: product.unit,
-        quantity: 1, // Default quantity to 1 when a new product is selected
+        quantity: 1,
         technicalSpecifications: product.technicalSpecifications || {},
     });
     setOpenCombobox(null);
+    
+    // Adicionar uma nova linha em branco se a linha atual preenchida era a última
+    const bom = methods.getValues('billOfMaterials');
+    if (index === bom.length - 1) {
+        handleAddNewItem();
+    }
   }
   
-  const handleAddNewItem = () => {
-    append({ 
-        productId: '', 
-        name: 'Selecione um produto', 
-        category: 'OUTRO', 
-        manufacturer: '', 
-        cost: 0, 
-        unit: 'UN', 
-        quantity: 1, 
-        technicalSpecifications: {} 
-    });
-  }
-
   const navigateToProduct = (productId: string) => {
     if (!productId) return;
     const draftData = {
@@ -440,7 +452,7 @@ export function Wizard() {
                                                                       <Button
                                                                           variant="outline"
                                                                           role="combobox"
-                                                                          className={cn("w-full justify-between font-normal", !formField.value && "text-muted-foreground")}
+                                                                          className={cn("w-full justify-between font-normal", !field.productId && "text-muted-foreground")}
                                                                       >
                                                                           {formField.value || "Selecione um produto"}
                                                                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -496,31 +508,26 @@ export function Wizard() {
                                               <FormField
                                                   control={methods.control}
                                                   name={`billOfMaterials.${index}.quantity`}
-                                                  render={({ field }) => (
+                                                  render={({ field: formField }) => (
                                                       <Input
                                                           type="number"
                                                           className="text-right"
-                                                          {...field}
-                                                          onChange={e => field.onChange(Number(e.target.value))}
+                                                          {...formField}
+                                                          onChange={e => formField.onChange(Number(e.target.value))}
+                                                          disabled={!field.productId}
                                                       />
                                                   )}
                                               />
                                           </TableCell>
                                           <TableCell>
-                                              <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
-                                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                              </Button>
+                                             {field.productId && (
+                                                  <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                                                      <Trash2 className="h-4 w-4 text-destructive" />
+                                                  </Button>
+                                              )}
                                           </TableCell>
                                       </TableRow>
                                   ))}
-                                      <TableRow>
-                                          <TableCell colSpan={6}>
-                                              <Button type="button" variant="link" onClick={handleAddNewItem}>
-                                                  <Plus className="mr-2 h-4 w-4"/>
-                                                  Adicionar Item
-                                              </Button>
-                                          </TableCell>
-                                      </TableRow>
                                   </TableBody>
                               </Table>
                               <div className="flex justify-end mt-4">
@@ -575,3 +582,6 @@ export function Wizard() {
     </div>
   );
 }
+
+
+    
