@@ -1,40 +1,30 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // =============================================================
-    // Regras Multi-Inquilino: Protege os dados de cada empresa
-    // =============================================================
-    // Estas regras garantem que um utilizador só pode aceder
-    // aos documentos que pertencem à sua empresa.
-    // O `request.auth.uid` é o ID do utilizador autenticado.
-    // O `resource.data.companyId` é o campo que guardamos em cada documento.
     
-    match /clients/{clientId} {
-      allow read, write: if request.auth.uid == resource.data.companyId;
+    // Rule for the companies collection
+    match /companies/{userId} {
+      // Allow reading company data if the user is authenticated (e.g., to get settings)
+      // or for our development placeholder.
+      allow read: if request.auth != null || userId == 'dev_company_id_placeholder';
+      
+      // Allow writing only if the authenticated user's ID matches the document ID.
+      // This prevents one user from changing another user's company data.
+      allow write: if request.auth.uid == userId;
     }
 
-    match /inventory/{productId} {
-      allow read, write: if request.auth.uid == resource.data.companyId;
-    }
-    
-    match /leads/{leadId} {
-      allow read, write: if request.auth.uid == resource.data.companyId;
-    }
-    
-    match /quotes/{quoteId} {
-      allow read, write: if request.auth.uid == resource.data.companyId;
-    }
-
-    // =============================================================
-    // Regra para a Empresa: Permite que um utilizador gira os seus
-    // próprios dados de empresa.
-    // =============================================================
-    // O `companyId` aqui é o próprio ID do utilizador.
-    match /companies/{companyId} {
-      allow read, write: if request.auth.uid == companyId;
+    // Generic rule for collections owned by a company.
+    // This rule applies to clients, inventory, leads, and quotes.
+    match /{collection}/{docId} 
+        where collection in ['clients', 'inventory', 'leads', 'quotes'] {
+      
+      // Allow read and write access if:
+      // 1. The document's companyId field matches the authenticated user's UID.
+      // OR
+      // 2. The document's companyId is our special development placeholder.
+      allow read, write: if (request.auth != null && request.auth.uid == resource.data.companyId) || 
+                           resource.data.companyId == 'dev_company_id_placeholder';
     }
   }
 }

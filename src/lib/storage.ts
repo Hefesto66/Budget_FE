@@ -20,9 +20,10 @@ import type { CompanyFormData } from '@/app/minha-empresa/page';
 import { ClientFormData } from '@/app/clientes/[clientId]/page';
 
 const getCurrentUserId = (): string => {
-    // In a real app, this would come from Firebase Auth.
-    // For now, we use a static ID for consistent testing.
-    return 'user__test_id_12345';
+    // Para desenvolvimento, usamos um ID estático e fixo.
+    // Numa aplicação de produção com autenticação real,
+    // isto seria substituído por `firebase.auth().currentUser.uid`.
+    return 'dev_company_id_placeholder';
 }
 
 const checkDb = async (): Promise<boolean> => {
@@ -110,22 +111,21 @@ export const getClients = (callback: (clients: Client[]) => void): Unsubscribe =
     dbReady.then(db => {
         if (!db) {
           callback([]);
-          return;
+          return () => {};
         }
         const companyId = getCurrentUserId();
         const q = query(collection(db, 'clients'), where('companyId', '==', companyId));
         
-        onSnapshot(q, (querySnapshot) => {
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const clients = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
             callback(clients);
         }, (error) => {
             console.error("Error listening to clients collection:", error);
             callback([]);
         });
+        return unsubscribe;
     });
 
-    // The actual unsubscribe function will be managed by the onSnapshot itself.
-    // For simplicity, we return a no-op, but a more complex implementation could manage this.
     return () => {};
 }
 
@@ -247,18 +247,19 @@ export const getLeads = (callback: (leads: Lead[]) => void): Unsubscribe => {
     dbReady.then(db => {
         if (!db) {
             callback([]);
-            return;
+            return () => {};
         }
         const companyId = getCurrentUserId();
         const q = query(collection(db, 'leads'), where('companyId', '==', companyId));
         
-        onSnapshot(q, (querySnapshot) => {
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const leads = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lead));
             callback(leads);
         }, (error) => {
             console.error("Error listening to leads collection:", error);
             callback([]);
         });
+        return unsubscribe;
     });
 
     return () => {};
@@ -380,18 +381,19 @@ export const getProducts = (callback: (products: Product[]) => void): Unsubscrib
     dbReady.then(db => {
         if (!db) {
             callback([]);
-            return;
+            return () => {};
         }
         const companyId = getCurrentUserId();
         const q = query(collection(db, 'inventory'), where('companyId', '==', companyId));
 
-        onSnapshot(q, (querySnapshot) => {
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const products = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
             callback(products);
         }, (error) => {
             console.error("Error listening to inventory collection:", error);
             callback([]);
         });
+        return unsubscribe;
     });
     return () => {};
 };
