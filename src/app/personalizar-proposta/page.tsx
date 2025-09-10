@@ -30,6 +30,7 @@ const defaultSettings: CustomizationSettings = {
   },
   content: {
     showInvestmentTable: true,
+    showPriceColumns: true, // <-- Valor Padrão
     showFinancialSummary: true,
     showSystemPerformance: true,
     showSavingsChart: true,
@@ -53,8 +54,9 @@ export default function PersonalizarPropostaPage() {
       const savedSettings = localStorage.getItem(CUSTOMIZATION_KEY);
       if (savedSettings) {
         const parsed = JSON.parse(savedSettings);
+        // Garante que todas as chaves (inclusive as novas) existam, usando os defaults como base.
         setSettings(prev => ({
-          ...defaultSettings, // Start with defaults
+          ...defaultSettings,
           ...parsed,
           colors: { ...defaultSettings.colors, ...parsed.colors },
           content: { ...defaultSettings.content, ...parsed.content },
@@ -211,6 +213,18 @@ export default function PersonalizarPropostaPage() {
                         checked={settings.content.showInvestmentTable}
                         onCheckedChange={(val) => handleContentToggle('showInvestmentTable', val)}
                     />
+                    {/* Switch para colunas de preço, só faz sentido se a tabela estiver visível */}
+                    {settings.content.showInvestmentTable && (
+                        <div className="pl-6 border-l-2 ml-3">
+                           <ContentSwitch
+                                id="showPriceColumns"
+                                label="Exibir Colunas de Preço na Tabela"
+                                description="Ative para mostrar as colunas 'Preço Unit.' e 'Preço Total' na tabela de investimento."
+                                checked={settings.content.showPriceColumns}
+                                onCheckedChange={(val) => handleContentToggle('showPriceColumns', val)}
+                           />
+                        </div>
+                    )}
                     <ContentSwitch
                         id="showFinancialSummary"
                         label="Exibir Resumo Financeiro"

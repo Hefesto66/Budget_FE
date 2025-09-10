@@ -68,6 +68,7 @@ const HeaderBlock = ({ companyData, proposalId, proposalDate, proposalValidity, 
 );
 
 const InvestmentTableBlock = ({ billOfMaterials, results, customization }: Pick<ProposalDocumentProps, 'billOfMaterials' | 'results' | 'customization'>) => {
+    const showPrices = customization.content.showPriceColumns;
     return (
         <Block>
             <h3 style={{ fontWeight: 'bold', fontSize: '14pt', marginBottom: '8px', borderBottom: '1px solid #EEE', paddingBottom: '4px', color: customization.colors.primary, fontFamily: '"Poppins", sans-serif' }}>Descrição do Sistema e Investimento</h3>
@@ -76,8 +77,8 @@ const InvestmentTableBlock = ({ billOfMaterials, results, customization }: Pick<
                 <tr style={{ borderBottom: '1px solid #CCC' }}>
                     <th style={{ padding: '8px 4px', fontWeight: '600' }}>Descrição</th>
                     <th style={{ padding: '8px 4px', fontWeight: '600', textAlign: 'center' }}>Qtde.</th>
-                    <th style={{ padding: '8px 4px', fontWeight: '600', textAlign: 'right' }}>Preço Unit.</th>
-                    <th style={{ padding: '8px 4px', fontWeight: '600', textAlign: 'right' }}>Preço Total</th>
+                    {showPrices && <th style={{ padding: '8px 4px', fontWeight: '600', textAlign: 'right' }}>Preço Unit.</th>}
+                    {showPrices && <th style={{ padding: '8px 4px', fontWeight: '600', textAlign: 'right' }}>Preço Total</th>}
                 </tr>
                 </thead>
                 <tbody>
@@ -92,8 +93,8 @@ const InvestmentTableBlock = ({ billOfMaterials, results, customization }: Pick<
                             </p>
                         </td>
                         <td style={{ padding: '8px 4px', textAlign: 'center' }}>{item.quantity}</td>
-                        <td style={{ padding: '8px 4px', textAlign: 'right' }}>{formatCurrency(item.cost)}</td>
-                        <td style={{ padding: '8px 4px', textAlign: 'right' }}>{formatCurrency(item.cost * item.quantity)}</td>
+                        {showPrices && <td style={{ padding: '8px 4px', textAlign: 'right' }}>{formatCurrency(item.cost)}</td>}
+                        {showPrices && <td style={{ padding: '8px 4px', textAlign: 'right' }}>{formatCurrency(item.cost * item.quantity)}</td>}
                     </tr>
                 ))}
                 </tbody>

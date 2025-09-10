@@ -93,6 +93,7 @@ export interface CustomizationSettings {
   };
   content: {
     showInvestmentTable: boolean;
+    showPriceColumns: boolean; // <-- Nova propriedade
     showFinancialSummary: boolean;
     showSystemPerformance: boolean;
     showSavingsChart: boolean;
