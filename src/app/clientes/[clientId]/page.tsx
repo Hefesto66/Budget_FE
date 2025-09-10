@@ -121,7 +121,7 @@ export default function ClientForm() {
   
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isClientLoaded, setIsClientLoaded] = useState(false);
+  const [isClientLoaded, setIsClientLoaded] = useState(!isEditing);
   
   const [tagInput, setTagInput] = useState("");
   const [open, setOpen] = useState(false);
@@ -162,21 +162,26 @@ export default function ClientForm() {
   };
 
   const fetchClientData = useCallback(async () => {
-    if (isEditing) {
-      const existingClient = await getClientById(clientId);
-      if (existingClient) {
-        form.reset(existingClient);
-        if (existingClient.photo) {
-          setPhotoPreview(existingClient.photo);
-        }
-        setClientHistory(existingClient.history || []);
-      } else {
-        toast({ title: "Erro", description: "Cliente não encontrado.", variant: "destructive" });
-        router.push('/clientes');
-        return;
+      if (!isEditing) {
+          setIsClientLoaded(true);
+          return;
       }
-    }
-    setIsClientLoaded(true);
+
+      const unsubscribe = await getClientById(clientId, (existingClient) => {
+          if (existingClient) {
+              form.reset(existingClient);
+              if (existingClient.photo) {
+                  setPhotoPreview(existingClient.photo);
+              }
+              setClientHistory(existingClient.history || []);
+          } else {
+              toast({ title: "Erro", description: "Cliente não encontrado.", variant: "destructive" });
+              router.push('/clientes');
+          }
+          setIsClientLoaded(true);
+      });
+
+      return unsubscribe;
   }, [clientId, isEditing, form, router, toast]);
 
   useEffect(() => {
@@ -188,7 +193,15 @@ export default function ClientForm() {
     }
 
     loadDropdowns();
-    fetchClientData();
+    const unsubscribePromise = fetchClientData();
+    
+    return () => {
+        unsubscribePromise.then(unsubscribe => {
+            if (unsubscribe) {
+                unsubscribe();
+            }
+        });
+    };
   }, [fetchClientData]);
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -216,52 +229,45 @@ export default function ClientForm() {
   const onSubmit = async (data: ClientFormData) => {
     setIsSaving(true);
     
-    let originalClient: Client | null = null;
-    if (isEditing) {
-      originalClient = await getClientById(clientId);
-    }
-    
-    let changesLog = "Cliente criado.";
-    if(originalClient) {
-        const changedFields = Object.keys(data).filter(key => key !== 'tags' && originalClient[key as keyof Client] !== data[key as keyof ClientFormData]);
-        if(changedFields.length > 0) {
-            changesLog = `Cliente atualizado: ${changedFields.join(', ')}.`;
-        } else {
-            changesLog = ""; // No changes to log
-        }
-    }
-
     const clientToSave: Partial<Client> = {
       id: isEditing ? clientId : undefined,
       ...data,
       tags: selectedTags,
     };
     
-    const savedClientId = await saveClient(clientToSave);
-    
-    if(changesLog) {
-        await addHistoryEntry({ clientId: savedClientId, text: changesLog, type: 'log' });
+    try {
+      const savedClientId = await saveClient(clientToSave, {
+        isNew: !isEditing,
+        originalData: isEditing ? form.getValues() : null,
+      });
+
+      toast({
+        title: "Sucesso!",
+        description: `Cliente ${isEditing ? 'atualizado' : 'criado'} com sucesso.`,
+      });
+
+      if (!isEditing) {
+          router.push(`/clientes/${savedClientId}`);
+      }
+    } catch (error) {
+       toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar o cliente.",
+        variant: "destructive"
+      });
+    } finally {
+        setIsSaving(false);
     }
-    
-    toast({
-      title: "Sucesso!",
-      description: `Cliente ${isEditing ? 'atualizado' : 'criado'} com sucesso.`,
-    });
-    
-    if (!isEditing) {
-        router.push(`/clientes/${savedClientId}`);
-    } else {
-        fetchClientData(); // Re-fetch to update history
-    }
-    
-    setIsSaving(false);
   };
   
   const handleAddNote = async () => {
     if (!newNote.trim() || !isEditing) return;
-    await addHistoryEntry({ clientId: clientId, text: newNote, type: 'note' });
-    setNewNote("");
-    fetchClientData(); // Refresh history
+    try {
+        await addHistoryEntry({ clientId: clientId, text: newNote, type: 'note' });
+        setNewNote("");
+    } catch(error) {
+         toast({ title: "Erro", description: "Não foi possível adicionar a nota.", variant: "destructive" });
+    }
   };
 
   const filteredTags = useMemo(() => {
@@ -270,7 +276,17 @@ export default function ClientForm() {
     );
   }, [selectedTags]);
 
-  if (!isClientLoaded) return null;
+  if (!isClientLoaded) {
+    return (
+        <div className="flex min-h-screen flex-col bg-background">
+            <Header />
+            <main className="flex-1 flex justify-center items-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </main>
+        </div>
+    );
+  }
+
 
   return (
     <div className="flex min-h-screen flex-col bg-background">

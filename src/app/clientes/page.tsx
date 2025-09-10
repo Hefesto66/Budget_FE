@@ -45,13 +45,13 @@ export default function ClientesPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchData() {
-      setIsLoading(true);
-      const allClients = await getClients();
-      setClients(allClients);
-      setIsLoading(false);
-    }
-    fetchData();
+    setIsLoading(true);
+    const unsubscribe = getClients((allClients) => {
+        setClients(allClients);
+        setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const filteredClients = clients.filter(client =>
@@ -108,5 +108,3 @@ export default function ClientesPage() {
     </div>
   );
 }
-
-    

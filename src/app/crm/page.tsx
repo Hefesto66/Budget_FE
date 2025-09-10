@@ -113,18 +113,12 @@ export default function CrmPage() {
   const { toast } = useToast();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
-  const fetchData = async () => {
-    setIsLoading(true);
-    const allStages = await getStages();
-    const allLeads = await getLeads();
-    setStages(allStages);
-
-    const stageIds = new Set(allStages.map(s => s.id));
+  const processLeads = (allLeads: Lead[], currentStages: Stage[]) => {
+    const stageIds = new Set(currentStages.map(s => s.id));
     const leadsGrouped = allLeads.reduce((acc, lead) => {
         let stageId = lead.stage;
-        if (!stageIds.has(stageId) && allStages.length > 0) {
-            stageId = allStages[0].id;
-            saveLead({ ...lead, stage: stageId });
+        if (!stageIds.has(stageId) && currentStages.length > 0) {
+            stageId = currentStages[0].id; // Assign to first stage if invalid
         }
         
         if (!acc[stageId]) acc[stageId] = [];
@@ -132,18 +126,30 @@ export default function CrmPage() {
         return acc;
     }, {} as Record<string, Lead[]>);
 
-    allStages.forEach(stage => {
+    currentStages.forEach(stage => {
         if (!leadsGrouped[stage.id]) {
             leadsGrouped[stage.id] = [];
         }
     });
-
     setLeadsByStage(leadsGrouped);
-    setIsLoading(false);
   }
 
   useEffect(() => {
-    fetchData();
+    setIsLoading(true);
+    
+    // First, get the stages (assuming they don't change often)
+    getStages().then(initialStages => {
+        setStages(initialStages);
+
+        // Then, set up the real-time listener for leads
+        const unsubscribe = getLeads((allLeads) => {
+            processLeads(allLeads, initialStages);
+            setIsLoading(false);
+        });
+
+        // Return the unsubscribe function to clean up the listener
+        return () => unsubscribe();
+    });
   }, []);
 
   useEffect(() => {
@@ -177,8 +183,8 @@ export default function CrmPage() {
     
     const newStage: Stage = { id: newStageId, title: newStageName, description: '', isWon: false };
     const newStages = [...stages, newStage];
-    setStages(newStages);
     await saveStages(newStages);
+    setStages(newStages); // Update stages locally to trigger re-render
     
     setLeadsByStage(prev => ({...prev, [newStage.id]: []}));
     setNewStageName("");
@@ -193,8 +199,8 @@ export default function CrmPage() {
     }
 
     const newStages = stages.filter(s => s.id !== stageId);
-    setStages(newStages);
     await saveStages(newStages);
+    setStages(newStages);
     
     setLeadsByStage(prev => {
         const newState = {...prev};
@@ -207,7 +213,7 @@ export default function CrmPage() {
 
   const handleDeleteLead = async (leadId: string, leadTitle: string) => {
     await deleteLead(leadId);
-    await fetchData(); // Re-fetch all data to ensure consistency
+    // The onSnapshot listener will automatically update the UI.
     toast({ title: "Oportunidade Excluída", description: `A oportunidade "${leadTitle}" foi removida.` });
   };
   
@@ -225,8 +231,9 @@ export default function CrmPage() {
       newStages = newStages.map(s => s.id === editingStage.id ? s : { ...s, isWon: false });
     }
 
-    setStages(newStages);
     await saveStages(newStages);
+    setStages(newStages);
+    
     setEditingStage(null);
     setIsEditDialogOpen(false);
     toast({ title: "Sucesso!", description: "A etapa foi atualizada." });
@@ -239,6 +246,7 @@ export default function CrmPage() {
     const sourceStageId = source.droppableId;
     const destStageId = destination.droppableId;
     
+    // Optimistic UI update
     setLeadsByStage(prev => {
         const newLeadsByStage = { ...prev };
         const sourceLeads = Array.from(newLeadsByStage[sourceStageId] || []);
@@ -249,18 +257,21 @@ export default function CrmPage() {
             newLeadsByStage[sourceStageId] = sourceLeads;
         } else {
             const destLeads = Array.from(newLeadsByStage[destStageId] || []);
-            destLeads.splice(destination.index, 0, movedLead);
+            destLeads.splice(destination.index, 0, { ...movedLead, stage: destStageId });
             newLeadsByStage[sourceStageId] = sourceLeads;
             newLeadsByStage[destStageId] = destLeads;
         }
         return newLeadsByStage;
     });
-
-    const leadToUpdate = getLeads().find(l => l.id === draggableId);
-    if (!leadToUpdate) return;
     
-    const destStage = stages.find(s => s.id === destStageId);
-    if (destStage) {
+    // Persist change in the backend
+    try {
+        const leadToUpdate = Object.values(leadsByStage).flat().find(l => l.id === draggableId);
+        if (!leadToUpdate) throw new Error("Lead not found for update");
+        
+        const destStage = stages.find(s => s.id === destStageId);
+        if (!destStage) throw new Error("Destination stage not found");
+
         await saveLead({ ...leadToUpdate, stage: destStageId });
         await addHistoryEntry({
             clientId: leadToUpdate.clientId,
@@ -277,6 +288,11 @@ export default function CrmPage() {
                 duration: 5000,
             });
         }
+    } catch(error) {
+        console.error("Failed to update lead stage:", error);
+        toast({ title: "Erro", description: "Não foi possível atualizar a etapa da oportunidade. A página será atualizada.", variant: "destructive" });
+        // Revert UI or simply refresh
+        window.location.reload();
     }
   };
 
@@ -436,5 +452,3 @@ export default function CrmPage() {
     </DragDropContext>
   );
 }
-
-    

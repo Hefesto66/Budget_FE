@@ -115,15 +115,14 @@ export default function InventarioPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchProducts = async () => {
-    setIsLoading(true);
-    const allProducts = await getProducts();
-    setProducts(allProducts);
-    setIsLoading(false);
-  };
-
   useEffect(() => {
-    fetchProducts();
+    setIsLoading(true);
+    const unsubscribe = getProducts((allProducts) => {
+        setProducts(allProducts);
+        setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const handleSelectionChange = (productId: string, checked: boolean) => {
@@ -135,7 +134,7 @@ export default function InventarioPage() {
   const handleDelete = async (productIds: string[]) => {
     const plural = productIds.length > 1;
     await Promise.all(productIds.map(id => deleteProduct(id)));
-    fetchProducts();
+    // onSnapshot will handle the UI update
     toast({
         title: `Produto${plural ? 's' : ''} Excluído${plural ? 's' : ''}`,
         description: `O${plural ? 's' : ''} item${plural ? 's' : ''} selecionado${plural ? 's' : ''} foi removido do inventário.`
@@ -310,5 +309,3 @@ export default function InventarioPage() {
     </div>
   );
 }
-
-    

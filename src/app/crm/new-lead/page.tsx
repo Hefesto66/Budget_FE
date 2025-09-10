@@ -76,13 +76,20 @@ export default function NewLeadPage() {
   const [newClientName, setNewClientName] = useState("");
 
   useEffect(() => {
-    async function fetchData() {
-      const allClients = await getClients();
-      const allStages = await getStages();
-      setClients(allClients);
-      setStages(allStages.filter(s => !s.isWon && s.id !== 'perdido')); // Don't allow creating a lead directly in 'Won' or 'Lost'
+    const unsubscribeClients = getClients((allClients) => {
+        setClients(allClients);
+    });
+
+    async function fetchStages() {
+        const allStages = await getStages();
+        setStages(allStages.filter(s => !s.isWon && s.id !== 'perdido'));
     }
-    fetchData();
+
+    fetchStages();
+
+    return () => {
+        unsubscribeClients();
+    };
   }, []);
   
   const form = useForm<NewLeadFormData>({
@@ -143,19 +150,11 @@ export default function NewLeadPage() {
     };
     
     try {
-        const newClientId = await saveClient(newClientData);
-        const newClient = await getClientById(newClientId);
+        const newClientId = await saveClient(newClientData, { isNew: true });
+        // The onSnapshot listener will automatically update the client list.
         
-        if (!newClient) {
-            toast({ title: "Erro", description: "Falha ao recuperar o cliente recém-criado.", variant: "destructive" });
-            return;
-        }
-
-        await addHistoryEntry({ clientId: newClient.id, text: 'Cliente criado através do formulário de nova oportunidade.', type: 'log' });
-        
-        setClients(prevClients => [...prevClients, newClient]);
-        form.setValue("clientId", newClient.id);
-        setSelectedClientId(newClient.id);
+        form.setValue("clientId", newClientId);
+        setSelectedClientId(newClientId);
         
         setNewClientName("");
         setIsClientDialogOpen(false);
@@ -242,8 +241,8 @@ export default function NewLeadPage() {
                                 </CommandGroup>
                                 <CommandItem
                                     onSelect={() => {
-                                        setComboboxOpen(false);
                                         setIsClientDialogOpen(true);
+                                        setComboboxOpen(false);
                                     }}
                                     className="text-primary cursor-pointer font-medium"
                                 >
