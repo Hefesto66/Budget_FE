@@ -134,6 +134,10 @@ export default function InventarioPage() {
     setSelectionMode(false);
   };
   
+  const filteredProducts = products.filter(product =>
+    product.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const toggleSelectAll = () => {
     if (selectedProducts.length === filteredProducts.length) {
       setSelectedProducts([]);
@@ -141,10 +145,6 @@ export default function InventarioPage() {
       setSelectedProducts(filteredProducts.map(p => p.id));
     }
   };
-
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   if (!isClient) return null;
 
@@ -239,9 +239,45 @@ export default function InventarioPage() {
                     ))}
                 </div>
             ) : (
-                <div className="rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 py-24 text-center">
-                    <h2 className="text-xl font-semibold text-foreground">Visualização em Lista</h2>
-                    <p className="mt-2 text-muted-foreground">A funcionalidade de tabela será implementada aqui em breve.</p>
+                 <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[50px]">
+                                    <Checkbox
+                                        checked={selectedProducts.length === filteredProducts.length && filteredProducts.length > 0}
+                                        onCheckedChange={toggleSelectAll}
+                                    />
+                                </TableHead>
+                                <TableHead>Descrição</TableHead>
+                                <TableHead>Fabricante</TableHead>
+                                <TableHead>Categoria</TableHead>
+                                <TableHead className="text-right">Preço de Venda</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredProducts.map(product => (
+                                <TableRow key={product.id}>
+                                    <TableCell>
+                                        <Checkbox
+                                            checked={selectedProducts.includes(product.id)}
+                                            onCheckedChange={(checked) => handleSelectionChange(product.id, !!checked)}
+                                        />
+                                    </TableCell>
+                                    <TableCell>
+                                        <Link href={`/inventario/${product.id}`} className="font-medium text-primary hover:underline">
+                                            {product.name}
+                                        </Link>
+                                    </TableCell>
+                                    <TableCell>{product.technicalSpecifications?.Fabricante || 'N/A'}</TableCell>
+                                    <TableCell>
+                                        <Badge variant="secondary">{PRODUCT_CATEGORIES[product.category]}</Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">{formatCurrency(product.salePrice)}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
                 </div>
             )}
           </>
