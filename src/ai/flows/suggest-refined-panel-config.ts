@@ -4,7 +4,7 @@
 
 /**
  * @fileOverview This file defines an algorithmic flow that suggests a refined solar panel quantity.
- * This implementation intentionally avoids calling a generative AI model to ensure reliability and prevent safety filter blocks.
+ * This implementation is a pure server-side function and does not call any external AI or database services.
  *
  * - suggestRefinedPanelConfig - A function that suggests a refined panel configuration based on input parameters.
  * - SuggestRefinedPanelConfigInput - The input type for the suggestRefinedPanelConfig function.

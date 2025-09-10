@@ -2,12 +2,15 @@
 'use server';
 /**
  * @fileOverview A server-side solar calculation service based on detailed business rules.
+ * This function now operates independently of any client-side Firebase SDK.
  * - calculateSolar - A function that handles the solar calculation process.
  */
 
-import { ai } from '@/ai/genkit';
 import { solarCalculationSchema, type SolarCalculationInput } from '@/types';
-import { z } from 'zod';
+
+// This is a pure business logic function, it doesn't need Genkit or Firebase Admin.
+// It was kept inside the /ai/flows directory to maintain the project structure,
+// but it's now a standard server-side calculation module.
 
 const DISPONIBILITY_COST_KWH: Record<string, number> = {
     mono: 30,
@@ -68,34 +71,27 @@ function calculateIRR(cashFlow: number[]): number {
   return Infinity; // Não convergiu
 }
 
-export async function calculateSolar(input: SolarCalculationInput) {
-  return calculateSolarFlow(input);
-}
-
-const calculateSolarFlow = ai.defineFlow(
-  {
-    name: 'calculateSolarFlow',
-    inputSchema: solarCalculationSchema,
-    // Output schema is defined implicitly by the return type
-  },
-  async (data) => {
+// This function is now the primary export and can be called directly.
+export async function calculateSolar(data: SolarCalculationInput) {
     // 1. Validate Inputs & Apply Defaults
-    if (!data.consumo_mensal_kwh || data.consumo_mensal_kwh <= 0) {
+    const validatedData = solarCalculationSchema.parse(data);
+
+    if (!validatedData.consumo_mensal_kwh || validatedData.consumo_mensal_kwh <= 0) {
       throw new Error("O consumo mensal (kWh) é um dado essencial para o cálculo financeiro e deve ser maior que zero.");
     }
     
     // Assegura que potência e quantidade venham do input, caso contrário, default para 0.
-    const potencia_modulo_wp = data.potencia_modulo_wp ?? 0;
-    const quantidade_modulos = data.quantidade_modulos ?? 0;
+    const potencia_modulo_wp = validatedData.potencia_modulo_wp ?? 0;
+    const quantidade_modulos = validatedData.quantidade_modulos ?? 0;
     
     // Default efficiency to 97% if it's null, undefined.
-    const eficiencia_inversor = (data.eficiencia_inversor_percent ?? 97) / 100;
-    const fator_perdas = (data.fator_perdas_percent ?? 20) / 100;
+    const eficiencia_inversor = (validatedData.eficiencia_inversor_percent ?? 97) / 100;
+    const fator_perdas = (validatedData.fator_perdas_percent ?? 20) / 100;
     
     // Novos parâmetros de projeção com valores padrão robustos
-    const inflacao_energetica = (data.inflacao_energetica_anual_percent ?? 8.0) / 100;
-    const degradacao_paineis = (data.degradacao_anual_paineis_percent ?? 0.5) / 100;
-    const taxa_desconto = (data.taxa_minima_atratividade_percent ?? 6.0) / 100;
+    const inflacao_energetica = (validatedData.inflacao_energetica_anual_percent ?? 8.0) / 100;
+    const degradacao_paineis = (validatedData.degradacao_anual_paineis_percent ?? 0.5) / 100;
+    const taxa_desconto = (validatedData.taxa_minima_atratividade_percent ?? 6.0) / 100;
 
 
     // 2. Calculate System Efficiency
@@ -106,29 +102,29 @@ const calculateSolarFlow = ai.defineFlow(
     const potencia_pico_final_kw = potencia_modulo_kw * quantidade_modulos;
 
     // 4. Calculate Energy Generation
-    const geracao_diaria_kwh = potencia_pico_final_kw * data.irradiacao_psh_kwh_m2_dia * eficiencia_sistema;
+    const geracao_diaria_kwh = potencia_pico_final_kw * validatedData.irradiacao_psh_kwh_m2_dia * eficiencia_sistema;
     const geracao_media_mensal_kwh = geracao_diaria_kwh * 30;
 
     // 5. Calculate Financials
-    const tarifa_energia_reais_kwh = data.consumo_mensal_kwh > 0 ? data.valor_medio_fatura_reais / data.consumo_mensal_kwh : 0;
-    const tarifa_final_reais_kwh = tarifa_energia_reais_kwh + data.adicional_bandeira_reais_kwh;
+    const tarifa_energia_reais_kwh = validatedData.consumo_mensal_kwh > 0 ? validatedData.valor_medio_fatura_reais / validatedData.consumo_mensal_kwh : 0;
+    const tarifa_final_reais_kwh = tarifa_energia_reais_kwh + validatedData.adicional_bandeira_reais_kwh;
     
-    const conta_antes_reais = data.valor_medio_fatura_reais;
+    const conta_antes_reais = validatedData.valor_medio_fatura_reais;
     
-    const custo_disponibilidade_kwh = DISPONIBILITY_COST_KWH[data.rede_fases];
-    const energia_compensada_kwh = Math.min(geracao_media_mensal_kwh, Math.max(0, data.consumo_mensal_kwh - custo_disponibilidade_kwh));
-    const consumo_nao_compensado_kwh = data.consumo_mensal_kwh - energia_compensada_kwh;
+    const custo_disponibilidade_kwh = DISPONIBILITY_COST_KWH[validatedData.rede_fases];
+    const energia_compensada_kwh = Math.min(geracao_media_mensal_kwh, Math.max(0, validatedData.consumo_mensal_kwh - custo_disponibilidade_kwh));
+    const consumo_nao_compensado_kwh = validatedData.consumo_mensal_kwh - energia_compensada_kwh;
 
     const custo_disponibilidade_reais = custo_disponibilidade_kwh * tarifa_final_reais_kwh;
     const consumo_faturado_com_gd_reais = consumo_nao_compensado_kwh * tarifa_final_reais_kwh;
 
-    const conta_depois_reais = Math.max(custo_disponibilidade_reais, consumo_faturado_com_gd_reais) + data.cip_iluminacao_publica_reais;
+    const conta_depois_reais = Math.max(custo_disponibilidade_reais, consumo_faturado_com_gd_reais) + validatedData.cip_iluminacao_publica_reais;
     
     const economia_mensal_reais = Math.max(0, conta_antes_reais - conta_depois_reais);
     const economia_anual_reais = economia_mensal_reais * 12;
-    const economia_primeiro_ano = (economia_mensal_reais * 12) - (data.custo_om_anual_reais ?? 0);
+    const economia_primeiro_ano = (economia_mensal_reais * 12) - (validatedData.custo_om_anual_reais ?? 0);
     
-    const custo_sistema_reais = data.custo_sistema_reais ?? 0;
+    const custo_sistema_reais = validatedData.custo_sistema_reais ?? 0;
 
     const payback_simples_anos = economia_anual_reais > 0 ? (custo_sistema_reais / economia_anual_reais) : Infinity;
 
@@ -143,7 +139,7 @@ const calculateSolarFlow = ai.defineFlow(
           tarifaAtualizada *= (1 + inflacao_energetica);
       }
       
-      const economiaDoAno = (geracaoAnualKwh * tarifaAtualizada) - (data.custo_om_anual_reais ?? 0);
+      const economiaDoAno = (geracaoAnualKwh * tarifaAtualizada) - (validatedData.custo_om_anual_reais ?? 0);
       cashFlow.push(economiaDoAno);
     }
     
@@ -177,5 +173,4 @@ const calculateSolarFlow = ai.defineFlow(
       warnings: [],
       recommendations: ["Verificar limites de conexão, medição e DC/AC máximo aceito pela concessionária local."]
     };
-  }
-);
+}
