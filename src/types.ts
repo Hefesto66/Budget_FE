@@ -21,10 +21,6 @@ export const solarCalculationSchema = z.object({
 
   // Parâmetros de custo (serão preenchidos a partir da lista de materiais)
   custo_sistema_reais: z.number().positive().optional(),
-  preco_modulo_reais: z.number().positive().optional(),
-  custo_inversor_reais: z.number().positive().optional(),
-  quantidade_inversores: z.number().int().positive().optional(),
-  custo_fixo_instalacao_reais: z.number().positive().optional(),
   
   // Parâmetros financeiros e de projeção (com valores padrão)
   fator_perdas_percent: z.number().default(20),
@@ -35,16 +31,6 @@ export const solarCalculationSchema = z.object({
   inflacao_energetica_anual_percent: z.number().default(8.0),
   degradacao_anual_paineis_percent: z.number().default(0.5),
   taxa_minima_atratividade_percent: z.number().default(6.0),
-
-  // Campos de texto para a proposta (opcionais)
-  fabricante_modulo: z.string().optional(),
-  modelo_inversor: z.string().optional(),
-  fabricante_inversor: z.string().optional(),
-  potencia_inversor_kw: z.number().optional(),
-  tensao_inversor_v: z.number().optional(),
-  garantia_defeito_modulo_anos: z.number().optional(),
-  garantia_geracao_modulo_anos: z.number().optional(),
-  garantia_inversor_anos: z.number().optional(),
 
   // Campos de CRM (opcionais)
   salespersonId: z.string().optional(),
@@ -94,8 +80,8 @@ export interface SavingsDataPoint {
 
 export const clientSchema = z.object({
   name: z.string().min(1, "O nome do cliente é obrigatório."),
-  document: z.string().min(1, "O documento é obrigatório."),
-  address: z.string().min(1, "O endereço é obrigatório."),
+  document: z.string().optional(),
+  address: z.string().optional(),
 });
 
 export type ClientFormData = z.infer<typeof clientSchema>;
