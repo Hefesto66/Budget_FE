@@ -3,10 +3,12 @@
 
 import Link from "next/link";
 import { Header } from "@/components/layout/Header";
-import { ArrowRight, Building, Palette } from "lucide-react";
+import { ArrowRight, Building, Palette, LogOut } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { AuthGuard } from "@/components/auth/AuthGuard";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
 
 interface SettingsCardProps {
   href: string;
@@ -44,6 +46,8 @@ const SettingsCard = ({ href, icon, name, description }: SettingsCardProps) => (
 
 
 function DefinicoesPageContent() {
+  const { logout } = useAuth();
+  
   return (
     <div className="flex min-h-screen flex-col bg-gray-900 text-white">
       <div className="absolute inset-0 -z-10 h-full w-full bg-white bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]">
@@ -76,6 +80,19 @@ function DefinicoesPageContent() {
             />
           </div>
         </section>
+
+        <section className="container mx-auto px-4 pb-20">
+            <div className="mx-auto max-w-2xl text-center">
+                 <Button
+                    variant="outline"
+                    onClick={logout}
+                    className="border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300"
+                >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Terminar Sessão
+                </Button>
+            </div>
+        </section>
       </main>
     </div>
   );
@@ -88,5 +105,3 @@ export default function DefinicoesPage() {
         </AuthGuard>
     )
 }
-
-    
