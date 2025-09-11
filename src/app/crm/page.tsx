@@ -309,18 +309,21 @@ function CrmPageContent() {
   }
 
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
-      <div className="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-950">
-          <Header />
-          <main className="flex-1 p-6 flex flex-col">
-              <div className="mb-6 flex items-center justify-start">
-                  <Button size="lg" asChild>
-                      <Link href="/crm/new-lead">
-                          <PlusCircle className="mr-2 h-5 w-5"/>
-                          Nova Oportunidade
-                      </Link>
-                  </Button>
-              </div>
+    <div className="flex min-h-screen flex-col bg-gray-100 dark:bg-gray-950">
+        <Header />
+        <main className="flex-1 p-6 flex flex-col">
+            <div className="mb-6 flex items-center justify-start">
+                <Button size="lg" asChild>
+                    <Link href="/crm/new-lead">
+                        <PlusCircle className="mr-2 h-5 w-5"/>
+                        Nova Oportunidade
+                    </Link>
+                </Button>
+            </div>
+            
+            {/* The DragDropContext is only rendered on the client after loading is complete */}
+            {DragDropContext && (
+            <DragDropContext onDragEnd={onDragEnd}>
               <div ref={scrollContainerRef} className="flex gap-6 overflow-x-auto pb-4 custom-scrollbar flex-grow">
                   {stages.map((stage) => (
                     <Droppable droppableId={stage.id} key={stage.id}>
@@ -406,9 +409,10 @@ function CrmPageContent() {
                       </Card>
                   </div>
               </div>
-          </main>
-      </div>
-
+            </DragDropContext>
+            )}
+        </main>
+      
        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
             <DialogHeader>
@@ -450,7 +454,7 @@ function CrmPageContent() {
             </DialogFooter>
         </DialogContent>
       </Dialog>
-    </DragDropContext>
+    </div>
   );
 }
 
@@ -461,5 +465,3 @@ export default function CrmPage() {
         </AuthGuard>
     )
 }
-
-    
