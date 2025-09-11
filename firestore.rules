@@ -1,23 +1,42 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Regra para a coleção 'companies'
-    // Permite que um utilizador leia e escreva no seu PRÓPRIO registo de empresa,
-    // o que é essencial para ele atualizar os seus dados e para a função de Super Usuário funcionar.
-    match /companies/{userId} {
-      allow read, write: if request.auth.uid == userId;
+    // Helper function to check ownership
+    function isOwner(companyId) {
+      return request.auth.uid == companyId;
+    }
+    
+    // Helper function to check for superuser role
+    function isSuperUser() {
+      return request.auth.token.superuser == true;
     }
 
-    // Regra genérica para as outras coleções
-    // Permite a leitura ou escrita se:
-    // 1. O 'uid' do utilizador autenticado for igual ao campo 'companyId' do documento (é o dono).
-    // 2. OU o utilizador tiver a custom claim 'superuser' definida como true.
-    match /{collection}/{docId} {
-      allow read, write: if request.auth.uid == resource.data.companyId 
-                         || request.auth.token.superuser == true;
+    match /companies/{userId} {
+       // Only the owner of the company document or a superuser can read/write it.
+       allow read, write: if isOwner(userId) || isSuperUser();
+    }
+    
+    match /clients/{clientId} {
+      // Allow creation if the new document's companyId matches the user's UID.
+      allow create: if isOwner(request.resource.data.companyId) || isSuperUser();
+      // Allow read, update, delete if the existing document's companyId matches the user's UID.
+      allow read, update, delete: if isOwner(resource.data.companyId) || isSuperUser();
+    }
+    
+    match /inventory/{productId} {
+      allow create: if isOwner(request.resource.data.companyId) || isSuperUser();
+      allow read, update, delete: if isOwner(resource.data.companyId) || isSuperUser();
+    }
+
+    match /leads/{leadId} {
+      allow create: if isOwner(request.resource.data.companyId) || isSuperUser();
+      allow read, update, delete: if isOwner(resource.data.companyId) || isSuperUser();
+    }
+
+    match /quotes/{quoteId} {
+      allow create: if isOwner(request.resource.data.companyId) || isSuperUser();
+      allow read, update, delete: if isOwner(resource.data.companyId) || isSuperUser();
     }
   }
 }
