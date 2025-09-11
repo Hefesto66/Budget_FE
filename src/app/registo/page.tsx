@@ -47,14 +47,14 @@ export default function RegisterPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
 
-      // CRITICAL STEP: Create the company document in Firestore
+      // ETAPA CRÍTICA: Criar o documento da empresa no Firestore
       await createCompanyForNewUser(user.uid);
       
       toast({
         title: "Registo bem-sucedido!",
         description: "A sua conta foi criada. A redirecionar...",
       });
-      router.push("/"); // Redirect to the main app page after successful registration
+      router.push("/"); // Redirecionar para a página principal após o registo bem-sucedido
 
     } catch (error: any) {
       console.error("Firebase registration error:", error);

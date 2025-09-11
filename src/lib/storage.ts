@@ -172,19 +172,18 @@ export const saveClient = async (
     const companyId = getCurrentUserId();
     if (!db || !companyId) return Promise.reject("Firestore not initialized or user not logged in");
 
-    const dataToWrite = { ...clientData, companyId };
-
     if (clientId) {
         // Update existing client
         const docRef = doc(db, 'clients', clientId);
-        // Remove o ID do objeto de dados para evitar escrevê-lo dentro do documento.
-        const { id, ...updateData } = dataToWrite;
+        // Remove o ID e o companyId (para não ser sobrescrito) do objeto de dados antes de atualizar.
+        const { id, companyId: ignoredCompanyId, ...updateData } = clientData;
         await setDoc(docRef, updateData, { merge: true });
         return clientId;
     } else {
         // Create new client - ensure companyId is included in the initial document data
         const docData = {
-            ...dataToWrite, // Contém clientData e o companyId já adicionado
+            ...clientData, // Contém clientData
+            companyId: companyId, // *** GARANTE QUE O companyId ESTEJA PRESENTE ***
             history: [{
                 id: `hist-${Date.now()}`,
                 timestamp: new Date().toISOString(),
@@ -279,15 +278,17 @@ export const saveLead = async (leadData: Partial<Lead>): Promise<string> => {
     const db = await dbReady;
     const companyId = getCurrentUserId();
     if (!db || !companyId) return Promise.reject("Firestore not initialized or user not logged in");
-    const dataToSave = { ...leadData, companyId };
 
-    if (dataToSave.id) {
-        const leadId = dataToSave.id;
+    if (leadData.id) {
+        // Update
+        const leadId = leadData.id;
         const docRef = doc(db, 'leads', leadId);
-        delete dataToSave.id;
-        await setDoc(docRef, dataToSave, { merge: true });
+        const { id, companyId: ignoredCompanyId, ...updateData } = leadData;
+        await setDoc(docRef, updateData, { merge: true });
         return leadId;
     } else {
+        // Create
+        const dataToSave = { ...leadData, companyId: companyId };
         const docRef = await addDoc(collection(db, 'leads'), dataToSave);
         return docRef.id;
     }
@@ -430,16 +431,15 @@ export const saveProduct = async (productData: Partial<Product>, productId?: str
     const companyId = getCurrentUserId();
     if (!db || !companyId) return Promise.reject("Firestore not initialized or user not logged in");
     
-    const dataToWrite = { ...productData, companyId };
-
     if (productId) {
         // Update existing product
         const docRef = doc(db, 'inventory', productId);
-        const { id, ...updateData } = dataToWrite;
+        const { id, companyId: ignoredCompanyId, ...updateData } = productData;
         await setDoc(docRef, updateData, { merge: true });
         return productId;
     } else {
         // Create new product
+        const dataToWrite = { ...productData, companyId };
         const docRef = await addDoc(collection(db, 'inventory'), dataToWrite);
         return docRef.id;
     }
