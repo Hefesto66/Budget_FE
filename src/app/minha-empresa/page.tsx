@@ -95,7 +95,7 @@ function SuperUserAdmin() {
 function MinhaEmpresaPageContent() {
   const { toast } = useToast()
   const router = useRouter()
-  const { isSuperUser } = useAuth();
+  const { user } = useAuth();
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true);
@@ -293,8 +293,9 @@ function MinhaEmpresaPageContent() {
             </Card>
           </form>
 
-          {/* O painel de Super Usuário agora está sempre visível para o utilizador logado, para permitir a promoção inicial */}
-          <SuperUserAdmin />
+          {user?.email === 'carlos163.ax@gmail.com' && (
+            <SuperUserAdmin />
+          )}
 
         </div>
       </main>
@@ -309,3 +310,5 @@ export default function MinhaEmpresaPage() {
         </AuthGuard>
     )
 }
+
+    
