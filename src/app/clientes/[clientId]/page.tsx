@@ -293,12 +293,17 @@ function ClientForm() {
                     Voltar
                 </Button>
                 <Button type="submit" disabled={isSaving} size="lg">
-                {isSaving ? (
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                ) : (
-                    <Save className="mr-2 h-5 w-5" />
-                )}
-                Salvar
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-5 w-5" />
+                      Salvar
+                    </>
+                  )}
                 </Button>
             </div>
             
@@ -589,4 +594,5 @@ export default function ClientFormPage() {
     )
 }
 
+    
     
