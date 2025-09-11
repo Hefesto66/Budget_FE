@@ -177,13 +177,14 @@ export const saveClient = async (
     if (clientId) {
         // Update existing client
         const docRef = doc(db, 'clients', clientId);
+        // Remove o ID do objeto de dados para evitar escrevê-lo dentro do documento.
         const { id, ...updateData } = dataToWrite;
         await setDoc(docRef, updateData, { merge: true });
         return clientId;
     } else {
-        // Create new client
+        // Create new client - ensure companyId is included in the initial document data
         const docData = {
-            ...dataToWrite,
+            ...dataToWrite, // Contém clientData e o companyId já adicionado
             history: [{
                 id: `hist-${Date.now()}`,
                 timestamp: new Date().toISOString(),
