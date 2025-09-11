@@ -1,20 +1,18 @@
 // src/lib/firebase-admin.ts
 import admin from 'firebase-admin';
+import serviceAccount from '../../../serviceAccountKey.json';
 
 // Verifica se a aplicação já foi inicializada para evitar erros.
 if (!admin.apps.length) {
   try {
-    // As credenciais são lidas a partir das variáveis de ambiente
-    // que o Firebase providencia em ambientes de servidor (como Vercel ou Firebase Hosting).
-    // Ou a partir do ficheiro da conta de serviço configurado localmente.
     admin.initializeApp({
-      credential: admin.credential.applicationDefault(),
+      credential: admin.credential.cert(serviceAccount)
     });
-    console.log("Firebase Admin SDK inicializado com sucesso.");
+    console.log("Firebase Admin SDK inicializado com sucesso a partir do ficheiro de conta de serviço.");
   } catch (error: any) {
     console.error('Erro na inicialização do Firebase Admin SDK:', error.message);
-    // Lançar o erro ou lidar com ele conforme necessário para a sua aplicação.
-    // Em muitos casos, a aplicação não pode funcionar sem o Admin SDK.
+    // Em ambientes de desenvolvimento, é útil ver o objeto de erro completo.
+    console.error(error); 
   }
 }
 
