@@ -10,7 +10,6 @@ export function Logo() {
         width={32} 
         height={32} 
         className="rounded-full"
-        style={{ height: 'auto' }}
       />
       <span className="text-xl font-bold font-headline text-white tracking-wide">
         Solaris
