@@ -293,17 +293,14 @@ function ClientForm() {
                     Voltar
                 </Button>
                 <Button type="submit" disabled={isSaving} size="lg">
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Salvando...
-                    </>
-                  ) : (
-                    <>
+                    <span className={cn('items-center gap-2', isSaving ? 'hidden' : 'inline-flex')}>
                       <Save className="mr-2 h-5 w-5" />
                       Salvar
-                    </>
-                  )}
+                    </span>
+                    <span className={cn('items-center gap-2', isSaving ? 'inline-flex' : 'hidden')}>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Salvando...
+                    </span>
                 </Button>
             </div>
             
@@ -595,4 +592,6 @@ export default function ClientFormPage() {
 }
 
     
+    
+
     
