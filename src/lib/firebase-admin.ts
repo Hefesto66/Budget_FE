@@ -1,6 +1,6 @@
 // src/lib/firebase-admin.ts
 import admin from 'firebase-admin';
-import serviceAccount from '../../../serviceAccountKey.json';
+import serviceAccount from '../../serviceAccountKey.json';
 
 // Verifica se a aplicação já foi inicializada para evitar erros.
 if (!admin.apps.length) {
