@@ -1,10 +1,20 @@
 // src/lib/firebase-admin.ts
 import admin from 'firebase-admin';
-import serviceAccount from '../../serviceAccountKey.json';
+import path from 'path';
+import fs from 'fs';
 
 // Verifica se a aplicação já foi inicializada para evitar erros.
 if (!admin.apps.length) {
   try {
+    // Constrói o caminho absoluto para o ficheiro a partir da raiz do projeto.
+    const serviceAccountPath = path.resolve(process.cwd(), 'serviceAccountKey.json');
+    
+    if (!fs.existsSync(serviceAccountPath)) {
+      throw new Error(`O ficheiro de credenciais 'serviceAccountKey.json' não foi encontrado no caminho esperado: ${serviceAccountPath}. Certifique-se de que o ficheiro existe na raiz do projeto.`);
+    }
+
+    const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+    
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
     });

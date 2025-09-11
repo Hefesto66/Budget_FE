@@ -26,8 +26,6 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
-    // Adicionado para permitir o acesso a partir do ambiente de desenvolvimento em nuvem.
-    allowedDevOrigins: ["https://9000-firebase-studio-1756859969016.cluster-lqzyk3r5hzdcaqv6zwm7wv6pwa.cloudworkstations.dev"],
     serverActions: {
       bodySizeLimit: '2mb',
     }
