@@ -1,45 +1,41 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Regra para a coleção 'companies'
-    // Um utilizador só pode ler ou escrever no seu próprio documento de empresa.
+    // Default-deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper function to check for superuser or owner
+    function isSuperUserOrOwner(companyId) {
+      return request.auth.token.superuser == true || request.auth.uid == companyId;
+    }
+
+    // Allow logged-in users to manage their own "company" document.
     match /companies/{userId} {
-      allow read, write: if request.auth.uid == userId;
-    }
-
-    // Regra geral para coleções que pertencem a uma empresa
-    function isOwner(companyId) {
-      return request.auth.uid == companyId;
+      allow read, update: if request.auth.uid == userId || request.auth.token.superuser == true;
+      allow create: if request.auth.uid == userId;
     }
     
-    function isSuperUser() {
-      return request.auth.token.superuser == true;
+    match /clients/{docId} {
+      allow read, write: if isSuperUserOrOwner(resource.data.companyId);
+      allow create: if isSuperUserOrOwner(request.resource.data.companyId);
     }
 
-    // Coleção de Clientes
-    match /clients/{clientId} {
-      allow create: if isOwner(request.resource.data.companyId);
-      allow read, update, delete: if isOwner(resource.data.companyId) || isSuperUser();
+    match /inventory/{docId} {
+      allow read, write: if isSuperUserOrOwner(resource.data.companyId);
+      allow create: if isSuperUserOrOwner(request.resource.data.companyId);
     }
 
-    // Coleção de Cotações (Quotes)
-    match /quotes/{quoteId} {
-      allow create: if isOwner(request.resource.data.companyId);
-      allow read, update, delete: if isOwner(resource.data.companyId) || isSuperUser();
+    match /leads/{docId} {
+      allow read, write: if isSuperUserOrOwner(resource.data.companyId);
+      allow create: if isSuperUserOrOwner(request.resource.data.companyId);
     }
     
-    // Coleção de Oportunidades (Leads)
-    match /leads/{leadId} {
-      allow create: if isOwner(request.resource.data.companyId);
-      allow read, update, delete: if isOwner(resource.data.companyId) || isSuperUser();
-    }
-    
-    // Coleção de Inventário
-    match /inventory/{productId} {
-       allow create: if isOwner(request.resource.data.companyId);
-       allow read, update, delete: if isOwner(resource.data.companyId) || isSuperUser();
+    match /quotes/{docId} {
+      allow read, write: if isSuperUserOrOwner(resource.data.companyId);
+      allow create: if isSuperUserOrOwner(request.resource.data.companyId);
     }
   }
 }
