@@ -69,3 +69,4 @@ const dbReady: Promise<Firestore | null> = new Promise((resolve) => {
 // Export the app instance, auth, and the promise for the db instance.
 export { app, db, auth, dbReady };
 
+
